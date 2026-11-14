@@ -759,6 +759,60 @@ html, body {
   z-index: 20;
 }
 
+/* Footer Credit Bar */
+.site-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 6px 14px;
+  background: #020802;
+  border: 2px solid var(--border-subtle);
+  font-family: var(--font-pixel);
+  font-size: 0.55rem;
+  color: var(--text-muted);
+  flex-shrink: 0;
+}
+
+.footer-credit {
+  color: var(--text-main);
+  letter-spacing: 0.06em;
+}
+
+.footer-links {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.footer-link {
+  color: var(--text-bright);
+  text-decoration: none;
+  letter-spacing: 0.06em;
+  transition: color 0.12s steps(2), text-shadow 0.12s steps(2);
+}
+
+.footer-link:hover {
+  color: var(--text-main);
+  text-shadow: 0 0 10px var(--text-main);
+  text-decoration: underline;
+}
+
+.modal-credit {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding-top: 12px;
+  border-top: 1px dashed var(--border-subtle);
+  font-family: var(--font-pixel);
+  font-size: 0.55rem;
+  color: var(--text-muted);
+}
+
+.credit-sep {
+  color: var(--border-subtle);
+}
+
 @media (max-width: 860px) {
   .top-bar {
     flex-wrap: wrap;
