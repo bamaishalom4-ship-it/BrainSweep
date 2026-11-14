@@ -10,25 +10,28 @@
       id: 'easy',
       label: 'Easy',
       maxNumber: 14,
+      totalNumbers: 20,
       durationSec: 60,
       baseSpeed: 58,
-      nodeRadius: 24,
+      nodeRadius: 23,
     },
     medium: {
       id: 'medium',
       label: 'Medium',
       maxNumber: 32,
+      totalNumbers: 40,
       durationSec: 60,
       baseSpeed: 72,
-      nodeRadius: 20,
+      nodeRadius: 19,
     },
     hard: {
       id: 'hard',
       label: 'Hard',
       maxNumber: 72,
+      totalNumbers: 80,
       durationSec: 60,
       baseSpeed: 84,
-      nodeRadius: 16,
+      nodeRadius: 15,
     },
   };
 
@@ -283,7 +286,7 @@
   // --- Node Generation & Movement Trajectories ---
   function createNodes() {
     const cfg = DIFFICULTIES[state.difficulty];
-    const count = cfg.maxNumber;
+    const count = cfg.totalNumbers;
     const nodes = [];
 
     // Dynamically scale radius slightly if screen is compact
