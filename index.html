@@ -1,0 +1,299 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>BrainSweep — Cognitive Number Extraction Game</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=VT323&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <div class="crt-scanlines" aria-hidden="true"></div>
+  <div class="app-shell">
+    <!-- Top Navigation / Status Header -->
+    <header class="top-bar">
+      <div class="brand">
+        <div class="brand-logo" aria-hidden="true">
+          <svg viewBox="0 0 32 32" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2.4">
+            <circle cx="16" cy="16" r="12" stroke-dasharray="6 4" />
+            <path d="M16 8a8 8 0 1 0 8 8" stroke-linecap="round" />
+            <circle cx="16" cy="16" r="3" fill="currentColor" />
+          </svg>
+        </div>
+        <div>
+          <h1 class="brand-title">BrainSweep</h1>
+          <p class="brand-subtitle">SYS://COGNITIVE_MATRIX_V1.0</p>
+        </div>
+      </div>
+
+      <!-- Live HUD during gameplay -->
+      <div class="hud-bar" id="hudBar">
+        <div class="hud-card target-card" id="targetHudCard">
+          <span class="hud-label">NEXT TARGET</span>
+          <div class="hud-value-wrap">
+            <span class="hud-value accent-cyan" id="hudNextTarget">1</span>
+            <span class="hud-sub" id="hudTotalTarget">/ 14</span>
+          </div>
+        </div>
+
+        <div class="hud-card timer-card" id="timerHudCard">
+          <span class="hud-label">TIME LEFT</span>
+          <div class="hud-value-wrap">
+            <span class="hud-value mono" id="hudTimer">01:00.0</span>
+          </div>
+          <div class="timer-progress-track">
+            <div class="timer-progress-bar" id="timerProgressBar"></div>
+          </div>
+        </div>
+
+        <div class="hud-card streak-card">
+          <span class="hud-label">EXTRACTED</span>
+          <div class="hud-value-wrap">
+            <span class="hud-value accent-emerald" id="hudExtracted">0</span>
+            <span class="hud-sub" id="hudStreakBadge">0x streak</span>
+          </div>
+        </div>
+
+        <div class="hud-card pace-card">
+          <span class="hud-label">PACE / AVG</span>
+          <div class="hud-value-wrap">
+            <span class="hud-value mono" id="hudPace">—</span>
+            <span class="hud-sub">sec / num</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="top-actions">
+        <button class="icon-btn" id="btnHint" title="Pulse Next Number (H)" aria-label="Pulse Next Number">
+          <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="10"/>
+            <line x1="12" y1="16" x2="12" y2="12"/>
+            <line x1="12" y1="8" x2="12.01" y2="8"/>
+          </svg>
+          <span class="btn-label">Locate</span>
+        </button>
+        <button class="icon-btn" id="btnSound" title="Toggle Sound Effects (M)" aria-label="Toggle Sound">
+          <svg id="iconSoundOn" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2">
+            <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/>
+            <path d="M15.54 8.46a5 5 0 0 1 0 7.07"/>
+            <path d="M19.07 4.93a10 10 0 0 1 0 14.14"/>
+          </svg>
+        </button>
+        <button class="icon-btn" id="btnMenu" title="Game Setup / Restart (Esc)" aria-label="Open Setup Menu">
+          <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2">
+            <rect x="3" y="3" width="7" height="7" rx="1"/>
+            <rect x="14" y="3" width="7" height="7" rx="1"/>
+            <rect x="14" y="14" width="7" height="7" rx="1"/>
+            <rect x="3" y="14" width="7" height="7" rx="1"/>
+          </svg>
+          <span class="btn-label">Setup</span>
+        </button>
+      </div>
+    </header>
+
+    <!-- Main Game Stage -->
+    <main class="stage-wrapper">
+      <!-- Outer Extraction Ring / Drop Zone -->
+      <div class="extraction-frame" id="extractionFrame">
+        <div class="extraction-ring-label top-label">
+          <span>↑ DRAG OR FLICK NUMBERS OUTSIDE THE ARENA BORDER TO EXTRACT ↑</span>
+        </div>
+        <div class="extraction-ring-label bottom-label">
+          <span>↓ EXTRACTION PERIMETER — DROP SEQUENTIAL NUMBERS (1, 2, 3...) HERE ↓</span>
+        </div>
+        <div class="extraction-ring-label left-label">
+          <span>← EXTRACT</span>
+        </div>
+        <div class="extraction-ring-label right-label">
+          <span>EXTRACT →</span>
+        </div>
+
+        <!-- Inner Playable Arena where numbers move -->
+        <div class="arena-container" id="arenaContainer">
+          <canvas id="gameCanvas"></canvas>
+
+          <!-- Floating Feedback Toast inside Arena -->
+          <div class="arena-feedback" id="arenaFeedback"></div>
+        </div>
+      </div>
+
+      <!-- Collected Numbers Tray at bottom -->
+      <section class="extracted-tray" aria-label="Extracted Numbers Sequence">
+        <div class="tray-header">
+          <span class="tray-title">EXTRACTED SEQUENCE</span>
+          <span class="tray-hint" id="trayStatusText">Drag #1 out of the inner arena to begin</span>
+        </div>
+        <div class="tray-slots" id="extractedSlots"></div>
+      </section>
+    </main>
+
+    <!-- Start / Configuration Modal Overlay -->
+    <div class="modal-backdrop active" id="setupModal">
+      <div class="modal-card">
+        <div class="modal-header">
+          <span class="badge-pill">COGNITIVE TRAINING LAB</span>
+          <h2>Configure Your Session</h2>
+          <p>Scan the moving field and drag numbers out in strict ascending order (1, 2, 3...) before the 60-second timer expires.</p>
+        </div>
+
+        <!-- Difficulty Selection -->
+        <div class="config-section">
+          <label class="config-label">1. Select Difficulty (60 Seconds Time Limit)</label>
+          <div class="difficulty-grid" id="difficultyGrid">
+            <button type="button" class="diff-card active" data-difficulty="easy">
+              <div class="diff-top">
+                <span class="diff-name">Easy</span>
+                <span class="diff-time">60s</span>
+              </div>
+              <div class="diff-range">1 – 14</div>
+              <p class="diff-desc">14 moving targets. Great for warm-up, peripheral awareness, and smooth tracking.</p>
+              <div class="diff-best" id="bestEasy">Best: —</div>
+            </button>
+
+            <button type="button" class="diff-card" data-difficulty="medium">
+              <div class="diff-top">
+                <span class="diff-name">Medium</span>
+                <span class="diff-time">60s</span>
+              </div>
+              <div class="diff-range">1 – 32</div>
+              <p class="diff-desc">32 moving targets (~1.8s per number). Trains rapid visual crowding resolution.</p>
+              <div class="diff-best" id="bestMedium">Best: —</div>
+            </button>
+
+            <button type="button" class="diff-card" data-difficulty="hard">
+              <div class="diff-top">
+                <span class="diff-name">Hard</span>
+                <span class="diff-time">60s</span>
+              </div>
+              <div class="diff-range">1 – 72</div>
+              <p class="diff-desc">72 moving targets (&lt;0.83s per number). Extreme high-density saccadic speed test.</p>
+              <div class="diff-best" id="bestHard">Best: —</div>
+            </button>
+          </div>
+        </div>
+
+        <!-- Movement Pattern Selection -->
+        <div class="config-section">
+          <label class="config-label">2. Select Trajectory Pattern</label>
+          <div class="pattern-grid" id="patternGrid">
+            <button type="button" class="pattern-chip active" data-pattern="spiral">
+              <span class="pattern-icon">🌀</span>
+              <div>
+                <strong>Spiral Vortex</strong>
+                <small>Concentric inward/outward spiral orbits</small>
+              </div>
+            </button>
+            <button type="button" class="pattern-chip" data-pattern="zigzag">
+              <span class="pattern-icon">⚡</span>
+              <div>
+                <strong>Zig-Zag Sweep</strong>
+                <small>Sharp angular sawtooth vectors</small>
+              </div>
+            </button>
+            <button type="button" class="pattern-chip" data-pattern="random">
+              <span class="pattern-icon">🎲</span>
+              <div>
+                <strong>Random Drift</strong>
+                <small>Chaotic multi-directional elastic motion</small>
+              </div>
+            </button>
+            <button type="button" class="pattern-chip" data-pattern="wave">
+              <span class="pattern-icon">🌊</span>
+              <div>
+                <strong>Harmonic Wave</strong>
+                <small>Flowing sinusoidal streams</small>
+              </div>
+            </button>
+            <button type="button" class="pattern-chip" data-pattern="mixed">
+              <span class="pattern-icon">🔀</span>
+              <div>
+                <strong>Hybrid Chaos</strong>
+                <small>Combines spiral, zig-zag &amp; random</small>
+              </div>
+            </button>
+          </div>
+        </div>
+
+        <!-- Cognitive Modifiers -->
+        <div class="config-section modifiers-row">
+          <label class="toggle-option" title="Allow short flicks or dragging across the border to extract faster">
+            <input type="checkbox" id="chkQuickFlick" checked />
+            <span class="toggle-text">
+              <strong>Quick-Flick Extraction</strong>
+              <small>Extract by dragging across the border OR flicking outward</small>
+            </span>
+          </label>
+
+          <label class="toggle-option" title="Hide the next target number in the HUD so you must hold your count in working memory">
+            <input type="checkbox" id="chkMemoryMode" />
+            <span class="toggle-text">
+              <strong>Working Memory Mode</strong>
+              <small>Hides "Next Target" HUD — remember your count!</small>
+            </span>
+          </label>
+        </div>
+
+        <div class="modal-footer">
+          <button type="button" class="primary-btn" id="btnStartGame">
+            <span>START 60s CHALLENGE</span>
+            <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.5">
+              <line x1="5" y1="12" x2="19" y2="12"/>
+              <polyline points="12 5 19 12 12 19"/>
+            </svg>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Results / Cognitive Telemetry Modal -->
+    <div class="modal-backdrop" id="resultsModal">
+      <div class="modal-card results-card">
+        <div class="modal-header">
+          <span class="badge-pill" id="resultBadge">SESSION COMPLETE</span>
+          <h2 id="resultHeadline">Time's Up!</h2>
+          <p id="resultSubheadline">Here is your cognitive visual-motor breakdown.</p>
+        </div>
+
+        <div class="stats-grid">
+          <div class="stat-box">
+            <span class="stat-label">EXTRACTED</span>
+            <span class="stat-val accent-cyan" id="resExtracted">14 / 14</span>
+          </div>
+          <div class="stat-box">
+            <span class="stat-label">TIME TAKEN</span>
+            <span class="stat-val mono" id="resTime">42.8s</span>
+          </div>
+          <div class="stat-box">
+            <span class="stat-label">AVG SPEED</span>
+            <span class="stat-val mono" id="resAvgSpeed">3.05s / #</span>
+          </div>
+          <div class="stat-box">
+            <span class="stat-label">ACCURACY</span>
+            <span class="stat-val accent-emerald" id="resAccuracy">100%</span>
+          </div>
+        </div>
+
+        <!-- Reaction Split Mini Chart -->
+        <div class="telemetry-section">
+          <div class="telemetry-header">
+            <span>Visual Search &amp; Extraction Splits (sec per number)</span>
+            <span id="resCognitiveRank" class="rank-chip">Cognitive Rating: S</span>
+          </div>
+          <div class="split-bars" id="splitBarsContainer"></div>
+        </div>
+
+        <div class="modal-footer results-actions">
+          <button type="button" class="secondary-btn" id="btnChangeConfig">Change Settings</button>
+          <button type="button" class="primary-btn" id="btnPlayAgain">
+            <span>PLAY AGAIN</span>
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="game.js"></script>
+</body>
+</html>
