@@ -220,9 +220,11 @@ html, body {
 
 /* Outer Extraction Zone */
 .extraction-frame {
+  --strip-h: 26px;
+  --strip-w: 28px;
   flex: 1;
   position: relative;
-  padding: 22px 26px;
+  padding: var(--strip-h) var(--strip-w);
   background: repeating-linear-gradient(
     -45deg,
     rgba(252, 98, 0, 0.03),
@@ -257,28 +259,55 @@ html, body {
   position: absolute;
   font-family: var(--font-pixel);
   font-size: 0.46rem;
+  line-height: 1;
   letter-spacing: 0.08em;
-  color: rgba(252, 98, 0, 0.68);
+  color: rgba(252, 98, 0, 0.72);
   pointer-events: none;
   text-transform: uppercase;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  max-width: 92%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
-.top-label { top: 6px; left: 50%; transform: translateX(-50%); white-space: nowrap; }
-.bottom-label { bottom: 6px; left: 50%; transform: translateX(-50%); white-space: nowrap; }
+.extraction-ring-label span {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 100%;
+  padding-top: 1px; /* Optical centering for Press Start 2P baseline */
+}
+
+.top-label {
+  top: 0;
+  left: 12px;
+  right: 12px;
+  height: var(--strip-h);
+}
+
+.bottom-label {
+  bottom: 0;
+  left: 12px;
+  right: 12px;
+  height: var(--strip-h);
+}
+
 .left-label {
-  left: 4px;
+  left: 0;
+  width: var(--strip-w);
   top: 50%;
   transform: translateY(-50%) rotate(-90deg);
   transform-origin: center;
+  white-space: nowrap;
 }
+
 .right-label {
-  right: 4px;
+  right: 0;
+  width: var(--strip-w);
   top: 50%;
   transform: translateY(-50%) rotate(90deg);
   transform-origin: center;
+  white-space: nowrap;
 }
 
 /* Inner Arena where numbers move */
@@ -857,7 +886,12 @@ html, body {
     grid-template-columns: 1fr;
   }
   .extraction-frame {
-    padding: 14px 12px;
+    --strip-h: 22px;
+    --strip-w: 12px;
+  }
+  .extraction-ring-label {
+    font-size: 0.38rem;
+    letter-spacing: 0.04em;
   }
   .left-label, .right-label {
     display: none;
