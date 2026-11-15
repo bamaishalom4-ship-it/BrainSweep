@@ -567,8 +567,8 @@
 
     state.streak += 1;
     sound.playExtract(node.value, state.maxNumber);
-    spawnExtractParticles(node.x, node.y, '#00ff41');
-    spawnFloatingText(node.x, node.y, `#${node.value} EXTRACTED!`, '#00ff41');
+    spawnExtractParticles(node.x, node.y, '#fc6200');
+    spawnFloatingText(node.x, node.y, `#${node.value} EXTRACTED!`, '#fc6200');
 
     // Add badge to bottom tray
     const badge = document.createElement('span');
@@ -720,7 +720,7 @@
       // Released without dragging out far enough
       state.draggingNode = null;
       extractionFrame.classList.remove('dragging-active');
-      showArenaToast('Drag further out or across the border to extract!', '#003b0d');
+      showArenaToast('Drag further out or across the border to extract!', '#1c0a00');
     }
     state.pointerId = null;
   }
@@ -730,10 +730,10 @@
 
   // --- Toast Helper ---
   let toastTimeout = null;
-  function showArenaToast(text, bgColor = '#002b08') {
+  function showArenaToast(text, bgColor = '#1c0a00') {
     arenaFeedback.textContent = text;
     arenaFeedback.style.background = bgColor;
-    arenaFeedback.style.color = '#00ff41';
+    arenaFeedback.style.color = '#fc6200';
     arenaFeedback.classList.add('show');
     if (toastTimeout) clearTimeout(toastTimeout);
     toastTimeout = setTimeout(() => {
@@ -744,7 +744,7 @@
   // --- Rendering ---
   function drawBackgroundGrid() {
     ctx.save();
-    ctx.strokeStyle = 'rgba(0, 255, 65, 0.07)';
+    ctx.strokeStyle = 'rgba(252, 98, 0, 0.08)';
     ctx.lineWidth = 1;
 
     const step = 48;
@@ -763,7 +763,7 @@
 
     // Subtle pattern guide overlay in center
     if (state.pattern === 'spiral' || state.pattern === 'mixed') {
-      ctx.strokeStyle = 'rgba(0, 255, 65, 0.08)';
+      ctx.strokeStyle = 'rgba(252, 98, 0, 0.1)';
       ctx.beginPath();
       const cx = canvasWidth / 2;
       const cy = canvasHeight / 2;
@@ -777,8 +777,8 @@
     // Extraction perimeter inner threshold line
     const borderZone = 28;
     ctx.strokeStyle = state.draggingNode
-      ? 'rgba(0, 255, 65, 0.85)'
-      : 'rgba(0, 255, 65, 0.28)';
+      ? 'rgba(252, 98, 0, 0.9)'
+      : 'rgba(252, 98, 0, 0.32)';
     ctx.setLineDash([6, 6]);
     ctx.lineWidth = state.draggingNode ? 2 : 1;
     ctx.strokeRect(
@@ -813,7 +813,7 @@
       const edgePt = nearestEdgePoint(dn.x, dn.y);
 
       ctx.save();
-      ctx.strokeStyle = 'rgba(0, 255, 65, 0.85)';
+      ctx.strokeStyle = 'rgba(252, 98, 0, 0.9)';
       ctx.lineWidth = 2.5;
       ctx.setLineDash([5, 5]);
       ctx.beginPath();
@@ -827,7 +827,7 @@
         const progress = Math.min(1, dragDist / 58);
         ctx.setLineDash([]);
         ctx.strokeStyle =
-          progress >= 1 ? '#b8ffca' : 'rgba(0, 255, 65, 0.45)';
+          progress >= 1 ? '#ffa347' : 'rgba(252, 98, 0, 0.5)';
         ctx.lineWidth = 2;
         ctx.beginPath();
         ctx.arc(state.dragStartX, state.dragStartY, 58, 0, Math.PI * 2 * progress);
@@ -861,8 +861,8 @@
           ctx.lineTo(n.trail[t].x, n.trail[t].y);
         }
         ctx.strokeStyle = isDragging
-          ? 'rgba(184, 255, 202, 0.75)'
-          : 'rgba(0, 255, 65, 0.22)';
+          ? 'rgba(255, 163, 71, 0.8)'
+          : 'rgba(252, 98, 0, 0.24)';
         ctx.lineWidth = isDragging ? 4 : 2;
         ctx.lineCap = 'square';
         ctx.stroke();
@@ -873,7 +873,7 @@
       if (isHinting) {
         const pulseRadius = n.radius + 8 + ((1.5 - state.hintPulseTimer) * 38) % 36;
         ctx.save();
-        ctx.strokeStyle = '#ccff00';
+        ctx.strokeStyle = '#ffc400';
         ctx.lineWidth = 3;
         ctx.beginPath();
         ctx.arc(n.x, n.y, pulseRadius, 0, Math.PI * 2);
@@ -889,24 +889,24 @@
       ctx.arc(n.x, n.y, r, 0, Math.PI * 2);
 
       if (n.errorFlash > 0) {
-        ctx.fillStyle = `rgba(255, 0, 60, ${0.4 + n.errorFlash * 0.5})`;
+        ctx.fillStyle = `rgba(255, 30, 66, ${0.4 + n.errorFlash * 0.5})`;
         ctx.strokeStyle = '#ff668a';
         ctx.lineWidth = 2.5;
       } else if (isDragging) {
-        ctx.fillStyle = '#00ff41';
-        ctx.strokeStyle = '#b8ffca';
+        ctx.fillStyle = '#fc6200';
+        ctx.strokeStyle = '#ffa347';
         ctx.lineWidth = 3;
-        ctx.shadowColor = 'rgba(0, 255, 65, 0.9)';
+        ctx.shadowColor = 'rgba(252, 98, 0, 0.9)';
         ctx.shadowBlur = 18;
       } else if (isHinting) {
-        ctx.fillStyle = '#2c4c00';
-        ctx.strokeStyle = '#ccff00';
+        ctx.fillStyle = '#4d2600';
+        ctx.strokeStyle = '#ffc400';
         ctx.lineWidth = 2.5;
       } else {
-        ctx.fillStyle = 'rgba(1, 22, 4, 0.94)';
-        ctx.strokeStyle = '#00ff41';
+        ctx.fillStyle = 'rgba(18, 6, 0, 0.95)';
+        ctx.strokeStyle = '#fc6200';
         ctx.lineWidth = 2;
-        ctx.shadowColor = 'rgba(0, 255, 65, 0.25)';
+        ctx.shadowColor = 'rgba(252, 98, 0, 0.28)';
         ctx.shadowBlur = 6;
       }
 
@@ -914,7 +914,7 @@
       ctx.stroke();
 
       // Number Label in Game Boy pixel font
-      ctx.fillStyle = isDragging ? '#010802' : '#00ff41';
+      ctx.fillStyle = isDragging ? '#050200' : '#fc6200';
       const fontSize = Math.max(8, Math.round(r * 0.58));
       ctx.font = `${fontSize}px "Press Start 2P", monospace`;
       ctx.textAlign = 'center';
