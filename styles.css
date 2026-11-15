@@ -337,15 +337,20 @@ html, body {
   top: 12px;
   left: 50%;
   transform: translateX(-50%);
-  padding: 7px 14px;
+  max-width: calc(100% - 20px);
+  width: max-content;
+  padding: 7px 12px;
   border: 2px solid var(--text-main);
   font-family: var(--font-pixel);
-  font-size: 0.56rem;
+  font-size: 0.54rem;
+  line-height: 1.45;
+  text-align: center;
+  white-space: normal;
+  word-break: break-word;
   pointer-events: none;
   opacity: 0;
   transition: opacity 0.15s ease, transform 0.15s ease;
   z-index: 10;
-  white-space: nowrap;
 }
 
 .arena-feedback.show {
@@ -870,17 +875,23 @@ html, body {
   }
   .hud-card, .timer-card {
     min-width: 0;
-    padding: 5px 6px;
+    padding: 5px 5px;
   }
   .hud-label {
-    font-size: 0.38rem;
+    font-size: 0.34rem;
+    letter-spacing: 0.02em;
     margin-bottom: 2px;
   }
   .hud-value {
-    font-size: 0.68rem;
+    font-size: 0.58rem;
   }
   .hud-sub {
-    font-size: 0.76rem;
+    font-size: 0.72rem;
+  }
+  .arena-feedback {
+    font-size: 0.44rem;
+    padding: 6px 10px;
+    max-width: calc(100% - 16px);
   }
   .difficulty-grid, .stats-grid, .modifiers-row {
     grid-template-columns: 1fr;
