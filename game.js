@@ -181,6 +181,7 @@
   const btnHint = document.getElementById('btnHint');
   const btnSound = document.getElementById('btnSound');
   const btnMenu = document.getElementById('btnMenu');
+  const btnReset = document.getElementById('btnReset');
 
   // --- Game State ---
   const sound = new SoundEngine();
@@ -1195,6 +1196,12 @@
     setupModal.classList.add('active');
   });
 
+  btnReset.addEventListener('click', () => {
+    sound.init();
+    startGame();
+    showArenaToast('Round Reset!', '#1c0a00');
+  });
+
   btnHint.addEventListener('click', () => {
     if (state.status !== 'playing') return;
     state.hintsUsed += 1;
@@ -1212,6 +1219,8 @@
       btnHint.click();
     } else if (e.key === 'm' || e.key === 'M') {
       btnSound.click();
+    } else if (e.key === 'r' || e.key === 'R') {
+      btnReset.click();
     } else if (e.key === 'Escape') {
       btnMenu.click();
     }
