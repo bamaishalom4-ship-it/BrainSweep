@@ -170,6 +170,7 @@
 
   const setupModal = document.getElementById('setupModal');
   const resultsModal = document.getElementById('resultsModal');
+  const infoModal = document.getElementById('infoModal');
   const difficultyGrid = document.getElementById('difficultyGrid');
   const patternGrid = document.getElementById('patternGrid');
   const chkQuickFlick = document.getElementById('chkQuickFlick');
@@ -182,6 +183,8 @@
   const btnSound = document.getElementById('btnSound');
   const btnMenu = document.getElementById('btnMenu');
   const btnReset = document.getElementById('btnReset');
+  const btnInfo = document.getElementById('btnInfo');
+  const btnCloseInfo = document.getElementById('btnCloseInfo');
 
   // --- Game State ---
   const sound = new SoundEngine();
@@ -1193,13 +1196,38 @@
     state.draggingNode = null;
     extractionFrame.classList.remove('dragging-active');
     resultsModal.classList.remove('active');
+    infoModal.classList.remove('active');
     setupModal.classList.add('active');
   });
 
   btnReset.addEventListener('click', () => {
     sound.init();
+    infoModal.classList.remove('active');
     startGame();
     showArenaToast('Round Reset!', '#1c0a00');
+  });
+
+  let prevStatusBeforeInfo = 'menu';
+  btnInfo.addEventListener('click', () => {
+    if (infoModal.classList.contains('active')) {
+      btnCloseInfo.click();
+      return;
+    }
+    prevStatusBeforeInfo = state.status;
+    if (state.status === 'playing') {
+      state.status = 'paused';
+      state.draggingNode = null;
+      extractionFrame.classList.remove('dragging-active');
+    }
+    infoModal.classList.add('active');
+  });
+
+  btnCloseInfo.addEventListener('click', () => {
+    infoModal.classList.remove('active');
+    if (prevStatusBeforeInfo === 'playing' && state.status === 'paused') {
+      state.status = 'playing';
+      state.lastFrameTime = performance.now();
+    }
   });
 
   btnHint.addEventListener('click', () => {
@@ -1221,8 +1249,14 @@
       btnSound.click();
     } else if (e.key === 'r' || e.key === 'R') {
       btnReset.click();
+    } else if (e.key === 'i' || e.key === 'I') {
+      btnInfo.click();
     } else if (e.key === 'Escape') {
-      btnMenu.click();
+      if (infoModal.classList.contains('active')) {
+        btnCloseInfo.click();
+      } else {
+        btnMenu.click();
+      }
     }
   });
 

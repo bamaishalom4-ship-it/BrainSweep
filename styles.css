@@ -185,22 +185,30 @@ html, body {
 /* Top Actions */
 .top-actions {
   display: flex;
-  align-items: center;
+  align-items: stretch;
   gap: 6px;
 }
 
 .icon-btn {
   display: inline-flex;
   align-items: center;
+  justify-content: center;
   gap: 6px;
   background: #080300;
   color: var(--text-main);
   border: 2px solid var(--border-subtle);
   padding: 7px 10px;
+  min-height: 36px;
   font-family: var(--font-pixel);
   font-size: 0.55rem;
   cursor: pointer;
   transition: background-color 0.12s ease, color 0.12s ease;
+}
+
+.icon-btn.icon-only {
+  width: 36px;
+  padding: 0;
+  flex-shrink: 0;
 }
 
 .icon-btn:hover {
@@ -845,6 +853,43 @@ html, body {
   color: var(--border-subtle);
 }
 
+/* Info Modal Blocks */
+.info-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.info-block {
+  background: #060200;
+  border: 2px solid var(--border-subtle);
+  padding: 12px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.info-block h3 {
+  font-family: var(--font-pixel);
+  font-size: 0.62rem;
+  color: var(--text-bright);
+}
+
+.info-block p,
+.info-list {
+  font-family: var(--font-terminal);
+  font-size: 1.08rem;
+  color: var(--text-main);
+  line-height: 1.35;
+}
+
+.info-list {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
 /* Mobile & Compact Screen Optimizations */
 @media (max-width: 860px) {
   .app-shell {
@@ -853,8 +898,12 @@ html, body {
   }
   .top-bar {
     flex-wrap: wrap;
-    padding: 6px 10px;
-    gap: 8px;
+    padding: 8px 10px;
+    gap: 6px;
+  }
+  .brand {
+    width: 100%;
+    order: 1;
   }
   .brand-logo {
     width: 30px;
@@ -865,6 +914,19 @@ html, body {
   }
   .brand-subtitle {
     font-size: 0.8rem;
+  }
+  .top-actions {
+    order: 2;
+    width: 100%;
+    display: flex;
+    gap: 6px;
+  }
+  .icon-btn.has-label {
+    flex: 1;
+    padding: 7px 6px;
+  }
+  .icon-btn.icon-only {
+    width: 36px;
   }
   .hud-bar {
     order: 3;

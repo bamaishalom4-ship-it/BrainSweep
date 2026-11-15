@@ -66,7 +66,7 @@
       </div>
 
       <div class="top-actions">
-        <button class="icon-btn" id="btnHint" title="Pulse Next Number (H)" aria-label="Pulse Next Number">
+        <button class="icon-btn has-label" id="btnHint" title="Pulse Next Number (H)" aria-label="Pulse Next Number">
           <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2">
             <circle cx="12" cy="12" r="10"/>
             <line x1="12" y1="16" x2="12" y2="12"/>
@@ -74,14 +74,14 @@
           </svg>
           <span class="btn-label">Locate</span>
         </button>
-        <button class="icon-btn" id="btnSound" title="Toggle Sound Effects (M)" aria-label="Toggle Sound">
+        <button class="icon-btn icon-only" id="btnSound" title="Toggle Sound Effects (M)" aria-label="Toggle Sound">
           <svg id="iconSoundOn" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2">
             <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/>
             <path d="M15.54 8.46a5 5 0 0 1 0 7.07"/>
             <path d="M19.07 4.93a10 10 0 0 1 0 14.14"/>
           </svg>
         </button>
-        <button class="icon-btn" id="btnMenu" title="Game Setup (Esc)" aria-label="Open Setup Menu">
+        <button class="icon-btn has-label" id="btnMenu" title="Game Setup (Esc)" aria-label="Open Setup Menu">
           <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2">
             <rect x="3" y="3" width="7" height="7" rx="1"/>
             <rect x="14" y="3" width="7" height="7" rx="1"/>
@@ -90,10 +90,18 @@
           </svg>
           <span class="btn-label">Setup</span>
         </button>
-        <button class="icon-btn" id="btnReset" title="Reset Round (R)" aria-label="Reset Round">
+        <button class="icon-btn icon-only" id="btnReset" title="Reset Round (R)" aria-label="Reset Round">
           <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/>
             <polyline points="3 3 3 8 8 8"/>
+          </svg>
+        </button>
+        <button class="icon-btn icon-only" id="btnInfo" title="Game Info &amp; Guide (I)" aria-label="Game Information">
+          <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="square">
+            <line x1="12" y1="11" x2="12" y2="17"/>
+            <line x1="10" y1="11" x2="12" y2="11"/>
+            <line x1="10" y1="17" x2="14" y2="17"/>
+            <rect x="11" y="6" width="2" height="2" fill="currentColor" stroke="none"/>
           </svg>
         </button>
       </div>
@@ -315,6 +323,45 @@
           <button type="button" class="secondary-btn" id="btnChangeConfig">Change Settings</button>
           <button type="button" class="primary-btn" id="btnPlayAgain">
             <span>PLAY AGAIN</span>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Information / Guide Modal -->
+    <div class="modal-backdrop" id="infoModal">
+      <div class="modal-card info-card">
+        <div class="modal-header">
+          <span class="badge-pill">SYSTEM MANUAL // INFO</span>
+          <h2>How BrainSweep Works</h2>
+          <p>BrainSweep is a high-speed visual-motor cognitive trainer designed to sharpen peripheral awareness, saccadic eye movements, and selective attention.</p>
+        </div>
+
+        <div class="info-grid">
+          <div class="info-block">
+            <h3>1. Objective &amp; Controls</h3>
+            <p>Find and drag numbers out of the arena in strict ascending order (<strong>1, 2, 3...</strong>) within <strong>60 seconds</strong>. You can drag a target across the dashed border or flick it outward.</p>
+          </div>
+
+          <div class="info-block">
+            <h3>2. Stages &amp; Distractors</h3>
+            <ul class="info-list">
+              <li><strong>EASY:</strong> 20 moving numbers (1–20) → Extract <strong>1–14</strong></li>
+              <li><strong>MEDIUM:</strong> 40 moving numbers (1–40) → Extract <strong>1–32</strong></li>
+              <li><strong>HARD:</strong> 80 moving numbers (1–80) → Extract <strong>1–72</strong></li>
+            </ul>
+          </div>
+
+          <div class="info-block">
+            <h3>3. Cognitive Skills Trained</h3>
+            <p><strong>Visual Crowding Resolution:</strong> Filtering target numbers from moving distractors.<br/>
+            <strong>Working Memory Mode:</strong> Hides the HUD counter so your brain tracks the sequence while scanning.</p>
+          </div>
+        </div>
+
+        <div class="modal-footer">
+          <button type="button" class="primary-btn" id="btnCloseInfo">
+            <span>RESUME SESSION</span>
           </button>
         </div>
       </div>
