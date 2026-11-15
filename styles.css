@@ -804,8 +804,9 @@ html, body {
 .site-footer {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  padding: 5px 12px;
+  justify-content: center;
+  text-align: center;
+  padding: 6px 12px;
   background: #060200;
   border: 2px solid var(--border-subtle);
   font-family: var(--font-pixel);
