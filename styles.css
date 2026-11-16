@@ -1053,6 +1053,68 @@ body.offline-mode .hud-card {
   gap: 4px;
 }
 
+/* iOS PWA Install Prompt Banner */
+.ios-install-banner {
+  position: fixed;
+  bottom: 10px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: calc(100% - 20px);
+  max-width: 560px;
+  background: #0b0400;
+  border: 2px solid var(--text-main);
+  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.85), 0 0 14px rgba(252, 98, 0, 0.25);
+  padding: 8px 12px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  z-index: 150;
+}
+
+.ios-install-banner[hidden] {
+  display: none !important;
+}
+
+.ios-install-content {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.ios-share-icon {
+  color: var(--text-bright);
+  flex-shrink: 0;
+}
+
+.ios-install-text {
+  font-family: var(--font-pixel);
+  font-size: 0.46rem;
+  line-height: 1.45;
+  color: var(--text-main);
+}
+
+.ios-install-close {
+  background: #1c0a00;
+  color: var(--text-bright);
+  border: 1px solid var(--text-main);
+  width: 24px;
+  height: 24px;
+  font-family: var(--font-pixel);
+  font-size: 0.55rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.ios-install-close:hover {
+  background: var(--text-main);
+  color: #050200;
+}
+
 /* Mobile & Compact Screen Optimizations */
 @media (max-width: 860px) {
   .app-shell {

@@ -391,6 +391,23 @@
         </div>
       </div>
     </div>
+
+    <!-- iOS PWA Installation Prompt Banner -->
+    <div class="ios-install-banner" id="iosInstallBanner" role="region" aria-label="Install BrainSweep on iOS" hidden>
+      <div class="ios-install-content">
+        <svg class="ios-share-icon" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="square" aria-hidden="true">
+          <path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/>
+          <polyline points="16 6 12 2 8 6"/>
+          <line x1="12" y1="2" x2="12" y2="15"/>
+        </svg>
+        <span class="ios-install-text">
+          Install BrainSweep: Tap the Share icon, then 'Add to Home Screen'.
+        </span>
+      </div>
+      <button type="button" class="ios-install-close" id="btnCloseIosBanner" title="Dismiss install prompt" aria-label="Dismiss install prompt">
+        ✕
+      </button>
+    </div>
   </div>
 
   <script src="game.js"></script>

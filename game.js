@@ -1754,7 +1754,52 @@
     }
   });
 
+  // --- iOS PWA Installation Prompt ---
+  const IOS_INSTALL_DISMISSED_KEY = 'brainsweep_ios_install_dismissed_v1';
+
+  function initIosInstallPrompt() {
+    const iosBanner = document.getElementById('iosInstallBanner');
+    const btnCloseIos = document.getElementById('btnCloseIosBanner');
+    if (!iosBanner) return;
+
+    // 1. Check if user previously dismissed the prompt
+    try {
+      if (localStorage.getItem(IOS_INSTALL_DISMISSED_KEY) === 'true') {
+        return;
+      }
+    } catch {
+      // ignore storage errors
+    }
+
+    // 2. Detect iOS device (iPhone, iPad, iPod, including iPadOS 13+ desktop-class Safari)
+    const ua = window.navigator.userAgent || '';
+    const isIOS =
+      (/iPad|iPhone|iPod/.test(ua) && !window.MSStream) ||
+      (window.navigator.platform === 'MacIntel' && window.navigator.maxTouchPoints > 1);
+
+    // 3. Detect if app is NOT running in standalone mode
+    const isStandalone =
+      window.navigator.standalone === true ||
+      (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches);
+
+    if (isIOS && !isStandalone) {
+      iosBanner.hidden = false;
+    }
+
+    if (btnCloseIos) {
+      btnCloseIos.addEventListener('click', () => {
+        iosBanner.hidden = true;
+        try {
+          localStorage.setItem(IOS_INSTALL_DISMISSED_KEY, 'true');
+        } catch {
+          // ignore storage errors
+        }
+      });
+    }
+  }
+
   // --- Initial Boot ---
+  initIosInstallPrompt();
   syncNetworkModeUI();
   resizeCanvas();
   createNodes();
