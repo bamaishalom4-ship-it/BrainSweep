@@ -162,6 +162,8 @@
   const arenaContainer = document.getElementById('arenaContainer');
   const extractionFrame = document.getElementById('extractionFrame');
   const arenaFeedback = document.getElementById('arenaFeedback');
+  const ghostLayer = document.getElementById('ghostLayer');
+  const targetHudCard = document.getElementById('targetHudCard');
 
   const hudNextTarget = document.getElementById('hudNextTarget');
   const hudTotalTarget = document.getElementById('hudTotalTarget');
@@ -684,6 +686,39 @@
     }
   }
 
+  // --- Ghost Trail Spawn & Centered HUD Peripheral Pulse ---
+  function spawnGhostTarget(dropX, dropY, nextTargetNumber) {
+    if (!ghostLayer) return;
+
+    // Clamp slightly inside arena edges so the large ghost number is never clipped by overflow: hidden
+    const clampedX = Math.min(canvasWidth - 48, Math.max(48, dropX));
+    const clampedY = Math.min(canvasHeight - 38, Math.max(38, dropY));
+
+    const ghostEl = document.createElement('div');
+    ghostEl.className = 'ghost-target-spawn';
+    ghostEl.textContent = String(nextTargetNumber);
+    ghostEl.style.left = `${clampedX}px`;
+    ghostEl.style.top = `${clampedY}px`;
+
+    ghostLayer.appendChild(ghostEl);
+
+    const cleanup = () => {
+      if (ghostEl.parentNode) {
+        ghostEl.parentNode.removeChild(ghostEl);
+      }
+    };
+    ghostEl.addEventListener('animationend', cleanup, { once: true });
+    setTimeout(cleanup, 650);
+  }
+
+  function triggerTargetHudPulse() {
+    if (!targetHudCard) return;
+    targetHudCard.classList.remove('target-pulse');
+    // Force reflow so rapid consecutive extractions re-trigger the 0.3s pulse cleanly
+    void targetHudCard.offsetWidth;
+    targetHudCard.classList.add('target-pulse');
+  }
+
   // --- Helper: Format Upcoming Target Sequence Preview ---
   function formatUpcomingQueueText() {
     if (state.memoryMode) {
@@ -722,11 +757,13 @@
     state.splits.push({ number: node.value, split: splitSec });
     state.lastExtractTimestamp = nowSec;
 
+    const dropX = node.x;
+    const dropY = node.y;
+
     state.currentStepIndex += 1;
     state.streak += 1;
     sound.playExtract(state.currentStepIndex, state.targetCount);
-    spawnExtractParticles(node.x, node.y, '#fc6200');
-    spawnFloatingText(node.x, node.y, `#${node.value} OK`, '#ffa347');
+    spawnExtractParticles(dropX, dropY, '#fc6200');
 
     const badge = document.createElement('span');
     badge.className = 'extracted-badge';
@@ -736,10 +773,18 @@
 
     // Check if all targetCount targets (12, 20, or 25) have been found!
     if (state.currentStepIndex >= state.targetCount) {
+      spawnFloatingText(dropX, dropY, `#${node.value} CLEAR!`, '#ffa347');
       updateHUD();
       finishGame(true);
     } else {
       state.nextTarget = state.targetNumbers[state.currentStepIndex];
+
+      // 1. Spawn the 0.6s Ghost Trail indicator of the NEXT target right at the drop focal point
+      spawnGhostTarget(dropX, dropY, state.nextTarget);
+
+      // 2. Pulse the centered NEXT TARGET HUD box for 0.3s peripheral vision cue
+      triggerTargetHudPulse();
+
       if (state.memoryMode) {
         // Briefly flash new target for 1.3s so player can encode it in working memory
         state.memoryPeekTimer = 1.3;
@@ -1132,6 +1177,7 @@
     state.memoryMode = chkMemoryMode.checked;
 
     extractedSlots.innerHTML = '';
+    if (ghostLayer) ghostLayer.innerHTML = '';
 
     setupModal.classList.remove('active');
     resultsModal.classList.remove('active');
@@ -1139,6 +1185,7 @@
 
     resizeCanvas();
     createNodes();
+    triggerTargetHudPulse();
 
     if (state.memoryMode) {
       state.memoryPeekTimer = 1.5;

@@ -222,8 +222,71 @@ html, body {
   flex: 1;
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 6px;
   min-height: 0;
+}
+
+/* Horizontally Centered Next Target Dock Directly Above Arena */
+.center-target-dock {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  width: 100%;
+  flex-shrink: 0;
+}
+
+.target-card {
+  display: inline-flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  min-width: 220px;
+  padding: 6px 18px;
+  background: #0b0400;
+  border: 2px solid var(--text-main);
+  box-shadow: 0 0 12px rgba(252, 98, 0, 0.22);
+  transform-origin: center;
+  will-change: transform, border-color, background-color;
+}
+
+.target-card .hud-label {
+  margin-bottom: 0;
+  font-size: 0.5rem;
+  color: var(--text-main);
+}
+
+.target-card .hud-value {
+  font-size: 1.05rem;
+  color: var(--text-bright);
+}
+
+/* 0.3s Peripheral Visual Pulse on Target Update */
+.target-card.target-pulse {
+  animation: targetHudPulse 0.3s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+@keyframes targetHudPulse {
+  0% {
+    transform: scale(1);
+    border-color: var(--text-main);
+    background-color: #0b0400;
+  }
+  40% {
+    transform: scale(1.14);
+    border-color: #ffffff;
+    background-color: #3d1800;
+    box-shadow: 0 0 22px rgba(255, 255, 255, 0.75);
+  }
+  100% {
+    transform: scale(1);
+    border-color: var(--text-main);
+    background-color: #0b0400;
+  }
+}
+
+.target-card.target-pulse .hud-value {
+  color: #ffffff;
 }
 
 /* Outer Extraction Zone */
@@ -338,6 +401,44 @@ html, body {
 
 #gameCanvas:active {
   cursor: grabbing;
+}
+
+/* Ghost Trail Spawn Layer & 0.6s Ghost Effect */
+.ghost-layer {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  overflow: hidden;
+  z-index: 6;
+}
+
+.ghost-target-spawn {
+  position: absolute;
+  left: 0;
+  top: 0;
+  transform: translate(-50%, -50%) scale(1.35);
+  pointer-events: none;
+  user-select: none;
+  font-family: var(--font-pixel);
+  font-size: 3.1rem;
+  line-height: 1;
+  color: var(--text-main);
+  text-shadow: 0 0 10px rgba(252, 98, 0, 0.4);
+  opacity: 0.45;
+  white-space: nowrap;
+  will-change: transform, opacity;
+  animation: ghostTargetFade 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@keyframes ghostTargetFade {
+  0% {
+    opacity: 0.46;
+    transform: translate(-50%, -50%) scale(1.35);
+  }
+  100% {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(0.42);
+  }
 }
 
 .arena-feedback {
@@ -933,8 +1034,22 @@ html, body {
     order: 3;
     width: 100%;
     display: grid;
-    grid-template-columns: repeat(4, 1fr);
+    grid-template-columns: repeat(3, 1fr);
     gap: 6px;
+  }
+  .target-card {
+    min-width: 190px;
+    padding: 5px 14px;
+    gap: 10px;
+  }
+  .target-card .hud-label {
+    font-size: 0.44rem;
+  }
+  .target-card .hud-value {
+    font-size: 0.88rem;
+  }
+  .ghost-target-spawn {
+    font-size: 2.4rem;
   }
   .hud-card, .timer-card {
     min-width: 0;

@@ -28,16 +28,8 @@
         </div>
       </div>
 
-      <!-- Live HUD during gameplay -->
+      <!-- Secondary Telemetry HUD in Header -->
       <div class="hud-bar" id="hudBar">
-        <div class="hud-card target-card" id="targetHudCard">
-          <span class="hud-label">NEXT TARGET</span>
-          <div class="hud-value-wrap">
-            <span class="hud-value accent-cyan" id="hudNextTarget">1</span>
-            <span class="hud-sub" id="hudTotalTarget">/ 14</span>
-          </div>
-        </div>
-
         <div class="hud-card timer-card" id="timerHudCard">
           <span class="hud-label">TIME LEFT</span>
           <div class="hud-value-wrap">
@@ -109,6 +101,17 @@
 
     <!-- Main Game Stage -->
     <main class="stage-wrapper">
+      <!-- Horizontally Centered Next Target HUD Dock Directly Above Arena -->
+      <div class="center-target-dock">
+        <div class="hud-card target-card" id="targetHudCard">
+          <span class="hud-label">NEXT TARGET</span>
+          <div class="hud-value-wrap">
+            <span class="hud-value accent-cyan" id="hudNextTarget">#1</span>
+            <span class="hud-sub" id="hudTotalTarget">(1/12)</span>
+          </div>
+        </div>
+      </div>
+
       <!-- Outer Extraction Ring / Drop Zone -->
       <div class="extraction-frame" id="extractionFrame">
         <div class="extraction-ring-label top-label">
@@ -127,6 +130,9 @@
         <!-- Inner Playable Arena where numbers move -->
         <div class="arena-container" id="arenaContainer">
           <canvas id="gameCanvas"></canvas>
+
+          <!-- Ghost Trail Spawn Layer (pointer-events: none) -->
+          <div class="ghost-layer" id="ghostLayer" aria-hidden="true"></div>
 
           <!-- Floating Feedback Toast inside Arena -->
           <div class="arena-feedback" id="arenaFeedback"></div>
