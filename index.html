@@ -154,7 +154,7 @@
         <div class="modal-header">
           <span class="badge-pill">COGNITIVE TRAINING LAB</span>
           <h2>Configure Your Session</h2>
-          <p>Scan the moving field and drag numbers out in strict ascending order (1, 2, 3...) before the 60-second timer expires.</p>
+          <p>Scan the moving field, filter out interleaved distractor gaps, and drag targets out in ascending order before the 60s timer expires.</p>
         </div>
 
         <!-- Difficulty Selection -->
@@ -166,9 +166,9 @@
                 <span class="diff-name">Easy</span>
                 <span class="diff-time">60s</span>
               </div>
-              <div class="diff-range">1 – 14</div>
-              <p class="diff-desc">20 numbers moving (1–20). Find &amp; drag out 1–14 while ignoring distractors 15–20.</p>
-              <div class="diff-best" id="bestEasy">Best: —</div>
+              <div class="diff-range">12 / 20</div>
+              <p class="diff-desc">Pool of 20 (1–20): 12 targets &amp; 8 random distractors (60% ratio, ~5s/target). Relaxed scanning pace.</p>
+              <div class="diff-best" id="bestEasy">Best: — / 12</div>
             </button>
 
             <button type="button" class="diff-card" data-difficulty="medium">
@@ -176,9 +176,9 @@
                 <span class="diff-name">Medium</span>
                 <span class="diff-time">60s</span>
               </div>
-              <div class="diff-range">1 – 32</div>
-              <p class="diff-desc">40 numbers moving (1–40). Find &amp; drag out 1–32 amidst 8 extra moving distractors.</p>
-              <div class="diff-best" id="bestMedium">Best: —</div>
+              <div class="diff-range">20 / 36</div>
+              <p class="diff-desc">Pool of 36 (1–36): 20 targets &amp; 16 random distractors (~55% ratio, ~3s/target). Trains inhibitory control.</p>
+              <div class="diff-best" id="bestMedium">Best: — / 20</div>
             </button>
 
             <button type="button" class="diff-card" data-difficulty="hard">
@@ -186,9 +186,9 @@
                 <span class="diff-name">Hard</span>
                 <span class="diff-time">60s</span>
               </div>
-              <div class="diff-range">1 – 72</div>
-              <p class="diff-desc">80 numbers moving (1–80). Extract 1–72 at high speed through dense visual crowding.</p>
-              <div class="diff-best" id="bestHard">Best: —</div>
+              <div class="diff-range">25 / 50</div>
+              <p class="diff-desc">Pool of 50 (1–50): 25 targets &amp; 25 distractors (50% ratio, ~2.4s/target) at high trajectory velocity.</p>
+              <div class="diff-best" id="bestHard">Best: — / 25</div>
             </button>
           </div>
         </div>
@@ -331,23 +331,23 @@
 
         <div class="info-grid">
           <div class="info-block">
-            <h3>1. Objective &amp; Controls</h3>
-            <p>Find and drag numbers out of the arena in strict ascending order (<strong>1, 2, 3...</strong>) within <strong>60 seconds</strong>. You can drag a target across the dashed border or flick it outward.</p>
+            <h3>1. Objective &amp; The "Gap" Rule</h3>
+            <p>Find and drag target numbers out of the arena in ascending order within <strong>60 seconds</strong>. Distractor numbers are randomly interleaved across the full number range—check <strong>NEXT TARGET</strong> and ignore the gaps!</p>
           </div>
 
           <div class="info-block">
-            <h3>2. Stages &amp; Distractors</h3>
+            <h3>2. Stages, Ratios &amp; Distractors</h3>
             <ul class="info-list">
-              <li><strong>EASY:</strong> 20 moving numbers (1–20) → Extract <strong>1–14</strong></li>
-              <li><strong>MEDIUM:</strong> 40 moving numbers (1–40) → Extract <strong>1–32</strong></li>
-              <li><strong>HARD:</strong> 80 moving numbers (1–80) → Extract <strong>1–72</strong></li>
+              <li><strong>EASY:</strong> Pool 20 (1–20) → <strong>12 Targets</strong>, 8 Distractors (60% ratio, ~5s/target)</li>
+              <li><strong>MEDIUM:</strong> Pool 36 (1–36) → <strong>20 Targets</strong>, 16 Distractors (~55% ratio, ~3s/target)</li>
+              <li><strong>HARD:</strong> Pool 50 (1–50) → <strong>25 Targets</strong>, 25 Distractors (50% ratio, ~2.4s/target, High Speed)</li>
             </ul>
           </div>
 
           <div class="info-block">
             <h3>3. Cognitive Skills Trained</h3>
-            <p><strong>Visual Crowding Resolution:</strong> Filtering target numbers from moving distractors.<br/>
-            <strong>Working Memory Mode:</strong> Hides the HUD counter so your brain tracks the sequence while scanning.</p>
+            <p><strong>Selective Attention &amp; Inhibitory Control:</strong> Suppressing impulse grabs on interleaved distractors.<br/>
+            <strong>Working Memory Mode:</strong> Briefly flashes each new target before masking the HUD as <strong>?</strong>.</p>
           </div>
         </div>
 

@@ -1,16 +1,18 @@
 /**
  * BrainSweep — Cognitive Number Extraction Game
- * Visual Scanning, Peripheral Tracking & Saccadic Speed Trainer
+ * Visual Scanning, Inhibitory Control & Selective Attention Trainer
  */
 
 (() => {
-  // --- Configuration Constants ---
+  // --- 1. Difficulty Progression & Cognitive Ratios Configuration ---
   const DIFFICULTIES = {
     easy: {
       id: 'easy',
       label: 'Easy',
-      maxNumber: 14,
-      totalNumbers: 20,
+      poolSize: 20,
+      targetCount: 12,
+      distractorCount: 8,
+      targetRatio: 0.6, // 60% (~5.0s per target)
       durationSec: 60,
       baseSpeed: 42,
       maxRadius: 23,
@@ -18,20 +20,24 @@
     medium: {
       id: 'medium',
       label: 'Medium',
-      maxNumber: 32,
-      totalNumbers: 40,
+      poolSize: 36,
+      targetCount: 20,
+      distractorCount: 16,
+      targetRatio: 20 / 36, // ~55.6% (~3.0s per target)
       durationSec: 60,
-      baseSpeed: 48,
+      baseSpeed: 58,
       maxRadius: 19,
     },
     hard: {
       id: 'hard',
       label: 'Hard',
-      maxNumber: 72,
-      totalNumbers: 80,
+      poolSize: 50,
+      targetCount: 25,
+      distractorCount: 25,
+      targetRatio: 0.5, // 50% (~2.4s per target)
       durationSec: 60,
-      baseSpeed: 54,
-      maxRadius: 15,
+      baseSpeed: 98, // High-velocity trajectories to compensate for mobile-friendly 50-node pool
+      maxRadius: 17,
     },
   };
 
@@ -190,14 +196,23 @@
   const sound = new SoundEngine();
 
   const state = {
-    status: 'menu', // 'menu' | 'playing' | 'ended'
+    status: 'menu', // 'menu' | 'playing' | 'paused' | 'ended'
     difficulty: 'easy',
     pattern: 'spiral',
     quickFlick: true,
     memoryMode: false,
 
-    maxNumber: 14,
+    totalNumbers: 20, // Pool Size (20, 36, 50)
+    targetCount: 12,  // Target Count (12, 20, 25)
+    distractorCount: 8, // Distractor Count (8, 16, 25)
+
+    targetNumbers: [], // Sorted array of randomly selected target numbers within 1..totalNumbers
+    distractorNumbers: [], // Interleaved distractor ("gap") numbers within 1..totalNumbers
+    distractorSet: new Set(),
+
+    currentStepIndex: 0, // 0 .. targetCount - 1
     nextTarget: 1,
+
     timeRemaining: 60.0,
     totalDuration: 60.0,
     lastFrameTime: 0,
@@ -207,6 +222,7 @@
     mistakes: 0,
     hintsUsed: 0,
     hintPulseTimer: 0,
+    memoryPeekTimer: 0,
 
     splits: [],
     nodes: [],
@@ -224,17 +240,19 @@
     dragVelY: 0,
   };
 
-  // --- High Scores in LocalStorage ---
+  // --- High Scores in LocalStorage (Adapted to 12, 20, 25 Target Totals) ---
+  const STORAGE_KEY = 'brainsweep_best_v2';
+
   function loadHighScores() {
     try {
-      const raw = localStorage.getItem('neurosweep_best_v1');
+      const raw = localStorage.getItem(STORAGE_KEY);
       return raw ? JSON.parse(raw) : {};
     } catch {
       return {};
     }
   }
 
-  function saveHighScore(diff, extractedCount, maxCount, timeTaken) {
+  function saveHighScore(diff, extractedCount, targetTotal, timeTaken) {
     try {
       const scores = loadHighScores();
       const prev = scores[diff];
@@ -244,8 +262,8 @@
         (extractedCount === prev.extracted && timeTaken < prev.time);
 
       if (isBetter) {
-        scores[diff] = { extracted: extractedCount, max: maxCount, time: timeTaken };
-        localStorage.setItem('neurosweep_best_v1', JSON.stringify(scores));
+        scores[diff] = { extracted: extractedCount, max: targetTotal, time: timeTaken };
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(scores));
       }
       updateHighScoreBadges();
     } catch {
@@ -256,17 +274,43 @@
   function updateHighScoreBadges() {
     const scores = loadHighScores();
     ['easy', 'medium', 'hard'].forEach((diff) => {
+      const cfg = DIFFICULTIES[diff];
       const el = document.getElementById(`best${diff.charAt(0).toUpperCase() + diff.slice(1)}`);
       if (!el) return;
       const rec = scores[diff];
       if (!rec) {
-        el.textContent = 'Best: —';
-      } else if (rec.extracted >= rec.max) {
-        el.textContent = `Best: Cleared in ${rec.time.toFixed(1)}s`;
+        el.textContent = `Best: — / ${cfg.targetCount}`;
+      } else if (rec.extracted >= cfg.targetCount) {
+        el.textContent = `Best: ${cfg.targetCount}/${cfg.targetCount} in ${rec.time.toFixed(1)}s`;
       } else {
-        el.textContent = `Best: ${rec.extracted} / ${rec.max} extracted`;
+        el.textContent = `Best: ${rec.extracted} / ${cfg.targetCount} extracted`;
       }
     });
+  }
+
+  // --- 2. Randomize Distractor Placement (The "Gap" Rule) ---
+  function generateTargetAndDistractorLists(poolSize, targetCount) {
+    // Build full pool [1 .. poolSize]
+    const allNumbers = Array.from({ length: poolSize }, (_, idx) => idx + 1);
+
+    // Fisher-Yates shuffle to sample random targets and interleaved distractors across 1..poolSize
+    const shuffled = [...allNumbers];
+    for (let i = shuffled.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      const tmp = shuffled[i];
+      shuffled[i] = shuffled[j];
+      shuffled[j] = tmp;
+    }
+
+    // Take targetCount numbers as targets and sort ascending so player hunts an ascending sequence with random gaps
+    const targetNumbers = shuffled.slice(0, targetCount).sort((a, b) => a - b);
+    const distractorNumbers = shuffled.slice(targetCount).sort((a, b) => a - b);
+
+    return {
+      targetNumbers,
+      distractorNumbers,
+      distractorSet: new Set(distractorNumbers),
+    };
   }
 
   // --- Resize & Canvas DPR Setup ---
@@ -274,10 +318,10 @@
   let canvasHeight = 500;
 
   function computeOptimalRadius(count, maxAllowed) {
-    // Ensure circles never occupy more than ~16% of total arena area so there is always open space
+    // Ensure circles never occupy more than ~15% of total arena area so mobile screens stay clutter-free
     const usableArea = Math.max(40000, (canvasWidth - 28) * (canvasHeight - 28));
-    const idealRadius = Math.sqrt((usableArea * 0.16) / (count * Math.PI));
-    return Math.max(10, Math.min(maxAllowed, Math.floor(idealRadius)));
+    const idealRadius = Math.sqrt((usableArea * 0.155) / (count * Math.PI));
+    return Math.max(11, Math.min(maxAllowed, Math.floor(idealRadius)));
   }
 
   function resizeCanvas() {
@@ -293,10 +337,9 @@
     canvas.height = Math.floor(canvasHeight * dpr);
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
 
-    // Rescale existing node positions & radii proportionally if resized mid-game
     if (state.nodes.length > 0 && prevW > 0 && prevH > 0) {
       const cfg = DIFFICULTIES[state.difficulty];
-      const newRadius = computeOptimalRadius(cfg.totalNumbers, cfg.maxRadius);
+      const newRadius = computeOptimalRadius(cfg.poolSize, cfg.maxRadius);
       const scaleX = canvasWidth / prevW;
       const scaleY = canvasHeight / prevH;
       for (const n of state.nodes) {
@@ -312,7 +355,22 @@
   // --- Node Generation & Smooth Velocity Trajectories ---
   function createNodes() {
     const cfg = DIFFICULTIES[state.difficulty];
-    const count = cfg.totalNumbers;
+    state.totalNumbers = cfg.poolSize;
+    state.targetCount = cfg.targetCount;
+    state.distractorCount = cfg.distractorCount;
+
+    const { targetNumbers, distractorNumbers, distractorSet } = generateTargetAndDistractorLists(
+      cfg.poolSize,
+      cfg.targetCount
+    );
+
+    state.targetNumbers = targetNumbers;
+    state.distractorNumbers = distractorNumbers;
+    state.distractorSet = distractorSet;
+    state.currentStepIndex = 0;
+    state.nextTarget = targetNumbers[0];
+
+    const count = cfg.poolSize;
     const nodes = [];
 
     const radius = computeOptimalRadius(count, cfg.maxRadius);
@@ -320,7 +378,7 @@
     const usableW = Math.max(100, canvasWidth - pad * 2);
     const usableH = Math.max(100, canvasHeight - pad * 2);
 
-    // Distribute initial positions on a shuffled stratified grid across the ENTIRE arena
+    // Distribute initial positions on a shuffled stratified grid across the entire arena
     const aspect = usableW / usableH;
     const cols = Math.max(3, Math.ceil(Math.sqrt(count * aspect)));
     const rows = Math.max(3, Math.ceil(count / cols));
@@ -333,7 +391,6 @@
         slots.push({ r, c });
       }
     }
-    // Shuffle grid slots so numbers 1..N are scattered evenly across the whole rectangle
     for (let i = slots.length - 1; i > 0; i--) {
       const j = Math.floor(Math.random() * (i + 1));
       const tmp = slots[i];
@@ -342,6 +399,7 @@
     }
 
     const patternsPool = ['spiral', 'zigzag', 'random', 'wave'];
+    const isHard = state.difficulty === 'hard';
 
     for (let i = 1; i <= count; i++) {
       const assignedPattern =
@@ -353,11 +411,14 @@
       const x = Math.min(canvasWidth - pad, Math.max(pad, pad + (slot.c + 0.5) * cellW + jitterX));
       const y = Math.min(canvasHeight - pad, Math.max(pad, pad + (slot.r + 0.5) * cellH + jitterY));
 
-      const angle = (i * 2.399963) + (Math.random() - 0.5) * 0.5;
-      const speed = cfg.baseSpeed * (0.88 + (i % 5) * 0.06);
+      const angle = i * 2.399963 + (Math.random() - 0.5) * 0.5;
+      const speed = cfg.baseSpeed * (0.9 + (i % 5) * 0.055);
+      const isDistractor = distractorSet.has(i);
 
       nodes.push({
         value: i,
+        isTarget: !isDistractor,
+        isDistractor,
         x,
         y,
         vx: Math.cos(angle) * speed,
@@ -366,24 +427,24 @@
         speed,
         pattern: assignedPattern,
 
-        // Spiral parameters: each node has its own preferred elliptical ring (0.24..0.94) covering the full arena
+        // Spiral parameters: spread rings across full arena
         preferredRing: 0.22 + ((i - 1) / Math.max(1, count - 1)) * 0.74,
-        orbitDir: 1, // uniform clockwise flow prevents head-on traffic jams
+        orbitDir: 1,
 
-        // Zig-Zag parameters
-        zigTimer: (i * 0.19) % 1.4,
-        zigPeriod: 1.1 + (i % 4) * 0.25,
+        // Zig-Zag parameters (faster directional cadence in Hard mode)
+        zigTimer: (i * 0.19) % 1.2,
+        zigPeriod: (isHard ? 0.72 : 1.1) + (i % 4) * 0.2,
         zigDirX: i % 2 === 0 ? 1 : -1,
         zigDirY: i % 3 === 0 ? 1 : -1,
 
         // Wave parameters
         wavePhase: i * 0.65,
-        waveFreq: 1.5 + (i % 3) * 0.35,
+        waveFreq: (isHard ? 2.25 : 1.5) + (i % 3) * 0.35,
         waveDirX: i % 2 === 0 ? 1 : -1,
 
-        // Smooth wander phase for random mode (no per-frame jitter)
+        // Smooth wander phase for random mode
         wanderPhase: i * 1.1,
-        wanderRate: (i % 2 === 0 ? 1 : -1) * (0.4 + (i % 4) * 0.12),
+        wanderRate: (i % 2 === 0 ? 1 : -1) * ((isHard ? 0.68 : 0.4) + (i % 4) * 0.12),
 
         trail: [],
         errorFlash: 0,
@@ -391,7 +452,7 @@
       });
     }
 
-    // Run static relaxation passes before starting so zero circles overlap on frame 1
+    // Pre-game static relaxation passes so zero circles overlap on frame 1
     const minSepPad = 6;
     for (let pass = 0; pass < 20; pass++) {
       for (let i = 0; i < nodes.length; i++) {
@@ -443,16 +504,13 @@
       let desiredVy = n.vy;
 
       if (pat === 'spiral') {
-        // Smooth elliptical orbit velocity covering the entire rectangular arena
         const normX = (n.x - cx) / halfW;
         const normY = (n.y - cy) / halfH;
         const currentR = Math.max(0.08, Math.hypot(normX, normY));
 
-        // Unit tangent vector in normalized ellipse space, mapped back to screen space
         const tanNormX = (-normY / currentR) * n.orbitDir;
         const tanNormY = (normX / currentR) * n.orbitDir;
 
-        // Gentle radial spring toward this node's assigned ring so nodes stay spread from center to edge
         const radialErr = n.preferredRing - currentR;
         const radNormX = (normX / currentR) * radialErr * 0.45;
         const radNormY = (normY / currentR) * radialErr * 0.45;
@@ -469,27 +527,25 @@
           n.zigTimer = 0;
           n.zigDirY *= -1;
         }
-        desiredVx = n.zigDirX * n.speed * 0.82;
-        desiredVy = n.zigDirY * n.speed * 0.82;
+        desiredVx = n.zigDirX * n.speed * 0.85;
+        desiredVy = n.zigDirY * n.speed * 0.85;
       } else if (pat === 'wave') {
         n.wavePhase += n.waveFreq * dt;
-        desiredVx = n.waveDirX * n.speed * 0.88;
-        desiredVy = Math.cos(n.wavePhase) * n.speed * 0.72;
+        desiredVx = n.waveDirX * n.speed * 0.9;
+        desiredVy = Math.cos(n.wavePhase) * n.speed * 0.75;
       } else {
-        // Smooth continuous curve (no random per-frame jitter)
         n.wanderPhase += n.wanderRate * dt;
         const curAngle = Math.atan2(n.vy, n.vx) + Math.sin(n.wanderPhase) * 0.65 * dt;
         desiredVx = Math.cos(curAngle) * n.speed;
         desiredVy = Math.sin(curAngle) * n.speed;
       }
 
-      // Smoothly blend velocity toward desired trajectory
       const blend = Math.min(1, dt * 6);
       n.vx += (desiredVx - n.vx) * blend;
       n.vy += (desiredVy - n.vy) * blend;
     }
 
-    // 2. Smooth velocity-based soft separation (prevents clumping WITHOUT position jitter)
+    // 2. Smooth velocity-based soft separation
     for (let i = 0; i < state.nodes.length; i++) {
       const a = state.nodes[i];
       if (a.extracted || state.draggingNode === a) continue;
@@ -508,15 +564,13 @@
           const nx = dx / dist;
           const ny = dy / dist;
 
-          // Gentle velocity steering away from each other
           const overlapRatio = (comfortDist - dist) / comfortDist;
-          const pushImpulse = overlapRatio * 150 * dt;
+          const pushImpulse = overlapRatio * 155 * dt;
           a.vx -= nx * pushImpulse;
           a.vy -= ny * pushImpulse;
           b.vx += nx * pushImpulse;
           b.vy += ny * pushImpulse;
 
-          // Only if physically overlapping, apply a tiny damped position correction
           const hardMin = a.radius + b.radius + 2;
           if (dist < hardMin) {
             const corr = (hardMin - dist) * 0.22;
@@ -534,7 +588,6 @@
       const n = state.nodes[i];
       if (n.extracted || state.draggingNode === n) continue;
 
-      // Clamp maximum velocity so repulsion never causes sudden darts
       const spd = Math.hypot(n.vx, n.vy);
       const maxSpd = n.speed * 1.35;
       if (spd > maxSpd) {
@@ -622,6 +675,25 @@
     if (state.hintPulseTimer > 0) {
       state.hintPulseTimer = Math.max(0, state.hintPulseTimer - dt);
     }
+
+    if (state.memoryPeekTimer > 0) {
+      state.memoryPeekTimer = Math.max(0, state.memoryPeekTimer - dt);
+      if (state.memoryPeekTimer === 0) {
+        updateHUD();
+      }
+    }
+  }
+
+  // --- Helper: Format Upcoming Target Sequence Preview ---
+  function formatUpcomingQueueText() {
+    if (state.memoryMode) {
+      return `Memory Mode: Target ${state.currentStepIndex + 1} of ${state.targetCount}`;
+    }
+    const upcoming = state.targetNumbers
+      .slice(state.currentStepIndex, state.currentStepIndex + 4)
+      .map((num) => `#${num}`)
+      .join(' → ');
+    return `TARGETS: ${upcoming}`;
   }
 
   // --- Extraction Logic ---
@@ -650,8 +722,9 @@
     state.splits.push({ number: node.value, split: splitSec });
     state.lastExtractTimestamp = nowSec;
 
+    state.currentStepIndex += 1;
     state.streak += 1;
-    sound.playExtract(node.value, state.maxNumber);
+    sound.playExtract(state.currentStepIndex, state.targetCount);
     spawnExtractParticles(node.x, node.y, '#fc6200');
     spawnFloatingText(node.x, node.y, `#${node.value} OK`, '#ffa347');
 
@@ -661,14 +734,18 @@
     extractedSlots.appendChild(badge);
     extractedSlots.scrollLeft = extractedSlots.scrollWidth;
 
-    if (node.value >= state.maxNumber) {
+    // Check if all targetCount targets (12, 20, or 25) have been found!
+    if (state.currentStepIndex >= state.targetCount) {
       updateHUD();
       finishGame(true);
     } else {
-      state.nextTarget = node.value + 1;
-      trayStatusText.textContent = state.memoryMode
-        ? `Extracted #${node.value}! Keep going in ascending order...`
-        : `Extracted #${node.value}! Now scan and drag out #${state.nextTarget}`;
+      state.nextTarget = state.targetNumbers[state.currentStepIndex];
+      if (state.memoryMode) {
+        // Briefly flash new target for 1.3s so player can encode it in working memory
+        state.memoryPeekTimer = 1.3;
+        showArenaToast(`Next Target: #${state.nextTarget} (Memorize!)`, '#1c0a00');
+      }
+      trayStatusText.textContent = formatUpcomingQueueText();
       updateHUD();
     }
   }
@@ -746,11 +823,22 @@
       extractionFrame.classList.add('error-flash');
       setTimeout(() => extractionFrame.classList.remove('error-flash'), 220);
 
+      const isGapDistractor = state.distractorSet.has(hitNode.value);
       const msg = state.memoryMode
-        ? `Wrong sequence! Not #${hitNode.value}`
-        : `Find #${state.nextTarget} first!`;
+        ? isGapDistractor
+          ? `#${hitNode.value} is a Distractor Gap!`
+          : `Out of order! Not #${hitNode.value}`
+        : isGapDistractor
+          ? `Distractor Gap! Target is #${state.nextTarget}`
+          : `Find #${state.nextTarget} first!`;
+
       showArenaToast(msg, '#3b0712');
-      spawnFloatingText(hitNode.x, hitNode.y, `Need #${state.nextTarget}`, '#ff4d6d');
+      spawnFloatingText(
+        hitNode.x,
+        hitNode.y,
+        isGapDistractor ? 'DISTRACTOR!' : `Need #${state.nextTarget}`,
+        '#ff4d6d'
+      );
       updateHUD();
     }
   });
@@ -837,7 +925,6 @@
       ctx.stroke();
     }
 
-    // Extraction perimeter inner threshold line
     const borderZone = 20;
     ctx.strokeStyle = state.draggingNode
       ? 'rgba(252, 98, 0, 0.85)'
@@ -870,7 +957,6 @@
     ctx.clearRect(0, 0, canvasWidth, canvasHeight);
     drawBackgroundGrid();
 
-    // If dragging the target node, draw a helpful tether to nearest extraction border
     if (state.draggingNode) {
       const dn = state.draggingNode;
       const edgePt = nearestEdgePoint(dn.x, dn.y);
@@ -909,7 +995,7 @@
       ctx.restore();
     }
 
-    // Draw non-target nodes first, then target node on top so it's never hidden behind another circle
+    // Draw non-priority nodes first, then current target on top so it's never occluded
     for (let pass = 0; pass < 2; pass++) {
       for (let i = 0; i < state.nodes.length; i++) {
         const n = state.nodes[i];
@@ -922,7 +1008,6 @@
         const isDragging = state.draggingNode === n;
         const isHinting = isTarget && state.hintPulseTimer > 0;
 
-        // Hint sonar ring if user clicked Locate button
         if (isHinting) {
           const pulseRadius = n.radius + 7 + ((1.5 - state.hintPulseTimer) * 34) % 30;
           ctx.save();
@@ -934,7 +1019,6 @@
           ctx.restore();
         }
 
-        // Crisp Node Circle (no blurry glow or trailing artifacts)
         ctx.save();
         const r = isDragging ? n.radius * 1.2 : n.radius;
 
@@ -962,7 +1046,6 @@
         ctx.fill();
         ctx.stroke();
 
-        // Crisp Number Label
         ctx.fillStyle = isDragging || isHinting ? '#050200' : '#fc6200';
         const fontSize = Math.max(8, Math.round(r * 0.56));
         ctx.font = `${fontSize}px "Press Start 2P", monospace`;
@@ -974,7 +1057,6 @@
       }
     }
 
-    // Draw particles
     for (const p of state.particles) {
       ctx.save();
       ctx.globalAlpha = Math.max(0, p.alpha);
@@ -983,7 +1065,6 @@
       ctx.restore();
     }
 
-    // Draw floating feedback texts
     for (const ft of state.floatingTexts) {
       ctx.save();
       ctx.globalAlpha = Math.max(0, ft.alpha);
@@ -997,10 +1078,11 @@
 
   // --- HUD & Game Loop ---
   function updateHUD() {
-    const extractedCount = state.nextTarget - 1;
-    hudNextTarget.textContent = state.memoryMode ? '?' : String(state.nextTarget);
-    hudTotalTarget.textContent = `/ ${state.maxNumber}`;
-    hudExtracted.textContent = String(extractedCount);
+    const extractedCount = state.currentStepIndex;
+    const hideTarget = state.memoryMode && state.memoryPeekTimer <= 0;
+    hudNextTarget.textContent = hideTarget ? '?' : `#${state.nextTarget}`;
+    hudTotalTarget.textContent = `(${Math.min(state.targetCount, extractedCount + 1)}/${state.targetCount})`;
+    hudExtracted.textContent = `${extractedCount}/${state.targetCount}`;
     hudStreakBadge.textContent = `${state.streak}x`;
 
     if (extractedCount > 0) {
@@ -1036,8 +1118,6 @@
   function startGame() {
     const cfg = DIFFICULTIES[state.difficulty];
     state.status = 'playing';
-    state.maxNumber = cfg.maxNumber;
-    state.nextTarget = 1;
     state.totalDuration = cfg.durationSec;
     state.timeRemaining = cfg.durationSec;
     state.streak = 0;
@@ -1052,13 +1132,22 @@
     state.memoryMode = chkMemoryMode.checked;
 
     extractedSlots.innerHTML = '';
-    trayStatusText.textContent = 'Scan the field and drag #1 across the arena border!';
 
     setupModal.classList.remove('active');
     resultsModal.classList.remove('active');
+    infoModal.classList.remove('active');
 
     resizeCanvas();
     createNodes();
+
+    if (state.memoryMode) {
+      state.memoryPeekTimer = 1.5;
+      showArenaToast(`First Target: #${state.nextTarget} (Memorize!)`, '#1c0a00');
+    } else {
+      state.memoryPeekTimer = 0;
+    }
+
+    trayStatusText.textContent = formatUpcomingQueueText();
     updateHUD();
     updateTimerDisplay();
 
@@ -1072,7 +1161,7 @@
     state.draggingNode = null;
     extractionFrame.classList.remove('dragging-active');
 
-    const extractedCount = completedAll ? state.maxNumber : state.nextTarget - 1;
+    const extractedCount = completedAll ? state.targetCount : state.currentStepIndex;
     const timeTaken = Math.min(
       state.totalDuration,
       Math.max(0.1, state.totalDuration - state.timeRemaining)
@@ -1084,23 +1173,24 @@
       sound.playError();
     }
 
-    saveHighScore(state.difficulty, extractedCount, state.maxNumber, timeTaken);
+    saveHighScore(state.difficulty, extractedCount, state.targetCount, timeTaken);
 
     const resultBadge = document.getElementById('resultBadge');
     const resultHeadline = document.getElementById('resultHeadline');
     const resultSubheadline = document.getElementById('resultSubheadline');
+    const cfg = DIFFICULTIES[state.difficulty];
 
     if (completedAll) {
       resultBadge.textContent = 'CHALLENGE CONQUERED';
-      resultHeadline.textContent = `Cleared 1–${state.maxNumber} in ${timeTaken.toFixed(1)}s!`;
-      resultSubheadline.textContent = `Outstanding peripheral scanning & motor extraction speed on ${DIFFICULTIES[state.difficulty].label} (${state.pattern.toUpperCase()}).`;
+      resultHeadline.textContent = `Cleared ${state.targetCount} Targets in ${timeTaken.toFixed(1)}s!`;
+      resultSubheadline.textContent = `Filtered out ${cfg.distractorCount} interleaved distractors across a pool of ${cfg.poolSize} on ${cfg.label} (${state.pattern.toUpperCase()}).`;
     } else {
       resultBadge.textContent = 'TIME EXPIRED (60.0s)';
-      resultHeadline.textContent = `Extracted ${extractedCount} of ${state.maxNumber} Targets`;
-      resultSubheadline.textContent = `You reached #${extractedCount} on ${DIFFICULTIES[state.difficulty].label} (${state.pattern.toUpperCase()}) mode. Keep training to clear all ${state.maxNumber}!`;
+      resultHeadline.textContent = `Extracted ${extractedCount} of ${state.targetCount} Targets`;
+      resultSubheadline.textContent = `Pool of ${cfg.poolSize} (${cfg.targetCount} targets, ${cfg.distractorCount} distractors) on ${cfg.label} (${state.pattern.toUpperCase()}).`;
     }
 
-    document.getElementById('resExtracted').textContent = `${extractedCount} / ${state.maxNumber}`;
+    document.getElementById('resExtracted').textContent = `${extractedCount} / ${state.targetCount}`;
     document.getElementById('resTime').textContent = `${timeTaken.toFixed(1)}s`;
     const avgSpeed = extractedCount > 0 ? `${(timeTaken / extractedCount).toFixed(2)}s / #` : '—';
     document.getElementById('resAvgSpeed').textContent = avgSpeed;
@@ -1110,7 +1200,7 @@
       totalAttempts > 0 ? Math.round((extractedCount / totalAttempts) * 100) : 100;
     document.getElementById('resAccuracy').textContent = `${accuracy}%`;
 
-    const completionRatio = extractedCount / state.maxNumber;
+    const completionRatio = extractedCount / state.targetCount;
     let rank = 'C';
     if (completedAll && accuracy >= 95) rank = 'S+ Elite';
     else if (completedAll) rank = 'S';
@@ -1153,8 +1243,10 @@
       }
     }
 
-    updateNodes(dt);
-    updateEffects(dt);
+    if (state.status !== 'paused') {
+      updateNodes(dt);
+      updateEffects(dt);
+    }
     render();
 
     requestAnimationFrame(tick);
@@ -1264,6 +1356,7 @@
   updateHighScoreBadges();
   resizeCanvas();
   createNodes();
+  updateHUD();
   state.lastFrameTime = performance.now();
   requestAnimationFrame(tick);
 })();
