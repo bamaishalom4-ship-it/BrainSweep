@@ -1,10 +1,11 @@
 /**
  * BrainSweep — Cognitive Number Extraction Game
  * Visual Scanning, Inhibitory Control & Selective Attention Trainer
+ * Includes 100% Offline PWA Support & "Survival Sweep" Endless Offline Mode
  */
 
 (() => {
-  // --- 1. Difficulty Progression & Cognitive Ratios Configuration ---
+  // --- 1. Difficulty Progression & Cognitive Ratios Configuration (Online Mode) ---
   const DIFFICULTIES = {
     easy: {
       id: 'easy',
@@ -40,6 +41,30 @@
       maxRadius: 17,
     },
   };
+
+  // --- Offline "Survival Sweep" Mode Configuration ---
+  const OFFLINE_SURVIVAL_CONFIG = {
+    id: 'offline_survival',
+    label: 'Survival Sweep (Offline)',
+    activePoolSize: 17, // 1 active sequential target + 16 moving distractors on screen at any time
+    distractorCount: 16,
+    durationSec: 60,
+    baseSpeed: 56,
+    maxRadius: 20,
+    distractorPenaltySec: 2.0,
+  };
+
+  // --- Service Worker Registration for 100% Offline PWA ---
+  function registerServiceWorker() {
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('./sw.js').catch(() => {
+          // Ignore registration errors if opened via file:// protocol
+        });
+      });
+    }
+  }
+  registerServiceWorker();
 
   // --- Synthesized Web Audio Engine ---
   class SoundEngine {
@@ -84,7 +109,7 @@
       if (!this.ctx) return;
 
       const now = this.ctx.currentTime;
-      const progress = Math.min(1, stepIndex / Math.max(1, totalSteps));
+      const progress = Math.min(1, (stepIndex % 30) / Math.max(1, Math.min(30, totalSteps || 25)));
       const baseFreq = 380 + progress * 600;
 
       const osc = this.ctx.createOscillator();
@@ -165,6 +190,12 @@
   const ghostLayer = document.getElementById('ghostLayer');
   const targetHudCard = document.getElementById('targetHudCard');
 
+  const offlineStageBanner = document.getElementById('offlineStageBanner');
+  const offlineStageBest = document.getElementById('offlineStageBest');
+  const offlineMenuPanel = document.getElementById('offlineMenuPanel');
+  const onlineDifficultySection = document.getElementById('onlineDifficultySection');
+  const bestOfflineEl = document.getElementById('bestOffline');
+
   const hudNextTarget = document.getElementById('hudNextTarget');
   const hudTotalTarget = document.getElementById('hudTotalTarget');
   const hudTimer = document.getElementById('hudTimer');
@@ -199,20 +230,21 @@
 
   const state = {
     status: 'menu', // 'menu' | 'playing' | 'paused' | 'ended'
+    isOfflineMode: !navigator.onLine,
     difficulty: 'easy',
     pattern: 'spiral',
     quickFlick: true,
     memoryMode: false,
 
-    totalNumbers: 20, // Pool Size (20, 36, 50)
-    targetCount: 12,  // Target Count (12, 20, 25)
-    distractorCount: 8, // Distractor Count (8, 16, 25)
+    totalNumbers: 20,
+    targetCount: 12,
+    distractorCount: 8,
 
-    targetNumbers: [], // Sorted array of randomly selected target numbers within 1..totalNumbers
-    distractorNumbers: [], // Interleaved distractor ("gap") numbers within 1..totalNumbers
+    targetNumbers: [],
+    distractorNumbers: [],
     distractorSet: new Set(),
 
-    currentStepIndex: 0, // 0 .. targetCount - 1
+    currentStepIndex: 0, // Number of targets extracted so far
     nextTarget: 1,
 
     timeRemaining: 60.0,
@@ -242,8 +274,9 @@
     dragVelY: 0,
   };
 
-  // --- High Scores in LocalStorage (Adapted to 12, 20, 25 Target Totals) ---
+  // --- High Scores in LocalStorage (Online & Offline Survival Sweep) ---
   const STORAGE_KEY = 'brainsweep_best_v2';
+  const OFFLINE_STORAGE_KEY = 'brainsweep_offline_best_v1';
 
   function loadHighScores() {
     try {
@@ -273,6 +306,27 @@
     }
   }
 
+  function getOfflineBestScore() {
+    try {
+      const val = parseInt(localStorage.getItem(OFFLINE_STORAGE_KEY) || '0', 10);
+      return Number.isFinite(val) ? val : 0;
+    } catch {
+      return 0;
+    }
+  }
+
+  function saveOfflineBestScore(extractedCount) {
+    try {
+      const prevBest = getOfflineBestScore();
+      const newBest = Math.max(prevBest, extractedCount);
+      localStorage.setItem(OFFLINE_STORAGE_KEY, String(newBest));
+      updateHighScoreBadges();
+      return newBest;
+    } catch {
+      return extractedCount;
+    }
+  }
+
   function updateHighScoreBadges() {
     const scores = loadHighScores();
     ['easy', 'medium', 'hard'].forEach((diff) => {
@@ -288,14 +342,63 @@
         el.textContent = `Best: ${rec.extracted} / ${cfg.targetCount} extracted`;
       }
     });
+
+    const offlineBest = getOfflineBestScore();
+    if (bestOfflineEl) {
+      bestOfflineEl.textContent = `Best Offline Score: ${offlineBest}`;
+    }
+    if (offlineStageBest) {
+      offlineStageBest.textContent = `Best Offline Score: ${offlineBest}`;
+    }
   }
 
-  // --- 2. Randomize Distractor Placement (The "Gap" Rule) ---
+  // --- Network Status Listener (Online vs Offline "Survival Sweep") ---
+  function syncNetworkModeUI() {
+    const isOffline = !navigator.onLine;
+    state.isOfflineMode = isOffline;
+    document.body.classList.toggle('offline-mode', isOffline);
+
+    if (offlineStageBanner) {
+      offlineStageBanner.hidden = !isOffline;
+    }
+    if (offlineMenuPanel) {
+      offlineMenuPanel.hidden = !isOffline;
+    }
+    if (onlineDifficultySection) {
+      onlineDifficultySection.hidden = isOffline;
+    }
+
+    const startSpan = btnStartGame ? btnStartGame.querySelector('span') : null;
+    if (startSpan) {
+      startSpan.textContent = isOffline
+        ? 'START SURVIVAL SWEEP (60s)'
+        : 'START 60s CHALLENGE';
+    }
+
+    updateHighScoreBadges();
+    updateHUD();
+  }
+
+  window.addEventListener('offline', () => {
+    syncNetworkModeUI();
+    if (state.status === 'menu') {
+      // Bypass normal difficulty selection and launch Survival Sweep when going offline
+      startGame();
+      showArenaToast('OFFLINE MODE: SURVIVAL SWEEP', '#1c0a00');
+    } else {
+      showArenaToast('Connection Lost — Offline Mode Active', '#1c0a00');
+    }
+  });
+
+  window.addEventListener('online', () => {
+    syncNetworkModeUI();
+    showArenaToast('Back Online — Standard Modes Unlocked', '#1c0a00');
+  });
+
+  // --- 2. Randomize Distractor Placement (Online "Gap" Rule) ---
   function generateTargetAndDistractorLists(poolSize, targetCount) {
-    // Build full pool [1 .. poolSize]
     const allNumbers = Array.from({ length: poolSize }, (_, idx) => idx + 1);
 
-    // Fisher-Yates shuffle to sample random targets and interleaved distractors across 1..poolSize
     const shuffled = [...allNumbers];
     for (let i = shuffled.length - 1; i > 0; i--) {
       const j = Math.floor(Math.random() * (i + 1));
@@ -304,7 +407,6 @@
       shuffled[j] = tmp;
     }
 
-    // Take targetCount numbers as targets and sort ascending so player hunts an ascending sequence with random gaps
     const targetNumbers = shuffled.slice(0, targetCount).sort((a, b) => a - b);
     const distractorNumbers = shuffled.slice(targetCount).sort((a, b) => a - b);
 
@@ -320,7 +422,6 @@
   let canvasHeight = 500;
 
   function computeOptimalRadius(count, maxAllowed) {
-    // Ensure circles never occupy more than ~15% of total arena area so mobile screens stay clutter-free
     const usableArea = Math.max(40000, (canvasWidth - 28) * (canvasHeight - 28));
     const idealRadius = Math.sqrt((usableArea * 0.155) / (count * Math.PI));
     return Math.max(11, Math.min(maxAllowed, Math.floor(idealRadius)));
@@ -340,8 +441,13 @@
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
 
     if (state.nodes.length > 0 && prevW > 0 && prevH > 0) {
-      const cfg = DIFFICULTIES[state.difficulty];
-      const newRadius = computeOptimalRadius(cfg.poolSize, cfg.maxRadius);
+      const activeCount = state.isOfflineMode
+        ? OFFLINE_SURVIVAL_CONFIG.activePoolSize
+        : DIFFICULTIES[state.difficulty].poolSize;
+      const maxR = state.isOfflineMode
+        ? OFFLINE_SURVIVAL_CONFIG.maxRadius
+        : DIFFICULTIES[state.difficulty].maxRadius;
+      const newRadius = computeOptimalRadius(activeCount, maxR);
       const scaleX = canvasWidth / prevW;
       const scaleY = canvasHeight / prevH;
       for (const n of state.nodes) {
@@ -354,8 +460,144 @@
 
   window.addEventListener('resize', resizeCanvas);
 
-  // --- Node Generation & Smooth Velocity Trajectories ---
+  // --- Helper: Pick Non-Overlapping Spawn Coordinate & Distractor Value ---
+  function findSafeSpawnPosition(radius) {
+    const pad = radius + 18;
+    const minX = pad;
+    const maxX = Math.max(pad + 10, canvasWidth - pad);
+    const minY = pad;
+    const maxY = Math.max(pad + 10, canvasHeight - pad);
+
+    let bestX = (minX + maxX) / 2;
+    let bestY = (minY + maxY) / 2;
+    let maxMinDist = -1;
+
+    // Sample 18 candidate positions and pick the one furthest from existing nodes
+    for (let attempt = 0; attempt < 18; attempt++) {
+      const cx = minX + Math.random() * (maxX - minX);
+      const cy = minY + Math.random() * (maxY - minY);
+      let nearest = Infinity;
+
+      for (let i = 0; i < state.nodes.length; i++) {
+        const other = state.nodes[i];
+        if (other.extracted) continue;
+        const d = Math.hypot(cx - other.x, cy - other.y);
+        if (d < nearest) nearest = d;
+      }
+
+      if (nearest > maxMinDist) {
+        maxMinDist = nearest;
+        bestX = cx;
+        bestY = cy;
+      }
+      if (nearest >= radius * 3.2) break;
+    }
+
+    return { x: bestX, y: bestY };
+  }
+
+  function pickUniqueDistractorNumber(targetVal, usedValues) {
+    // Pick a distractor number near the current target range so player must read carefully
+    const minVal = Math.max(1, targetVal - 4);
+    const maxVal = targetVal + 32;
+    for (let tries = 0; tries < 50; tries++) {
+      const candidate = minVal + Math.floor(Math.random() * (maxVal - minVal + 1));
+      if (candidate !== targetVal && !usedValues.has(candidate)) {
+        usedValues.add(candidate);
+        return candidate;
+      }
+    }
+    let fallback = targetVal + 2;
+    while (fallback === targetVal || usedValues.has(fallback)) {
+      fallback += 1;
+    }
+    usedValues.add(fallback);
+    return fallback;
+  }
+
+  function buildSingleNodeObject(value, isDistractor, indexSeed, count, baseSpeed, radius, isHard) {
+    const patternsPool = ['spiral', 'zigzag', 'random', 'wave'];
+    const assignedPattern =
+      state.pattern === 'mixed'
+        ? patternsPool[indexSeed % patternsPool.length]
+        : state.pattern;
+
+    const pos = findSafeSpawnPosition(radius);
+    const angle = indexSeed * 2.399963 + (Math.random() - 0.5) * 0.5;
+    const speed = baseSpeed * (0.9 + (indexSeed % 5) * 0.055);
+
+    return {
+      value,
+      isTarget: !isDistractor,
+      isDistractor,
+      x: pos.x,
+      y: pos.y,
+      vx: Math.cos(angle) * speed,
+      vy: Math.sin(angle) * speed,
+      radius,
+      speed,
+      pattern: assignedPattern,
+
+      preferredRing: 0.24 + ((indexSeed % count) / Math.max(1, count - 1)) * 0.7,
+      orbitDir: 1,
+
+      zigTimer: (indexSeed * 0.19) % 1.2,
+      zigPeriod: (isHard ? 0.72 : 1.1) + (indexSeed % 4) * 0.2,
+      zigDirX: indexSeed % 2 === 0 ? 1 : -1,
+      zigDirY: indexSeed % 3 === 0 ? 1 : -1,
+
+      wavePhase: indexSeed * 0.65,
+      waveFreq: (isHard ? 2.25 : 1.5) + (indexSeed % 3) * 0.35,
+      waveDirX: indexSeed % 2 === 0 ? 1 : -1,
+
+      wanderPhase: indexSeed * 1.1,
+      wanderRate: (indexSeed % 2 === 0 ? 1 : -1) * ((isHard ? 0.68 : 0.4) + (indexSeed % 4) * 0.12),
+
+      trail: [],
+      errorFlash: 0,
+      extracted: false,
+    };
+  }
+
+  // --- Node Generation (Online Mode vs Offline Endless "Survival Sweep") ---
+  function createOfflineSurvivalNodes() {
+    const cfg = OFFLINE_SURVIVAL_CONFIG;
+    state.totalNumbers = cfg.activePoolSize;
+    state.targetCount = Infinity; // Endless survival
+    state.distractorCount = cfg.distractorCount;
+    state.currentStepIndex = 0;
+    state.nextTarget = 1;
+    state.nodes = [];
+
+    const radius = computeOptimalRadius(cfg.activePoolSize, cfg.maxRadius);
+    const usedValues = new Set([1]);
+
+    // 1. Spawn initial target #1
+    state.nodes.push(
+      buildSingleNodeObject(1, false, 1, cfg.activePoolSize, cfg.baseSpeed, radius, false)
+    );
+
+    // 2. Spawn 16 moving distractor numbers alongside the target
+    const distractorNums = [];
+    for (let d = 0; d < cfg.distractorCount; d++) {
+      const dVal = pickUniqueDistractorNumber(1, usedValues);
+      distractorNums.push(dVal);
+      state.nodes.push(
+        buildSingleNodeObject(dVal, true, d + 2, cfg.activePoolSize, cfg.baseSpeed, radius, false)
+      );
+    }
+
+    state.targetNumbers = [1];
+    state.distractorNumbers = distractorNums;
+    state.distractorSet = new Set(distractorNums);
+  }
+
   function createNodes() {
+    if (state.isOfflineMode) {
+      createOfflineSurvivalNodes();
+      return;
+    }
+
     const cfg = DIFFICULTIES[state.difficulty];
     state.totalNumbers = cfg.poolSize;
     state.targetCount = cfg.targetCount;
@@ -380,7 +622,6 @@
     const usableW = Math.max(100, canvasWidth - pad * 2);
     const usableH = Math.max(100, canvasHeight - pad * 2);
 
-    // Distribute initial positions on a shuffled stratified grid across the entire arena
     const aspect = usableW / usableH;
     const cols = Math.max(3, Math.ceil(Math.sqrt(count * aspect)));
     const rows = Math.max(3, Math.ceil(count / cols));
@@ -429,22 +670,18 @@
         speed,
         pattern: assignedPattern,
 
-        // Spiral parameters: spread rings across full arena
         preferredRing: 0.22 + ((i - 1) / Math.max(1, count - 1)) * 0.74,
         orbitDir: 1,
 
-        // Zig-Zag parameters (faster directional cadence in Hard mode)
         zigTimer: (i * 0.19) % 1.2,
         zigPeriod: (isHard ? 0.72 : 1.1) + (i % 4) * 0.2,
         zigDirX: i % 2 === 0 ? 1 : -1,
         zigDirY: i % 3 === 0 ? 1 : -1,
 
-        // Wave parameters
         wavePhase: i * 0.65,
         waveFreq: (isHard ? 2.25 : 1.5) + (i % 3) * 0.35,
         waveDirX: i % 2 === 0 ? 1 : -1,
 
-        // Smooth wander phase for random mode
         wanderPhase: i * 1.1,
         wanderRate: (i % 2 === 0 ? 1 : -1) * ((isHard ? 0.68 : 0.4) + (i % 4) * 0.12),
 
@@ -454,7 +691,6 @@
       });
     }
 
-    // Pre-game static relaxation passes so zero circles overlap on frame 1
     const minSepPad = 6;
     for (let pass = 0; pass < 20; pass++) {
       for (let i = 0; i < nodes.length; i++) {
@@ -488,7 +724,6 @@
     const halfW = Math.max(80, canvasWidth * 0.46);
     const halfH = Math.max(80, canvasHeight * 0.46);
 
-    // 1. Compute desired velocity per node based on its trajectory pattern
     for (let i = 0; i < state.nodes.length; i++) {
       const n = state.nodes[i];
       if (n.extracted) continue;
@@ -547,7 +782,6 @@
       n.vy += (desiredVy - n.vy) * blend;
     }
 
-    // 2. Smooth velocity-based soft separation
     for (let i = 0; i < state.nodes.length; i++) {
       const a = state.nodes[i];
       if (a.extracted || state.draggingNode === a) continue;
@@ -585,7 +819,6 @@
       }
     }
 
-    // 3. Integrate positions & keep smoothly inside arena bounds
     for (let i = 0; i < state.nodes.length; i++) {
       const n = state.nodes[i];
       if (n.extracted || state.draggingNode === n) continue;
@@ -690,7 +923,6 @@
   function spawnGhostTarget(dropX, dropY, nextTargetNumber) {
     if (!ghostLayer) return;
 
-    // Clamp slightly inside arena edges so the large ghost number is never clipped by overflow: hidden
     const clampedX = Math.min(canvasWidth - 48, Math.max(48, dropX));
     const clampedY = Math.min(canvasHeight - 38, Math.max(38, dropY));
 
@@ -714,13 +946,15 @@
   function triggerTargetHudPulse() {
     if (!targetHudCard) return;
     targetHudCard.classList.remove('target-pulse');
-    // Force reflow so rapid consecutive extractions re-trigger the 0.3s pulse cleanly
     void targetHudCard.offsetWidth;
     targetHudCard.classList.add('target-pulse');
   }
 
   // --- Helper: Format Upcoming Target Sequence Preview ---
   function formatUpcomingQueueText() {
+    if (state.isOfflineMode) {
+      return `SURVIVAL SWEEP: Find & extract #${state.nextTarget} (Avoid distractors: -2s)`;
+    }
     if (state.memoryMode) {
       return `Memory Mode: Target ${state.currentStepIndex + 1} of ${state.targetCount}`;
     }
@@ -762,16 +996,77 @@
 
     state.currentStepIndex += 1;
     state.streak += 1;
-    sound.playExtract(state.currentStepIndex, state.targetCount);
+    sound.playExtract(state.currentStepIndex, state.isOfflineMode ? 30 : state.targetCount);
     spawnExtractParticles(dropX, dropY, '#fc6200');
 
     const badge = document.createElement('span');
     badge.className = 'extracted-badge';
     badge.textContent = node.value;
     extractedSlots.appendChild(badge);
+    // Keep extracted badge DOM list bounded in endless mode so DOM never bloats
+    while (extractedSlots.children.length > 40) {
+      extractedSlots.removeChild(extractedSlots.firstChild);
+    }
     extractedSlots.scrollLeft = extractedSlots.scrollWidth;
 
-    // Check if all targetCount targets (12, 20, or 25) have been found!
+    if (state.isOfflineMode) {
+      // --- Offline "Survival Sweep" Endless Spawning Logic (Zero Memory Leaks) ---
+      // 1. Remove the extracted target node from state.nodes array immediately
+      const idx = state.nodes.indexOf(node);
+      if (idx !== -1) {
+        state.nodes.splice(idx, 1);
+      }
+
+      // 2. Advance to next sequential target (1 -> 2 -> 3 -> 4...)
+      state.nextTarget = state.currentStepIndex + 1;
+
+      // 3. Ensure no existing distractor has the same value as the new sequential target
+      const usedValues = new Set([state.nextTarget]);
+      for (const n of state.nodes) {
+        if (n.value !== state.nextTarget) {
+          usedValues.add(n.value);
+        }
+      }
+      for (const n of state.nodes) {
+        if (n.isDistractor && n.value === state.nextTarget) {
+          n.value = pickUniqueDistractorNumber(state.nextTarget, usedValues);
+        }
+      }
+
+      // Also cycle one random distractor value to keep the number range advancing with the player
+      const distractors = state.nodes.filter((n) => n.isDistractor);
+      if (distractors.length > 0) {
+        const randomDist = distractors[Math.floor(Math.random() * distractors.length)];
+        usedValues.delete(randomDist.value);
+        randomDist.value = pickUniqueDistractorNumber(state.nextTarget, usedValues);
+      }
+      state.distractorSet = new Set(
+        state.nodes.filter((n) => n.isDistractor).map((n) => n.value)
+      );
+
+      // 4. Spawn the new sequential target in the arena
+      const cfg = OFFLINE_SURVIVAL_CONFIG;
+      const radius = computeOptimalRadius(cfg.activePoolSize, cfg.maxRadius);
+      const speedBoost = Math.min(35, state.currentStepIndex * 0.8);
+      const newTargetNode = buildSingleNodeObject(
+        state.nextTarget,
+        false,
+        state.nextTarget + 7,
+        cfg.activePoolSize,
+        cfg.baseSpeed + speedBoost,
+        radius,
+        false
+      );
+      state.nodes.push(newTargetNode);
+
+      // 5. Spawn the 0.6s Ghost Trail of the next sequential number at the drop point
+      spawnGhostTarget(dropX, dropY, state.nextTarget);
+      trayStatusText.textContent = formatUpcomingQueueText();
+      updateHUD();
+      return;
+    }
+
+    // --- Online Mode Win/Progression Check ---
     if (state.currentStepIndex >= state.targetCount) {
       spawnFloatingText(dropX, dropY, `#${node.value} CLEAR!`, '#ffa347');
       updateHUD();
@@ -779,14 +1074,10 @@
     } else {
       state.nextTarget = state.targetNumbers[state.currentStepIndex];
 
-      // 1. Spawn the 0.6s Ghost Trail indicator of the NEXT target right at the drop focal point
       spawnGhostTarget(dropX, dropY, state.nextTarget);
-
-      // 2. Pulse the centered NEXT TARGET HUD box for 0.3s peripheral vision cue
       triggerTargetHudPulse();
 
       if (state.memoryMode) {
-        // Briefly flash new target for 1.3s so player can encode it in working memory
         state.memoryPeekTimer = 1.3;
         showArenaToast(`Next Target: #${state.nextTarget} (Memorize!)`, '#1c0a00');
       }
@@ -867,6 +1158,25 @@
 
       extractionFrame.classList.add('error-flash');
       setTimeout(() => extractionFrame.classList.remove('error-flash'), 220);
+
+      if (state.isOfflineMode) {
+        // Apply -2s distractor timer penalty in Offline Survival Sweep
+        state.timeRemaining = Math.max(
+          0,
+          state.timeRemaining - OFFLINE_SURVIVAL_CONFIG.distractorPenaltySec
+        );
+        updateTimerDisplay();
+        showArenaToast(
+          `Distractor! -2.0s Penalty (Find #${state.nextTarget})`,
+          '#3b0712'
+        );
+        spawnFloatingText(hitNode.x, hitNode.y, '-2.0s!', '#ff4d6d');
+        updateHUD();
+        if (state.timeRemaining <= 0) {
+          finishGame(false);
+        }
+        return;
+      }
 
       const isGapDistractor = state.distractorSet.has(hitNode.value);
       const msg = state.memoryMode
@@ -1040,7 +1350,6 @@
       ctx.restore();
     }
 
-    // Draw non-priority nodes first, then current target on top so it's never occluded
     for (let pass = 0; pass < 2; pass++) {
       for (let i = 0; i < state.nodes.length; i++) {
         const n = state.nodes[i];
@@ -1124,6 +1433,14 @@
   // --- HUD & Game Loop ---
   function updateHUD() {
     const extractedCount = state.currentStepIndex;
+
+    if (state.isOfflineMode) {
+      // Offline Survival Sweep: prominent Extracted count + streak
+      hudExtracted.textContent = String(extractedCount);
+      hudStreakBadge.textContent = `Next: #${state.nextTarget}`;
+      return;
+    }
+
     const hideTarget = state.memoryMode && state.memoryPeekTimer <= 0;
     hudNextTarget.textContent = hideTarget ? '?' : `#${state.nextTarget}`;
     hudTotalTarget.textContent = `(${Math.min(state.targetCount, extractedCount + 1)}/${state.targetCount})`;
@@ -1161,10 +1478,15 @@
   }
 
   function startGame() {
-    const cfg = DIFFICULTIES[state.difficulty];
+    syncNetworkModeUI();
+
+    const durationSec = state.isOfflineMode
+      ? OFFLINE_SURVIVAL_CONFIG.durationSec
+      : DIFFICULTIES[state.difficulty].durationSec;
+
     state.status = 'playing';
-    state.totalDuration = cfg.durationSec;
-    state.timeRemaining = cfg.durationSec;
+    state.totalDuration = durationSec;
+    state.timeRemaining = durationSec;
     state.streak = 0;
     state.mistakes = 0;
     state.hintsUsed = 0;
@@ -1185,13 +1507,18 @@
 
     resizeCanvas();
     createNodes();
-    triggerTargetHudPulse();
 
-    if (state.memoryMode) {
-      state.memoryPeekTimer = 1.5;
-      showArenaToast(`First Target: #${state.nextTarget} (Memorize!)`, '#1c0a00');
+    if (!state.isOfflineMode) {
+      triggerTargetHudPulse();
+      if (state.memoryMode) {
+        state.memoryPeekTimer = 1.5;
+        showArenaToast(`First Target: #${state.nextTarget} (Memorize!)`, '#1c0a00');
+      } else {
+        state.memoryPeekTimer = 0;
+      }
     } else {
       state.memoryPeekTimer = 0;
+      spawnGhostTarget(canvasWidth / 2, canvasHeight / 2, 1);
     }
 
     trayStatusText.textContent = formatUpcomingQueueText();
@@ -1208,52 +1535,78 @@
     state.draggingNode = null;
     extractionFrame.classList.remove('dragging-active');
 
-    const extractedCount = completedAll ? state.targetCount : state.currentStepIndex;
-    const timeTaken = Math.min(
-      state.totalDuration,
-      Math.max(0.1, state.totalDuration - state.timeRemaining)
-    );
-
-    if (completedAll) {
-      sound.playVictory();
-    } else {
-      sound.playError();
-    }
-
-    saveHighScore(state.difficulty, extractedCount, state.targetCount, timeTaken);
-
     const resultBadge = document.getElementById('resultBadge');
     const resultHeadline = document.getElementById('resultHeadline');
     const resultSubheadline = document.getElementById('resultSubheadline');
-    const cfg = DIFFICULTIES[state.difficulty];
 
-    if (completedAll) {
-      resultBadge.textContent = 'CHALLENGE CONQUERED';
-      resultHeadline.textContent = `Cleared ${state.targetCount} Targets in ${timeTaken.toFixed(1)}s!`;
-      resultSubheadline.textContent = `Filtered out ${cfg.distractorCount} interleaved distractors across a pool of ${cfg.poolSize} on ${cfg.label} (${state.pattern.toUpperCase()}).`;
+    if (state.isOfflineMode) {
+      const extractedCount = state.currentStepIndex;
+      const bestOffline = saveOfflineBestScore(extractedCount);
+
+      if (extractedCount > 0) {
+        sound.playVictory();
+      } else {
+        sound.playError();
+      }
+
+      resultBadge.textContent = 'OFFLINE MODE: SURVIVAL SWEEP';
+      resultHeadline.textContent = `Time's up! You extracted ${extractedCount} numbers. Your best is ${bestOffline}.`;
+      resultSubheadline.textContent = `60-second endless sequential pull complete. Best Offline Score: ${bestOffline}.`;
+
+      document.getElementById('resExtracted').textContent = String(extractedCount);
+      document.getElementById('resTime').textContent = '60.0s';
+      const avgSpeed = extractedCount > 0 ? `${(60 / extractedCount).toFixed(2)}s / #` : '—';
+      document.getElementById('resAvgSpeed').textContent = avgSpeed;
+
+      const totalAttempts = extractedCount + state.mistakes;
+      const accuracy =
+        totalAttempts > 0 ? Math.round((extractedCount / totalAttempts) * 100) : 100;
+      document.getElementById('resAccuracy').textContent = `${accuracy}%`;
+      document.getElementById('resCognitiveRank').textContent = `Best Offline Score: ${bestOffline}`;
     } else {
-      resultBadge.textContent = 'TIME EXPIRED (60.0s)';
-      resultHeadline.textContent = `Extracted ${extractedCount} of ${state.targetCount} Targets`;
-      resultSubheadline.textContent = `Pool of ${cfg.poolSize} (${cfg.targetCount} targets, ${cfg.distractorCount} distractors) on ${cfg.label} (${state.pattern.toUpperCase()}).`;
+      const extractedCount = completedAll ? state.targetCount : state.currentStepIndex;
+      const timeTaken = Math.min(
+        state.totalDuration,
+        Math.max(0.1, state.totalDuration - state.timeRemaining)
+      );
+
+      if (completedAll) {
+        sound.playVictory();
+      } else {
+        sound.playError();
+      }
+
+      saveHighScore(state.difficulty, extractedCount, state.targetCount, timeTaken);
+      const cfg = DIFFICULTIES[state.difficulty];
+
+      if (completedAll) {
+        resultBadge.textContent = 'CHALLENGE CONQUERED';
+        resultHeadline.textContent = `Cleared ${state.targetCount} Targets in ${timeTaken.toFixed(1)}s!`;
+        resultSubheadline.textContent = `Filtered out ${cfg.distractorCount} interleaved distractors across a pool of ${cfg.poolSize} on ${cfg.label} (${state.pattern.toUpperCase()}).`;
+      } else {
+        resultBadge.textContent = 'TIME EXPIRED (60.0s)';
+        resultHeadline.textContent = `Extracted ${extractedCount} of ${state.targetCount} Targets`;
+        resultSubheadline.textContent = `Pool of ${cfg.poolSize} (${cfg.targetCount} targets, ${cfg.distractorCount} distractors) on ${cfg.label} (${state.pattern.toUpperCase()}).`;
+      }
+
+      document.getElementById('resExtracted').textContent = `${extractedCount} / ${state.targetCount}`;
+      document.getElementById('resTime').textContent = `${timeTaken.toFixed(1)}s`;
+      const avgSpeed = extractedCount > 0 ? `${(timeTaken / extractedCount).toFixed(2)}s / #` : '—';
+      document.getElementById('resAvgSpeed').textContent = avgSpeed;
+
+      const totalAttempts = extractedCount + state.mistakes;
+      const accuracy =
+        totalAttempts > 0 ? Math.round((extractedCount / totalAttempts) * 100) : 100;
+      document.getElementById('resAccuracy').textContent = `${accuracy}%`;
+
+      const completionRatio = extractedCount / state.targetCount;
+      let rank = 'C';
+      if (completedAll && accuracy >= 95) rank = 'S+ Elite';
+      else if (completedAll) rank = 'S';
+      else if (completionRatio >= 0.8) rank = 'A';
+      else if (completionRatio >= 0.55) rank = 'B';
+      document.getElementById('resCognitiveRank').textContent = `Cognitive Rating: ${rank}`;
     }
-
-    document.getElementById('resExtracted').textContent = `${extractedCount} / ${state.targetCount}`;
-    document.getElementById('resTime').textContent = `${timeTaken.toFixed(1)}s`;
-    const avgSpeed = extractedCount > 0 ? `${(timeTaken / extractedCount).toFixed(2)}s / #` : '—';
-    document.getElementById('resAvgSpeed').textContent = avgSpeed;
-
-    const totalAttempts = extractedCount + state.mistakes;
-    const accuracy =
-      totalAttempts > 0 ? Math.round((extractedCount / totalAttempts) * 100) : 100;
-    document.getElementById('resAccuracy').textContent = `${accuracy}%`;
-
-    const completionRatio = extractedCount / state.targetCount;
-    let rank = 'C';
-    if (completedAll && accuracy >= 95) rank = 'S+ Elite';
-    else if (completedAll) rank = 'S';
-    else if (completionRatio >= 0.8) rank = 'A';
-    else if (completionRatio >= 0.55) rank = 'B';
-    document.getElementById('resCognitiveRank').textContent = `Cognitive Rating: ${rank}`;
 
     const splitContainer = document.getElementById('splitBarsContainer');
     splitContainer.innerHTML = '';
@@ -1326,11 +1679,13 @@
   });
 
   btnChangeConfig.addEventListener('click', () => {
+    syncNetworkModeUI();
     resultsModal.classList.remove('active');
     setupModal.classList.add('active');
   });
 
   btnMenu.addEventListener('click', () => {
+    syncNetworkModeUI();
     state.status = 'menu';
     state.draggingNode = null;
     extractionFrame.classList.remove('dragging-active');
@@ -1400,10 +1755,16 @@
   });
 
   // --- Initial Boot ---
-  updateHighScoreBadges();
+  syncNetworkModeUI();
   resizeCanvas();
   createNodes();
   updateHUD();
   state.lastFrameTime = performance.now();
+
+  // If app loads while OFFLINE, bypass the difficulty selection screen and launch Survival Sweep immediately
+  if (!navigator.onLine) {
+    startGame();
+  }
+
   requestAnimationFrame(tick);
 })();

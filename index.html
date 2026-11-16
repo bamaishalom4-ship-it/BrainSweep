@@ -3,7 +3,13 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <meta name="theme-color" content="#fc6200" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
   <title>BrainSweep — Cognitive Number Extraction Game</title>
+  <link rel="manifest" href="manifest.json" />
+  <link rel="icon" href="icon.svg" type="image/svg+xml" />
+  <link rel="apple-touch-icon" href="icon.svg" />
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=VT323&display=swap" rel="stylesheet">
@@ -48,7 +54,7 @@
           </div>
         </div>
 
-        <div class="hud-card pace-card">
+        <div class="hud-card pace-card" id="paceHudCard">
           <span class="hud-label">PACE / AVG</span>
           <div class="hud-value-wrap">
             <span class="hud-value mono" id="hudPace">—</span>
@@ -101,8 +107,14 @@
 
     <!-- Main Game Stage -->
     <main class="stage-wrapper">
+      <!-- Offline Survival Sweep Status Banner -->
+      <div class="offline-banner" id="offlineStageBanner" hidden>
+        <span>⚡ OFFLINE MODE: SURVIVAL SWEEP</span>
+        <span class="offline-banner-sub" id="offlineStageBest">Best Offline Score: 0</span>
+      </div>
+
       <!-- Horizontally Centered Next Target HUD Dock Directly Above Arena -->
-      <div class="center-target-dock">
+      <div class="center-target-dock" id="centerTargetDock">
         <div class="hud-card target-card" id="targetHudCard">
           <span class="hud-label">NEXT TARGET</span>
           <div class="hud-value-wrap">
@@ -158,13 +170,28 @@
     <div class="modal-backdrop active" id="setupModal">
       <div class="modal-card">
         <div class="modal-header">
-          <span class="badge-pill">COGNITIVE TRAINING LAB</span>
-          <h2>Configure Your Session</h2>
-          <p>Scan the moving field, filter out interleaved distractor gaps, and drag targets out in ascending order before the 60s timer expires.</p>
+          <span class="badge-pill" id="setupBadgePill">COGNITIVE TRAINING LAB</span>
+          <h2 id="setupHeadline">Configure Your Session</h2>
+          <p id="setupSubheadline">Scan the moving field, filter out interleaved distractor gaps, and drag targets out in ascending order before the 60s timer expires.</p>
         </div>
 
-        <!-- Difficulty Selection -->
-        <div class="config-section">
+        <!-- Offline Mode Banner & Dedicated Survival Sweep Briefing (Shown when Offline) -->
+        <div class="offline-menu-panel" id="offlineMenuPanel" hidden>
+          <div class="offline-banner menu-offline-banner">
+            <span>⚡ OFFLINE MODE: SURVIVAL SWEEP ⚡</span>
+          </div>
+          <div class="offline-survival-card">
+            <div class="diff-top">
+              <span class="diff-name">Endless Sequential Pull</span>
+              <span class="diff-time">60s Survival</span>
+            </div>
+            <p class="diff-desc">Extract sequential numbers (1, 2, 3...) as fast as possible in 60 seconds. Extracting a target immediately spawns the next sequential number! Avoid non-target distractors (-2s penalty).</p>
+            <div class="diff-best" id="bestOffline">Best Offline Score: 0</div>
+          </div>
+        </div>
+
+        <!-- Online Difficulty Selection (Shown when Online) -->
+        <div class="config-section" id="onlineDifficultySection">
           <label class="config-label">1. Select Difficulty (60 Seconds Time Limit)</label>
           <div class="difficulty-grid" id="difficultyGrid">
             <button type="button" class="diff-card active" data-difficulty="easy">

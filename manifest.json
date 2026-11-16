@@ -1,0 +1,19 @@
+{
+  "name": "BrainSweep — Cognitive Matrix",
+  "short_name": "BrainSweep",
+  "description": "High-speed visual scanning, peripheral tracking, and selective attention cognitive trainer. Includes Offline Survival Sweep mode.",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "background_color": "#050200",
+  "theme_color": "#fc6200",
+  "icons": [
+    {
+      "src": "./icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}

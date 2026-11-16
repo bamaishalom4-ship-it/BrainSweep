@@ -226,6 +226,67 @@ html, body {
   min-height: 0;
 }
 
+/* Offline Mode Banner & HUD Adjustments */
+.offline-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 6px 14px;
+  background: var(--text-main);
+  color: #050200;
+  border: 2px solid var(--text-bright);
+  font-family: var(--font-pixel);
+  font-size: 0.54rem;
+  letter-spacing: 0.06em;
+  flex-shrink: 0;
+}
+
+.offline-banner[hidden],
+.offline-menu-panel[hidden],
+.config-section[hidden] {
+  display: none !important;
+}
+
+.offline-banner-sub {
+  font-size: 0.5rem;
+  background: #050200;
+  color: var(--text-main);
+  padding: 3px 8px;
+}
+
+.offline-menu-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.menu-offline-banner {
+  justify-content: center;
+  text-align: center;
+  padding: 8px 12px;
+  font-size: 0.6rem;
+}
+
+.offline-survival-card {
+  background: #0c0400;
+  border: 2px solid var(--text-main);
+  padding: 14px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+/* When in Offline Survival Sweep Mode: Hide Next Target & Pace/Avg, highlight Timer & Extracted */
+body.offline-mode #centerTargetDock,
+body.offline-mode #paceHudCard {
+  display: none !important;
+}
+
+body.offline-mode .hud-card {
+  min-width: 155px;
+}
+
 /* Horizontally Centered Next Target Dock Directly Above Arena */
 .center-target-dock {
   display: flex;
@@ -1036,6 +1097,18 @@ html, body {
     display: grid;
     grid-template-columns: repeat(3, 1fr);
     gap: 6px;
+  }
+  body.offline-mode .hud-bar {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  body.offline-mode .hud-value {
+    font-size: 0.76rem;
+  }
+  .offline-banner {
+    font-size: 0.44rem;
+    padding: 5px 8px;
+    flex-wrap: wrap;
+    justify-content: center;
   }
   .target-card {
     min-width: 190px;
