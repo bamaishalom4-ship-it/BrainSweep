@@ -6,9 +6,8 @@
 
 (() => {
   // --- Global Leaderboard Google Apps Script Web App Endpoint ---
-  // Paste your deployed Google Apps Script Web App URL (ending in /exec) here:
   const DEFAULT_LEADERBOARD_API_URL =
-    'https://script.google.com/macros/s/AKfycbz_PASTE_YOUR_WEB_APP_URL_HERE/exec';
+    'https://script.google.com/macros/s/AKfycbziXn-4cNUEga8XpnoPAF22gOtCH9cIFaj2HojI1A4Aap_yNzCWkss37ne3U3kEic-A/exec';
   const USER_STORAGE_KEY = 'brainsweep_user';
   const LOCAL_LB_FALLBACK_KEY = 'brainsweep_local_lb_mirror_v1';
 

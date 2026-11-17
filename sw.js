@@ -2,7 +2,7 @@
  * BrainSweep Service Worker — 100% Offline PWA Cache
  */
 
-const CACHE_NAME = 'brainsweep-pwa-v1';
+const CACHE_NAME = 'brainsweep-pwa-v2';
 const CORE_ASSETS = [
   './',
   './index.html',
@@ -35,6 +35,11 @@ self.addEventListener('activate', (event) => {
 self.addEventListener('fetch', (event) => {
   const { request } = event;
   if (request.method !== 'GET') return;
+
+  // Never cache live Google Apps Script Leaderboard API requests
+  if (request.url && request.url.includes('script.google')) {
+    return;
+  }
 
   event.respondWith(
     caches.match(request).then((cachedResponse) => {
