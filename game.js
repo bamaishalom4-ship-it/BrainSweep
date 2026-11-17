@@ -1567,6 +1567,7 @@
     if (lvlModal) lvlModal.classList.remove('active');
     if (setModal) setModal.classList.remove('active');
     if (trajModal) trajModal.classList.remove('active');
+    document.body.classList.remove('results-active');
     document.body.classList.add('playing-active');
 
     resizeCanvas();
@@ -1597,6 +1598,7 @@
   function finishGame(completedAll) {
     state.status = 'ended';
     document.body.classList.remove('playing-active');
+    document.body.classList.add('results-active');
     state.draggingNode = null;
     extractionFrame.classList.remove('dragging-active');
 
@@ -1884,6 +1886,7 @@
 
   function navigateToScreen(tabName) {
     document.body.classList.remove('playing-active');
+    document.body.classList.remove('results-active');
     if (state.status === 'playing') {
       state.status = 'menu';
       state.draggingNode = null;

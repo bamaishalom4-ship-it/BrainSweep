@@ -1548,6 +1548,10 @@ body.offline-mode .hud-card {
   padding: 14px 14px 76px 14px;
 }
 
+#resultsModal {
+  padding: 14px;
+}
+
 .sub-modal-backdrop {
   z-index: 135;
 }
@@ -1917,7 +1921,8 @@ body.offline-mode .hud-card {
   z-index: 125;
 }
 
-body.playing-active .bottom-nav-tray {
+body.playing-active .bottom-nav-tray,
+body.results-active .bottom-nav-tray {
   display: none !important;
 }
 
