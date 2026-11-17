@@ -5,6 +5,34 @@
  */
 
 (() => {
+  // --- Global Leaderboard Google Apps Script Web App Endpoint ---
+  // Paste your deployed Google Apps Script Web App URL (ending in /exec) here:
+  const DEFAULT_LEADERBOARD_API_URL =
+    'https://script.google.com/macros/s/AKfycbz_PASTE_YOUR_WEB_APP_URL_HERE/exec';
+  const USER_STORAGE_KEY = 'brainsweep_user';
+  const LOCAL_LB_FALLBACK_KEY = 'brainsweep_local_lb_mirror_v1';
+
+  function getLeaderboardApiUrl() {
+    try {
+      const custom = localStorage.getItem('brainsweep_api_url');
+      if (custom && custom.startsWith('https://script.google.com/')) {
+        return custom.trim();
+      }
+    } catch {
+      // ignore storage errors
+    }
+    return DEFAULT_LEADERBOARD_API_URL;
+  }
+
+  function isApiUrlConfigured() {
+    const url = getLeaderboardApiUrl();
+    return Boolean(
+      url &&
+        url.startsWith('https://script.google.com/') &&
+        !url.includes('PASTE_YOUR_WEB_APP_URL_HERE')
+    );
+  }
+
   // --- 1. Difficulty Progression & Cognitive Ratios Configuration (Online Mode) ---
   const DIFFICULTIES = {
     easy: {
@@ -1066,7 +1094,7 @@
       return;
     }
 
-    // --- Online Mode Win/Progression Check ---
+    // Check if all targetCount targets (12, 20, or 25) have been found!
     if (state.currentStepIndex >= state.targetCount) {
       spawnFloatingText(dropX, dropY, `#${node.value} CLEAR!`, '#ffa347');
       updateHUD();
@@ -1606,6 +1634,9 @@
       else if (completionRatio >= 0.8) rank = 'A';
       else if (completionRatio >= 0.55) rank = 'B';
       document.getElementById('resCognitiveRank').textContent = `Cognitive Rating: ${rank}`;
+
+      // Step 4: Submit score to Global Leaderboard or prompt registration if no user profile exists
+      handleGameEndLeaderboardSubmission(state.difficulty, extractedCount);
     }
 
     const splitContainer = document.getElementById('splitBarsContainer');
@@ -1737,6 +1768,14 @@
   });
 
   window.addEventListener('keydown', (e) => {
+    const tag = e.target && e.target.tagName ? e.target.tagName.toUpperCase() : '';
+    if (tag === 'INPUT' || tag === 'TEXTAREA') {
+      if (e.key === 'Escape' && registerModal && registerModal.classList.contains('active')) {
+        btnCancelRegister.click();
+      }
+      return;
+    }
+
     if (e.key === 'h' || e.key === 'H') {
       btnHint.click();
     } else if (e.key === 'm' || e.key === 'M') {
@@ -1746,7 +1785,11 @@
     } else if (e.key === 'i' || e.key === 'I') {
       btnInfo.click();
     } else if (e.key === 'Escape') {
-      if (infoModal.classList.contains('active')) {
+      if (registerModal && registerModal.classList.contains('active')) {
+        btnCancelRegister.click();
+      } else if (leaderboardModal && leaderboardModal.classList.contains('active')) {
+        btnCloseLeaderboard.click();
+      } else if (infoModal.classList.contains('active')) {
         btnCloseInfo.click();
       } else {
         btnMenu.click();
@@ -1798,7 +1841,488 @@
     }
   }
 
+  // --- Global Leaderboard & Player Registration Logic ---
+  const registerModal = document.getElementById('registerModal');
+  const registerForm = document.getElementById('registerForm');
+  const regUsernameInput = document.getElementById('regUsername');
+  const regEmailInput = document.getElementById('regEmail');
+  const regErrorMsg = document.getElementById('regErrorMsg');
+  const btnCancelRegister = document.getElementById('btnCancelRegister');
+  const btnSubmitRegisterText = document.getElementById('btnSubmitRegisterText');
+
+  const leaderboardModal = document.getElementById('leaderboardModal');
+  const leaderboardTabs = document.getElementById('leaderboardTabs');
+  const leaderboardTableBody = document.getElementById('leaderboardTableBody');
+  const lbUserIndicator = document.getElementById('lbUserIndicator');
+  const btnCloseLeaderboard = document.getElementById('btnCloseLeaderboard');
+  const btnRefreshLeaderboard = document.getElementById('btnRefreshLeaderboard');
+  const btnLbChangeUser = document.getElementById('btnLbChangeUser');
+
+  const btnLeaderboardHome = document.getElementById('btnLeaderboardHome');
+  const btnLeaderboardResults = document.getElementById('btnLeaderboardResults');
+  const btnChangeUser = document.getElementById('btnChangeUser');
+  const currentPlayerNameEl = document.getElementById('currentPlayerName');
+
+  let activeLeaderboardTab = 'easy';
+  let pendingPostRegistrationCallback = null;
+  let pendingScorePayload = null;
+
+  function getSavedUser() {
+    try {
+      const raw = localStorage.getItem(USER_STORAGE_KEY);
+      if (!raw) return null;
+      const parsed = JSON.parse(raw);
+      if (parsed && parsed.username && parsed.email) {
+        return {
+          username: String(parsed.username).trim(),
+          email: String(parsed.email).trim().toLowerCase(),
+        };
+      }
+      return null;
+    } catch {
+      return null;
+    }
+  }
+
+  function saveUserToLocalStorage(username, email) {
+    const cleanUser = {
+      username: String(username).trim(),
+      email: String(email).trim().toLowerCase(),
+    };
+    try {
+      localStorage.setItem(USER_STORAGE_KEY, JSON.stringify(cleanUser));
+    } catch {
+      // ignore storage errors
+    }
+    syncPlayerProfileUI();
+    return cleanUser;
+  }
+
+  function syncPlayerProfileUI() {
+    const user = getSavedUser();
+    if (currentPlayerNameEl) {
+      currentPlayerNameEl.textContent = user ? user.username : 'GUEST (UNREGISTERED)';
+    }
+    if (lbUserIndicator) {
+      lbUserIndicator.textContent = user ? `Playing as: ${user.username}` : 'Playing as: Guest';
+    }
+  }
+
+  // Local mirror helper so leaderboard & duplicate username checks also work before Web App URL is pasted
+  function loadLocalLeaderboardMirror() {
+    try {
+      const raw = localStorage.getItem(LOCAL_LB_FALLBACK_KEY);
+      return raw ? JSON.parse(raw) : [];
+    } catch {
+      return [];
+    }
+  }
+
+  function saveLocalLeaderboardMirror(rows) {
+    try {
+      localStorage.setItem(LOCAL_LB_FALLBACK_KEY, JSON.stringify(rows));
+    } catch {
+      // ignore
+    }
+  }
+
+  function upsertLocalLeaderboardMirror({ username, email, difficulty, score }) {
+    const rows = loadLocalLeaderboardMirror();
+    const normUser = username.trim().toLowerCase();
+    const normEmail = email.trim().toLowerCase();
+    const existing = rows.find((r) => String(r.username).trim().toLowerCase() === normUser);
+
+    if (existing) {
+      if (existing.email && existing.email.toLowerCase() !== normEmail) {
+        return {
+          status: 'error',
+          code: 'USERNAME_TAKEN',
+          message: 'Username already taken. Please choose another.',
+        };
+      }
+      const key =
+        difficulty === 'medium'
+          ? 'mediumScore'
+          : difficulty === 'hard'
+            ? 'hardScore'
+            : 'easyScore';
+      if ((Number(score) || 0) > (Number(existing[key]) || 0)) {
+        existing[key] = Number(score) || 0;
+      }
+      saveLocalLeaderboardMirror(rows);
+      return { status: 'ok', updated: true };
+    }
+
+    rows.push({
+      username: username.trim(),
+      email: normEmail,
+      easyScore: difficulty === 'easy' ? Number(score) || 0 : 0,
+      mediumScore: difficulty === 'medium' ? Number(score) || 0 : 0,
+      hardScore: difficulty === 'hard' ? Number(score) || 0 : 0,
+    });
+    saveLocalLeaderboardMirror(rows);
+    return { status: 'ok', created: true };
+  }
+
+  function getLocalTop50ForDifficulty(difficulty) {
+    const rows = loadLocalLeaderboardMirror();
+    const key =
+      difficulty === 'medium'
+        ? 'mediumScore'
+        : difficulty === 'hard'
+          ? 'hardScore'
+          : 'easyScore';
+
+    return rows
+      .filter((r) => r.username && (Number(r[key]) || 0) > 0)
+      .sort((a, b) => (Number(b[key]) || 0) - (Number(a[key]) || 0))
+      .slice(0, 50)
+      .map((r, idx) => ({
+        position: idx + 1,
+        username: r.username,
+        score: Number(r[key]) || 0,
+      }));
+  }
+
+  // Send POST request to Google Apps Script Web App
+  async function postScoreToBackend({ username, email, difficulty, score, action = 'submit' }) {
+    if (!isApiUrlConfigured()) {
+      return upsertLocalLeaderboardMirror({ username, email, difficulty, score });
+    }
+
+    const apiUrl = getLeaderboardApiUrl();
+    const response = await fetch(apiUrl, {
+      method: 'POST',
+      // Use text/plain to avoid CORS preflight block on Google Apps Script Web Apps
+      headers: {
+        'Content-Type': 'text/plain;charset=utf-8',
+      },
+      body: JSON.stringify({
+        action,
+        username: username.trim(),
+        email: email.trim().toLowerCase(),
+        difficulty: difficulty || 'easy',
+        score: Number(score) || 0,
+      }),
+    });
+
+    const data = await response.json();
+    if (data && data.status === 'ok') {
+      upsertLocalLeaderboardMirror({ username, email, difficulty, score });
+    }
+    return data;
+  }
+
+  // Fetch Top 50 for a difficulty tab from Google Apps Script Web App
+  async function fetchLeaderboardEntries(difficulty) {
+    if (!isApiUrlConfigured()) {
+      return getLocalTop50ForDifficulty(difficulty);
+    }
+
+    const apiUrl = getLeaderboardApiUrl();
+    const url = `${apiUrl}${apiUrl.includes('?') ? '&' : '?'}difficulty=${encodeURIComponent(difficulty)}`;
+    const response = await fetch(url, { method: 'GET' });
+    const data = await response.json();
+
+    if (data && data.status === 'ok' && Array.isArray(data.entries)) {
+      return data.entries;
+    }
+    throw new Error((data && data.message) || 'Failed to load leaderboard');
+  }
+
+  function showRegistrationError(msg) {
+    if (!regErrorMsg) return;
+    regErrorMsg.textContent = msg;
+    regErrorMsg.hidden = false;
+  }
+
+  function clearRegistrationError() {
+    if (!regErrorMsg) return;
+    regErrorMsg.textContent = '';
+    regErrorMsg.hidden = true;
+  }
+
+  function openRegistrationModal({ prefill = true, onComplete = null } = {}) {
+    if (!registerModal) return;
+    clearRegistrationError();
+    pendingPostRegistrationCallback = onComplete;
+
+    const existing = getSavedUser();
+    if (prefill && existing) {
+      regUsernameInput.value = existing.username;
+      regEmailInput.value = existing.email;
+    } else {
+      regUsernameInput.value = '';
+      regEmailInput.value = '';
+    }
+
+    registerModal.classList.add('active');
+    setTimeout(() => regUsernameInput.focus(), 60);
+  }
+
+  function closeRegistrationModal() {
+    if (!registerModal) return;
+    registerModal.classList.remove('active');
+    clearRegistrationError();
+  }
+
+  function renderLeaderboardRows(entries) {
+    if (!leaderboardTableBody) return;
+    leaderboardTableBody.innerHTML = '';
+
+    if (!entries || entries.length === 0) {
+      leaderboardTableBody.innerHTML =
+        '<tr><td colspan="3" class="lb-status-cell">No scores recorded for this difficulty yet. Be #1!</td></tr>';
+      return;
+    }
+
+    const currentUser = getSavedUser();
+    const currentUsernameLower = currentUser ? currentUser.username.toLowerCase() : '';
+
+    entries.slice(0, 50).forEach((item, index) => {
+      const pos = item.position || index + 1;
+      const tr = document.createElement('tr');
+
+      if (pos <= 3) {
+        tr.classList.add(`rank-${pos}`);
+      }
+      if (
+        currentUsernameLower &&
+        String(item.username || '').trim().toLowerCase() === currentUsernameLower
+      ) {
+        tr.classList.add('is-current-user');
+      }
+
+      const tdPos = document.createElement('td');
+      tdPos.className = 'col-pos';
+      tdPos.textContent = `#${pos}`;
+
+      const tdName = document.createElement('td');
+      tdName.className = 'col-name';
+      tdName.textContent = String(item.username || 'Anonymous');
+
+      const tdPts = document.createElement('td');
+      tdPts.className = 'col-pts';
+      tdPts.textContent = String(item.score ?? 0);
+
+      tr.appendChild(tdPos);
+      tr.appendChild(tdName);
+      tr.appendChild(tdPts);
+      leaderboardTableBody.appendChild(tr);
+    });
+  }
+
+  async function loadLeaderboardTab(difficulty) {
+    activeLeaderboardTab = difficulty;
+    if (leaderboardTabs) {
+      leaderboardTabs.querySelectorAll('.lb-tab').forEach((btn) => {
+        const isMatch = btn.dataset.lbDiff === difficulty;
+        btn.classList.toggle('active', isMatch);
+        btn.setAttribute('aria-selected', isMatch ? 'true' : 'false');
+      });
+    }
+
+    if (leaderboardTableBody) {
+      leaderboardTableBody.innerHTML =
+        '<tr><td colspan="3" class="lb-status-cell">Loading Top 50 rankings...</td></tr>';
+    }
+
+    try {
+      const entries = await fetchLeaderboardEntries(difficulty);
+      renderLeaderboardRows(entries);
+    } catch {
+      const fallbackEntries = getLocalTop50ForDifficulty(difficulty);
+      renderLeaderboardRows(fallbackEntries);
+    }
+  }
+
+  function openLeaderboardModal(defaultDiff = state.difficulty) {
+    const user = getSavedUser();
+    if (!user) {
+      // Prompt registration first if no saved brainsweep_user exists
+      openRegistrationModal({
+        prefill: false,
+        onComplete: () => openLeaderboardModal(defaultDiff),
+      });
+      return;
+    }
+
+    syncPlayerProfileUI();
+    leaderboardModal.classList.add('active');
+    loadLeaderboardTab(defaultDiff || 'easy');
+  }
+
+  function handleGameEndLeaderboardSubmission(difficulty, score) {
+    const user = getSavedUser();
+    if (user) {
+      postScoreToBackend({
+        username: user.username,
+        email: user.email,
+        difficulty,
+        score,
+        action: 'submit_score',
+      }).catch(() => {
+        // Fallback saved in local mirror
+      });
+    } else {
+      // No saved user in localStorage: prompt Registration Modal to record their score
+      pendingScorePayload = { difficulty, score };
+      openRegistrationModal({
+        prefill: false,
+        onComplete: () => {
+          pendingScorePayload = null;
+        },
+      });
+    }
+  }
+
+  if (registerForm) {
+    registerForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      clearRegistrationError();
+
+      const username = (regUsernameInput.value || '').trim();
+      const email = (regEmailInput.value || '').trim().toLowerCase();
+
+      if (!username) {
+        showRegistrationError('Username cannot be empty.');
+        return;
+      }
+
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!email || !emailRegex.test(email)) {
+        showRegistrationError('Please enter a valid email address.');
+        return;
+      }
+
+      const prevBtnText = btnSubmitRegisterText ? btnSubmitRegisterText.textContent : 'SAVE & CONTINUE';
+      if (btnSubmitRegisterText) {
+        btnSubmitRegisterText.textContent = 'VERIFYING...';
+      }
+
+      try {
+        const diffToSubmit = pendingScorePayload ? pendingScorePayload.difficulty : state.difficulty;
+        const scoreToSubmit = pendingScorePayload ? pendingScorePayload.score : 0;
+
+        const result = await postScoreToBackend({
+          username,
+          email,
+          difficulty: diffToSubmit,
+          score: scoreToSubmit,
+          action: 'register',
+        });
+
+        if (
+          result &&
+          (result.code === 'USERNAME_TAKEN' ||
+            (result.status === 'error' &&
+              String(result.message || '').toLowerCase().includes('already taken')))
+        ) {
+          showRegistrationError('Username already taken. Please choose another.');
+          return;
+        }
+
+        if (result && result.status === 'error') {
+          showRegistrationError(result.message || 'Registration failed. Please try again.');
+          return;
+        }
+
+        // Save verified user to localStorage
+        saveUserToLocalStorage(username, email);
+        pendingScorePayload = null;
+        closeRegistrationModal();
+
+        if (typeof pendingPostRegistrationCallback === 'function') {
+          const cb = pendingPostRegistrationCallback;
+          pendingPostRegistrationCallback = null;
+          cb();
+        }
+      } catch {
+        // Offline or network error: still check local mirror and save profile
+        const localCheck = upsertLocalLeaderboardMirror({
+          username,
+          email,
+          difficulty: pendingScorePayload ? pendingScorePayload.difficulty : state.difficulty,
+          score: pendingScorePayload ? pendingScorePayload.score : 0,
+        });
+        if (localCheck.code === 'USERNAME_TAKEN') {
+          showRegistrationError('Username already taken. Please choose another.');
+          return;
+        }
+        saveUserToLocalStorage(username, email);
+        pendingScorePayload = null;
+        closeRegistrationModal();
+        if (typeof pendingPostRegistrationCallback === 'function') {
+          const cb = pendingPostRegistrationCallback;
+          pendingPostRegistrationCallback = null;
+          cb();
+        }
+      } finally {
+        if (btnSubmitRegisterText) {
+          btnSubmitRegisterText.textContent = prevBtnText;
+        }
+      }
+    });
+  }
+
+  if (btnCancelRegister) {
+    btnCancelRegister.addEventListener('click', () => {
+      pendingPostRegistrationCallback = null;
+      pendingScorePayload = null;
+      closeRegistrationModal();
+    });
+  }
+
+  if (btnLeaderboardHome) {
+    btnLeaderboardHome.addEventListener('click', () => {
+      openLeaderboardModal(state.difficulty);
+    });
+  }
+
+  if (btnLeaderboardResults) {
+    btnLeaderboardResults.addEventListener('click', () => {
+      openLeaderboardModal(state.difficulty);
+    });
+  }
+
+  if (btnChangeUser) {
+    btnChangeUser.addEventListener('click', () => {
+      openRegistrationModal({ prefill: true });
+    });
+  }
+
+  if (btnLbChangeUser) {
+    btnLbChangeUser.addEventListener('click', () => {
+      leaderboardModal.classList.remove('active');
+      openRegistrationModal({
+        prefill: true,
+        onComplete: () => openLeaderboardModal(activeLeaderboardTab),
+      });
+    });
+  }
+
+  if (btnCloseLeaderboard) {
+    btnCloseLeaderboard.addEventListener('click', () => {
+      leaderboardModal.classList.remove('active');
+    });
+  }
+
+  if (btnRefreshLeaderboard) {
+    btnRefreshLeaderboard.addEventListener('click', () => {
+      loadLeaderboardTab(activeLeaderboardTab);
+    });
+  }
+
+  if (leaderboardTabs) {
+    leaderboardTabs.addEventListener('click', (e) => {
+      const tab = e.target.closest('.lb-tab');
+      if (!tab) return;
+      loadLeaderboardTab(tab.dataset.lbDiff);
+    });
+  }
+
   // --- Initial Boot ---
+  syncPlayerProfileUI();
   initIosInstallPrompt();
   syncNetworkModeUI();
   resizeCanvas();

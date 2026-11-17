@@ -169,10 +169,44 @@
     <!-- Start / Configuration Modal Overlay -->
     <div class="modal-backdrop active" id="setupModal">
       <div class="modal-card">
-        <div class="modal-header">
-          <span class="badge-pill" id="setupBadgePill">COGNITIVE TRAINING LAB</span>
-          <h2 id="setupHeadline">Configure Your Session</h2>
-          <p id="setupSubheadline">Scan the moving field, filter out interleaved distractor gaps, and drag targets out in ascending order before the 60s timer expires.</p>
+        <div class="modal-header setup-header-row">
+          <div>
+            <span class="badge-pill" id="setupBadgePill">COGNITIVE TRAINING LAB</span>
+            <h2 id="setupHeadline">Configure Your Session</h2>
+            <p id="setupSubheadline">Scan the moving field, filter out interleaved distractor gaps, and drag targets out in ascending order before the 60s timer expires.</p>
+          </div>
+
+          <!-- High Score Podium Button (Gold/Silver Podium with '1') -->
+          <button type="button" class="podium-btn" id="btnLeaderboardHome" title="Global High Scores Leaderboard" aria-label="Open High Scores Leaderboard">
+            <svg class="podium-svg" viewBox="0 0 48 48" width="38" height="38" aria-hidden="true">
+              <!-- Silver 2nd Place Left Step -->
+              <rect x="4" y="24" width="12" height="18" fill="#9ca3af" stroke="#e5e7eb" stroke-width="1.5"/>
+              <rect x="4" y="21" width="12" height="3" fill="#d1d5db"/>
+              <!-- Bronze/Silver 3rd Place Right Step -->
+              <rect x="32" y="28" width="12" height="14" fill="#6b7280" stroke="#d1d5db" stroke-width="1.5"/>
+              <rect x="32" y="25" width="12" height="3" fill="#9ca3af"/>
+              <!-- Gold 1st Place Center Pedestal with '1' -->
+              <rect x="16" y="14" width="16" height="28" fill="#f59e0b" stroke="#fde047" stroke-width="2"/>
+              <rect x="15" y="11" width="18" height="3.5" fill="#fde047"/>
+              <!-- Number '1' on Center Podium -->
+              <path d="M22 21h3v13h-3v-10h-2v-2z" fill="#050200"/>
+              <rect x="20" y="34" width="8" height="2.2" fill="#050200"/>
+              <!-- Base Platform -->
+              <rect x="2" y="42" width="44" height="3" fill="#fc6200"/>
+            </svg>
+            <span class="podium-btn-label">HIGH SCORES</span>
+          </button>
+        </div>
+
+        <!-- Player Profile & Change User Bar -->
+        <div class="player-profile-bar" id="playerProfileBar">
+          <div class="profile-info">
+            <span class="profile-tag">PLAYER:</span>
+            <span class="profile-name" id="currentPlayerName">GUEST (UNREGISTERED)</span>
+          </div>
+          <div class="profile-actions">
+            <button type="button" class="mini-action-btn" id="btnChangeUser">Change User</button>
+          </div>
         </div>
 
         <!-- Offline Mode Banner & Dedicated Survival Sweep Briefing (Shown when Offline) -->
@@ -346,9 +380,106 @@
 
         <div class="modal-footer results-actions">
           <button type="button" class="secondary-btn" id="btnChangeConfig">Change Settings</button>
+          <button type="button" class="secondary-btn" id="btnLeaderboardResults">🏆 High Scores</button>
           <button type="button" class="primary-btn" id="btnPlayAgain">
             <span>PLAY AGAIN</span>
           </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Player Registration Modal (Username & Email) -->
+    <div class="modal-backdrop" id="registerModal">
+      <div class="modal-card register-card">
+        <div class="modal-header">
+          <span class="badge-pill">GLOBAL LEADERBOARD PROFILE</span>
+          <h2>Player Registration</h2>
+          <p>Enter your unique callsign and email to record your scores on the Global BrainSweep Leaderboard.</p>
+        </div>
+
+        <form id="registerForm" class="register-form" novalidate>
+          <div class="form-field">
+            <label for="regUsername">USERNAME (UNIQUE)</label>
+            <input
+              type="text"
+              id="regUsername"
+              name="username"
+              maxlength="20"
+              placeholder="e.g. NeoCortex99"
+              autocomplete="username"
+              required
+            />
+          </div>
+
+          <div class="form-field">
+            <label for="regEmail">EMAIL ADDRESS</label>
+            <input
+              type="email"
+              id="regEmail"
+              name="email"
+              maxlength="80"
+              placeholder="e.g. player@domain.com"
+              autocomplete="email"
+              required
+            />
+          </div>
+
+          <div class="form-error" id="regErrorMsg" hidden></div>
+
+          <div class="modal-footer register-actions">
+            <button type="button" class="secondary-btn" id="btnCancelRegister">Cancel</button>
+            <button type="submit" class="primary-btn" id="btnSubmitRegister">
+              <span id="btnSubmitRegisterText">SAVE &amp; CONTINUE</span>
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <!-- Global High Scores Leaderboard Modal -->
+    <div class="modal-backdrop" id="leaderboardModal">
+      <div class="modal-card leaderboard-card">
+        <div class="leaderboard-top-bar">
+          <div class="leaderboard-title-wrap">
+            <span class="badge-pill">TOP 50 GLOBAL RANKINGS</span>
+            <h2>HIGH SCORES</h2>
+          </div>
+          <button type="button" class="icon-btn icon-only" id="btnCloseLeaderboard" title="Close Leaderboard" aria-label="Close Leaderboard">
+            ✕
+          </button>
+        </div>
+
+        <!-- 3 Difficulty Tabs: EASY | MEDIUM | HARD -->
+        <div class="leaderboard-tabs" id="leaderboardTabs" role="tablist">
+          <button type="button" class="lb-tab active" data-lb-diff="easy" role="tab" aria-selected="true">EASY</button>
+          <button type="button" class="lb-tab" data-lb-diff="medium" role="tab" aria-selected="false">MEDIUM</button>
+          <button type="button" class="lb-tab" data-lb-diff="hard" role="tab" aria-selected="false">HARD</button>
+        </div>
+
+        <!-- Leaderboard Table Container -->
+        <div class="leaderboard-table-wrap">
+          <table class="leaderboard-table" aria-label="Global High Scores">
+            <thead>
+              <tr>
+                <th class="col-pos">POS</th>
+                <th class="col-name">NAME</th>
+                <th class="col-pts">POINTS</th>
+              </tr>
+            </thead>
+            <tbody id="leaderboardTableBody">
+              <tr>
+                <td colspan="3" class="lb-status-cell">Loading global scores...</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="leaderboard-footer">
+          <span class="lb-user-indicator" id="lbUserIndicator">Playing as: —</span>
+          <div class="lb-footer-actions">
+            <button type="button" class="mini-action-btn" id="btnRefreshLeaderboard">↻ Refresh</button>
+            <button type="button" class="mini-action-btn" id="btnLbChangeUser">Change User</button>
+          </div>
         </div>
       </div>
     </div>

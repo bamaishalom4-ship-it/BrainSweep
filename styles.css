@@ -1115,6 +1115,313 @@ body.offline-mode .hud-card {
   color: #050200;
 }
 
+/* --- Global Leaderboard & Registration UI (Grey / Yellow / Orange Arcade Theme) --- */
+.setup-header-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 14px;
+}
+
+.podium-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  padding: 8px 12px;
+  background: #141619;
+  border: 2px solid #ffc400;
+  color: #fde047;
+  cursor: pointer;
+  flex-shrink: 0;
+  box-shadow: 0 0 14px rgba(255, 196, 0, 0.25);
+  transition: transform 0.12s steps(2), background-color 0.12s ease, border-color 0.12s ease;
+}
+
+.podium-btn:hover {
+  background: #23272e;
+  border-color: #ffffff;
+  transform: translateY(-2px);
+}
+
+.podium-btn-label {
+  font-family: var(--font-pixel);
+  font-size: 0.44rem;
+  letter-spacing: 0.05em;
+  color: #fde047;
+  white-space: nowrap;
+}
+
+.player-profile-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 8px 12px;
+  background: #111317;
+  border: 2px solid rgba(156, 163, 175, 0.35);
+}
+
+.profile-info {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.profile-tag {
+  font-family: var(--font-pixel);
+  font-size: 0.5rem;
+  color: #9ca3af;
+}
+
+.profile-name {
+  font-family: var(--font-pixel);
+  font-size: 0.58rem;
+  color: #fde047;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.mini-action-btn {
+  background: #1c1f26;
+  color: var(--text-bright);
+  border: 1.5px solid var(--text-main);
+  padding: 5px 10px;
+  font-family: var(--font-pixel);
+  font-size: 0.48rem;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.mini-action-btn:hover {
+  background: var(--text-main);
+  color: #050200;
+}
+
+/* Registration Modal */
+.register-card {
+  max-width: 460px;
+  background: #0d0f12;
+  border: 3px solid var(--text-main);
+}
+
+.register-form {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.form-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.form-field label {
+  font-family: var(--font-pixel);
+  font-size: 0.54rem;
+  color: #fde047;
+  letter-spacing: 0.05em;
+}
+
+.form-field input {
+  background: #16191f;
+  border: 2px solid #4b5563;
+  color: #f9fafb;
+  padding: 11px 12px;
+  font-family: var(--font-pixel);
+  font-size: 0.65rem;
+  outline: none;
+  user-select: text;
+  -webkit-user-select: text;
+}
+
+.form-field input:focus {
+  border-color: var(--text-main);
+  box-shadow: 0 0 10px rgba(252, 98, 0, 0.35);
+}
+
+.form-error {
+  background: rgba(255, 30, 66, 0.16);
+  border: 2px solid #ff1e42;
+  color: #ff6680;
+  padding: 8px 10px;
+  font-family: var(--font-pixel);
+  font-size: 0.52rem;
+  line-height: 1.45;
+}
+
+.form-error[hidden] {
+  display: none !important;
+}
+
+/* Leaderboard Modal */
+.leaderboard-card {
+  max-width: 580px;
+  background: #111318;
+  border: 3px solid var(--text-main);
+  gap: 14px;
+}
+
+.leaderboard-top-bar {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.leaderboard-title-wrap h2 {
+  font-family: var(--font-pixel);
+  font-size: 1.1rem;
+  color: #fde047;
+  margin-top: 8px;
+}
+
+.leaderboard-tabs {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+  background: #090a0d;
+  padding: 6px;
+  border: 2px solid #374151;
+}
+
+.lb-tab {
+  background: #181b22;
+  border: 2px solid #4b5563;
+  color: #9ca3af;
+  padding: 10px 8px;
+  font-family: var(--font-pixel);
+  font-size: 0.62rem;
+  cursor: pointer;
+  transition: all 0.12s steps(2);
+}
+
+.lb-tab:hover {
+  border-color: var(--text-main);
+  color: var(--text-bright);
+}
+
+.lb-tab.active {
+  background: var(--text-main);
+  border-color: #fde047;
+  color: #050200;
+  box-shadow: 0 0 14px rgba(252, 98, 0, 0.45);
+}
+
+.leaderboard-table-wrap {
+  max-height: 340px;
+  overflow-y: auto;
+  background: #090a0f;
+  border: 2px solid #374151;
+  scrollbar-width: thin;
+}
+
+.leaderboard-table {
+  width: 100%;
+  border-collapse: collapse;
+  text-align: left;
+}
+
+.leaderboard-table thead th {
+  position: sticky;
+  top: 0;
+  background: #1f242d;
+  color: #fde047;
+  font-family: var(--font-pixel);
+  font-size: 0.54rem;
+  padding: 10px 12px;
+  border-bottom: 2px solid var(--text-main);
+  z-index: 2;
+}
+
+.leaderboard-table tbody tr {
+  border-bottom: 1px solid rgba(75, 85, 99, 0.4);
+  font-family: var(--font-pixel);
+  font-size: 0.58rem;
+  color: #e5e7eb;
+}
+
+.leaderboard-table tbody tr:nth-child(even) {
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.leaderboard-table tbody td {
+  padding: 10px 12px;
+}
+
+.col-pos {
+  width: 72px;
+  color: #9ca3af;
+}
+
+.col-pts {
+  width: 110px;
+  text-align: right;
+  color: var(--text-bright);
+}
+
+/* Top 3 Rank Highlights */
+.leaderboard-table tbody tr.rank-1 .col-pos,
+.leaderboard-table tbody tr.rank-1 .col-pts {
+  color: #fde047;
+}
+
+.leaderboard-table tbody tr.rank-2 .col-pos {
+  color: #d1d5db;
+}
+
+.leaderboard-table tbody tr.rank-3 .col-pos {
+  color: #f59e0b;
+}
+
+/* Highlight Current User's Row in Top 50 */
+.leaderboard-table tbody tr.is-current-user {
+  background: rgba(252, 98, 0, 0.24) !important;
+  outline: 2px solid #fde047;
+  outline-offset: -2px;
+  color: #ffffff;
+}
+
+.leaderboard-table tbody tr.is-current-user .col-name,
+.leaderboard-table tbody tr.is-current-user .col-pts {
+  color: #fde047;
+}
+
+.lb-status-cell {
+  text-align: center;
+  padding: 28px 14px !important;
+  color: #9ca3af;
+  font-family: var(--font-pixel);
+  font-size: 0.56rem;
+  line-height: 1.5;
+}
+
+.leaderboard-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  flex-wrap: wrap;
+  padding-top: 6px;
+  border-top: 1px dashed #374151;
+}
+
+.lb-user-indicator {
+  font-family: var(--font-pixel);
+  font-size: 0.5rem;
+  color: #9ca3af;
+}
+
+.lb-footer-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
 /* Mobile & Compact Screen Optimizations */
 @media (max-width: 860px) {
   .app-shell {
