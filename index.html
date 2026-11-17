@@ -20,18 +20,30 @@
   <div class="app-shell">
     <!-- Top Navigation / Status Header -->
     <header class="top-bar">
-      <div class="brand">
-        <div class="brand-logo" aria-hidden="true">
-          <svg viewBox="0 0 32 32" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2.4">
-            <circle cx="16" cy="16" r="12" stroke-dasharray="6 4" />
-            <path d="M16 8a8 8 0 1 0 8 8" stroke-linecap="round" />
-            <circle cx="16" cy="16" r="3" fill="currentColor" />
+      <!-- Top Row: [ Orange High Score Podium (Left) | Player Name (Center) | 3 Orange Lines Menu (Right) ] -->
+      <div class="top-nav-strip">
+        <button type="button" class="top-strip-icon-btn" id="btnLeaderboardTop" title="Global High Scores Leaderboard" aria-label="Open High Scores Leaderboard">
+          <svg viewBox="0 0 36 32" width="26" height="24" fill="currentColor" aria-hidden="true">
+            <!-- Left 2nd-Place Pillar -->
+            <path d="M3 13 L10 13 L11 29 L5 29 Z" />
+            <!-- Right 3rd-Place Pillar -->
+            <path d="M26 16 L33 16 L31 29 L25 29 Z" />
+            <!-- Center 1st-Place Pillar with '1' cutout -->
+            <path fill-rule="evenodd" clip-rule="evenodd" d="M12.5 5 L23.5 5 L22.5 29 L13.5 29 Z M17 9 L19.5 9 L19.5 20 L17 20 L17 12 L15.5 12 L15.5 10.2 Z" />
           </svg>
-        </div>
-        <div>
-          <h1 class="brand-title">BrainSweep</h1>
-          <p class="brand-subtitle">SYS://COGNITIVE_MATRIX_V1.0</p>
-        </div>
+        </button>
+
+        <button type="button" class="top-player-center" id="btnTopPlayerName" title="Click to set or change Player Name">
+          <span class="top-player-name" id="topPlayerNameText">GUEST</span>
+        </button>
+
+        <button type="button" class="top-strip-icon-btn" id="btnMenu" title="Game Setup / Menu (Esc)" aria-label="Open Setup Menu">
+          <svg viewBox="0 0 28 24" width="24" height="22" fill="currentColor" aria-hidden="true">
+            <rect x="2" y="3" width="24" height="3.5" rx="1" />
+            <rect x="2" y="10.25" width="24" height="3.5" rx="1" />
+            <rect x="2" y="17.5" width="24" height="3.5" rx="1" />
+          </svg>
+        </button>
       </div>
 
       <!-- Secondary Telemetry HUD in Header -->
@@ -86,15 +98,6 @@
             <line x1="10" y1="17" x2="14" y2="17"/>
             <rect x="11" y="6" width="2" height="2" fill="currentColor" stroke="none"/>
           </svg>
-        </button>
-        <button class="icon-btn has-label" id="btnMenu" title="Game Setup (Esc)" aria-label="Open Setup Menu">
-          <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2">
-            <rect x="3" y="3" width="7" height="7" rx="1"/>
-            <rect x="14" y="3" width="7" height="7" rx="1"/>
-            <rect x="14" y="14" width="7" height="7" rx="1"/>
-            <rect x="3" y="14" width="7" height="7" rx="1"/>
-          </svg>
-          <span class="btn-label">Setup</span>
         </button>
         <button class="icon-btn icon-only" id="btnReset" title="Reset Round (R)" aria-label="Reset Round">
           <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -169,44 +172,33 @@
     <!-- Start / Configuration Modal Overlay -->
     <div class="modal-backdrop active" id="setupModal">
       <div class="modal-card">
-        <div class="modal-header setup-header-row">
-          <div>
-            <span class="badge-pill" id="setupBadgePill">COGNITIVE TRAINING LAB</span>
-            <h2 id="setupHeadline">Configure Your Session</h2>
-            <p id="setupSubheadline">Scan the moving field, filter out interleaved distractor gaps, and drag targets out in ascending order before the 60s timer expires.</p>
-          </div>
-
-          <!-- High Score Podium Button (Gold/Silver Podium with '1') -->
-          <button type="button" class="podium-btn" id="btnLeaderboardHome" title="Global High Scores Leaderboard" aria-label="Open High Scores Leaderboard">
-            <svg class="podium-svg" viewBox="0 0 48 48" width="38" height="38" aria-hidden="true">
-              <!-- Silver 2nd Place Left Step -->
-              <rect x="4" y="24" width="12" height="18" fill="#9ca3af" stroke="#e5e7eb" stroke-width="1.5"/>
-              <rect x="4" y="21" width="12" height="3" fill="#d1d5db"/>
-              <!-- Bronze/Silver 3rd Place Right Step -->
-              <rect x="32" y="28" width="12" height="14" fill="#6b7280" stroke="#d1d5db" stroke-width="1.5"/>
-              <rect x="32" y="25" width="12" height="3" fill="#9ca3af"/>
-              <!-- Gold 1st Place Center Pedestal with '1' -->
-              <rect x="16" y="14" width="16" height="28" fill="#f59e0b" stroke="#fde047" stroke-width="2"/>
-              <rect x="15" y="11" width="18" height="3.5" fill="#fde047"/>
-              <!-- Number '1' on Center Podium -->
-              <path d="M22 21h3v13h-3v-10h-2v-2z" fill="#050200"/>
-              <rect x="20" y="34" width="8" height="2.2" fill="#050200"/>
-              <!-- Base Platform -->
-              <rect x="2" y="42" width="44" height="3" fill="#fc6200"/>
+        <!-- Top Strip on Home / Setup Screen: [ Orange Podium (Left) | Player Name (Center) | 3 Orange Lines Menu (Right) ] -->
+        <div class="top-nav-strip modal-nav-strip">
+          <button type="button" class="top-strip-icon-btn" id="btnLeaderboardHome" title="Global High Scores Leaderboard" aria-label="Open High Scores Leaderboard">
+            <svg viewBox="0 0 36 32" width="28" height="26" fill="currentColor" aria-hidden="true">
+              <path d="M3 13 L10 13 L11 29 L5 29 Z" />
+              <path d="M26 16 L33 16 L31 29 L25 29 Z" />
+              <path fill-rule="evenodd" clip-rule="evenodd" d="M12.5 5 L23.5 5 L22.5 29 L13.5 29 Z M17 9 L19.5 9 L19.5 20 L17 20 L17 12 L15.5 12 L15.5 10.2 Z" />
             </svg>
-            <span class="podium-btn-label">HIGH SCORES</span>
+          </button>
+
+          <button type="button" class="top-player-center" id="btnChangeUser" title="Click to set or change Player Name">
+            <span class="top-player-name" id="currentPlayerName">GUEST</span>
+          </button>
+
+          <button type="button" class="top-strip-icon-btn" id="btnSetupMenuIcon" title="Game Info &amp; Guide" aria-label="Open Game Info">
+            <svg viewBox="0 0 28 24" width="26" height="24" fill="currentColor" aria-hidden="true">
+              <rect x="2" y="3" width="24" height="3.5" rx="1" />
+              <rect x="2" y="10.25" width="24" height="3.5" rx="1" />
+              <rect x="2" y="17.5" width="24" height="3.5" rx="1" />
+            </svg>
           </button>
         </div>
 
-        <!-- Player Profile & Change User Bar -->
-        <div class="player-profile-bar" id="playerProfileBar">
-          <div class="profile-info">
-            <span class="profile-tag">PLAYER:</span>
-            <span class="profile-name" id="currentPlayerName">GUEST (UNREGISTERED)</span>
-          </div>
-          <div class="profile-actions">
-            <button type="button" class="mini-action-btn" id="btnChangeUser">Change User</button>
-          </div>
+        <div class="modal-header">
+          <span class="badge-pill" id="setupBadgePill">BRAINSWEEP // COGNITIVE MATRIX</span>
+          <h2 id="setupHeadline">Configure Your Session</h2>
+          <p id="setupSubheadline">Scan the moving field, filter out interleaved distractor gaps, and drag targets out in ascending order before the 60s timer expires.</p>
         </div>
 
         <!-- Offline Mode Banner & Dedicated Survival Sweep Briefing (Shown when Offline) -->

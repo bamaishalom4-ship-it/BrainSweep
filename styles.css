@@ -60,53 +60,86 @@ html, body {
 /* Top Bar */
 .top-bar {
   display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
+  flex-direction: column;
+  gap: 8px;
   background: #080300;
   border: 2px solid var(--text-main);
-  padding: 8px 14px;
+  padding: 8px 12px;
   flex-shrink: 0;
 }
 
-.brand {
-  display: flex;
+/* Top Navigation Strip: [ Orange Podium (Left) | Player Name (Center) | 3 Orange Lines (Right) ] */
+.top-nav-strip {
+  display: grid;
+  grid-template-columns: 42px 1fr 42px;
   align-items: center;
-  gap: 10px;
+  width: 100%;
+  padding-bottom: 6px;
+  border-bottom: 1px dashed var(--border-subtle);
 }
 
-.brand-logo {
+.modal-nav-strip {
+  padding-bottom: 12px;
+  margin-bottom: -4px;
+}
+
+.top-strip-icon-btn {
   width: 38px;
-  height: 38px;
-  background: var(--text-main);
-  border: 2px solid var(--text-main);
-  display: flex;
+  height: 36px;
+  background: transparent;
+  color: var(--text-main);
+  border: none;
+  display: inline-flex;
   align-items: center;
   justify-content: center;
-  color: #050200;
-  flex-shrink: 0;
+  cursor: pointer;
+  transition: transform 0.12s steps(2), color 0.12s ease;
 }
 
-.brand-title {
-  font-family: var(--font-pixel);
-  font-size: 0.92rem;
-  letter-spacing: 0.03em;
+.top-strip-icon-btn:last-child {
+  justify-self: end;
+}
+
+.top-strip-icon-btn:hover {
+  color: var(--text-bright);
+  transform: scale(1.08);
+}
+
+.top-player-center {
+  background: transparent;
+  border: none;
   color: var(--text-main);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  justify-self: center;
+  padding: 4px 10px;
+  max-width: 100%;
+  cursor: pointer;
 }
 
-.brand-subtitle {
-  font-family: var(--font-terminal);
-  font-size: 0.95rem;
-  letter-spacing: 0.06em;
-  color: var(--text-muted);
-  margin-top: 2px;
+.top-player-center:hover .top-player-name {
+  color: var(--text-bright);
+  text-decoration: underline;
+}
+
+.top-player-name {
+  font-family: var(--font-pixel);
+  font-size: 0.78rem;
+  letter-spacing: 0.05em;
+  color: var(--text-main);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 /* HUD Bar */
 .hud-bar {
-  display: flex;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
   align-items: stretch;
-  gap: 10px;
+  gap: 8px;
+  width: 100%;
 }
 
 .hud-card {
@@ -186,7 +219,12 @@ html, body {
 .top-actions {
   display: flex;
   align-items: stretch;
+  width: 100%;
   gap: 6px;
+}
+
+.icon-btn.has-label {
+  flex: 1;
 }
 
 .icon-btn {

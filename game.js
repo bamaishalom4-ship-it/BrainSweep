@@ -1858,9 +1858,13 @@
   const btnLbChangeUser = document.getElementById('btnLbChangeUser');
 
   const btnLeaderboardHome = document.getElementById('btnLeaderboardHome');
+  const btnLeaderboardTop = document.getElementById('btnLeaderboardTop');
   const btnLeaderboardResults = document.getElementById('btnLeaderboardResults');
   const btnChangeUser = document.getElementById('btnChangeUser');
+  const btnTopPlayerName = document.getElementById('btnTopPlayerName');
+  const btnSetupMenuIcon = document.getElementById('btnSetupMenuIcon');
   const currentPlayerNameEl = document.getElementById('currentPlayerName');
+  const topPlayerNameTextEl = document.getElementById('topPlayerNameText');
 
   let activeLeaderboardTab = 'easy';
   let pendingPostRegistrationCallback = null;
@@ -1899,8 +1903,12 @@
 
   function syncPlayerProfileUI() {
     const user = getSavedUser();
+    const displayName = user ? user.username : 'GUEST';
     if (currentPlayerNameEl) {
-      currentPlayerNameEl.textContent = user ? user.username : 'GUEST (UNREGISTERED)';
+      currentPlayerNameEl.textContent = displayName;
+    }
+    if (topPlayerNameTextEl) {
+      topPlayerNameTextEl.textContent = displayName;
     }
     if (lbUserIndicator) {
       lbUserIndicator.textContent = user ? `Playing as: ${user.username}` : 'Playing as: Guest';
@@ -2278,6 +2286,12 @@
     });
   }
 
+  if (btnLeaderboardTop) {
+    btnLeaderboardTop.addEventListener('click', () => {
+      openLeaderboardModal(state.difficulty);
+    });
+  }
+
   if (btnLeaderboardResults) {
     btnLeaderboardResults.addEventListener('click', () => {
       openLeaderboardModal(state.difficulty);
@@ -2287,6 +2301,18 @@
   if (btnChangeUser) {
     btnChangeUser.addEventListener('click', () => {
       openRegistrationModal({ prefill: true });
+    });
+  }
+
+  if (btnTopPlayerName) {
+    btnTopPlayerName.addEventListener('click', () => {
+      openRegistrationModal({ prefill: true });
+    });
+  }
+
+  if (btnSetupMenuIcon) {
+    btnSetupMenuIcon.addEventListener('click', () => {
+      btnInfo.click();
     });
   }
 
