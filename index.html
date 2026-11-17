@@ -79,7 +79,7 @@
             <path d="M19.07 4.93a10 10 0 0 1 0 14.14"/>
           </svg>
         </button>
-        <button class="icon-btn icon-only" id="btnInfo" title="Game Info &amp; Guide (I)" aria-label="Game Information">
+        <button class="icon-btn icon-only" id="btnInfo" title="Help &amp; Rules (I)" aria-label="Game Help">
           <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="square">
             <line x1="12" y1="11" x2="12" y2="17"/>
             <line x1="10" y1="11" x2="12" y2="11"/>
@@ -87,14 +87,11 @@
             <rect x="11" y="6" width="2" height="2" fill="currentColor" stroke="none"/>
           </svg>
         </button>
-        <button class="icon-btn has-label" id="btnMenu" title="Game Setup (Esc)" aria-label="Open Setup Menu">
+        <button class="icon-btn has-label" id="btnMenu" title="Return to Home Screen (Esc)" aria-label="Open Home Screen">
           <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2">
-            <rect x="3" y="3" width="7" height="7" rx="1"/>
-            <rect x="14" y="3" width="7" height="7" rx="1"/>
-            <rect x="14" y="14" width="7" height="7" rx="1"/>
-            <rect x="3" y="14" width="7" height="7" rx="1"/>
+            <path d="M3 10.5L12 3l9 7.5V21a1 1 0 0 1-1 1h-5v-6h-6v6H4a1 1 0 0 1-1-1v-10.5z"/>
           </svg>
-          <span class="btn-label">Setup</span>
+          <span class="btn-label">Home</span>
         </button>
         <button class="icon-btn icon-only" id="btnReset" title="Reset Round (R)" aria-label="Reset Round">
           <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -161,148 +158,76 @@
       </section>
     </main>
 
-    <!-- Footer Credit Bar -->
+    <!-- Footer Credit Bar (Gameplay Screen) -->
     <footer class="site-footer">
       <span class="footer-credit">© MadeByKubo 2026</span>
     </footer>
 
-    <!-- Start / Configuration Modal Overlay -->
-    <div class="modal-backdrop active" id="setupModal">
-      <div class="modal-card">
-        <!-- Top Strip on Home / Setup Screen: [ Orange Podium (Left) | Player Name (Center) | 3 Orange Lines Menu (Right) ] -->
-        <div class="top-nav-strip modal-nav-strip">
-          <button type="button" class="top-strip-icon-btn" id="btnLeaderboardHome" title="Global High Scores Leaderboard" aria-label="Open High Scores Leaderboard">
-            <svg viewBox="0 0 36 32" width="28" height="26" fill="currentColor" aria-hidden="true">
-              <path d="M3 13 L10 13 L11 29 L5 29 Z" />
-              <path d="M26 16 L33 16 L31 29 L25 29 Z" />
-              <path fill-rule="evenodd" clip-rule="evenodd" d="M12.5 5 L23.5 5 L22.5 29 L13.5 29 Z M17 9 L19.5 9 L19.5 20 L17 20 L17 12 L15.5 12 L15.5 10.2 Z" />
-            </svg>
-          </button>
-
-          <button type="button" class="top-player-center" id="btnChangeUser" title="Click to set or change Player Name">
-            <span class="top-player-name" id="currentPlayerName">GUEST</span>
-          </button>
-
-          <button type="button" class="top-strip-icon-btn" id="btnSetupMenuIcon" title="Game Info &amp; Guide" aria-label="Open Game Info">
-            <svg viewBox="0 0 28 24" width="26" height="24" fill="currentColor" aria-hidden="true">
-              <rect x="2" y="3" width="24" height="3.5" rx="1" />
-              <rect x="2" y="10.25" width="24" height="3.5" rx="1" />
-              <rect x="2" y="17.5" width="24" height="3.5" rx="1" />
-            </svg>
+    <!-- =====================================================================
+         1. HOME SCREEN OVERLAY (#setupModal / HomeScreen)
+         ===================================================================== -->
+    <div class="modal-backdrop home-screen-backdrop active" id="setupModal">
+      <div class="modal-card home-screen-card">
+        <!-- Player Callsign Strip -->
+        <div class="home-player-strip">
+          <span class="home-player-label">OPERATOR:</span>
+          <button type="button" class="home-player-btn" id="btnChangeUser" title="Click to set or change Player Name">
+            <span id="currentPlayerName">GUEST</span>
+            <span class="edit-tag">[EDIT]</span>
           </button>
         </div>
 
-        <div class="modal-header">
+        <!-- Header -->
+        <div class="modal-header home-header">
           <span class="badge-pill" id="setupBadgePill">BRAINSWEEP // COGNITIVE MATRIX</span>
           <h2 id="setupHeadline">Configure Your Session</h2>
           <p id="setupSubheadline">Scan the moving field, filter out interleaved distractor gaps, and drag targets out in ascending order before the 60s timer expires.</p>
         </div>
 
-        <!-- Offline Mode Banner & Dedicated Survival Sweep Briefing (Shown when Offline) -->
+        <!-- Offline Mode Banner (Shown when device is Offline) -->
         <div class="offline-menu-panel" id="offlineMenuPanel" hidden>
           <div class="offline-banner menu-offline-banner">
             <span>⚡ OFFLINE MODE: SURVIVAL SWEEP ⚡</span>
           </div>
-          <div class="offline-survival-card">
-            <div class="diff-top">
-              <span class="diff-name">Endless Sequential Pull</span>
-              <span class="diff-time">60s Survival</span>
+        </div>
+
+        <!-- Best Play Central Display (Retro Block / Cube Badge) -->
+        <div class="best-play-showcase">
+          <div class="best-play-label">BEST PLAY // HIGHEST SCORE</div>
+          <div class="best-play-block">
+            <span class="best-play-number" id="homeBestScoreValue">0</span>
+          </div>
+          <div class="best-play-sub" id="homeBestScoreSub">TOTAL CUMULATIVE SCORE</div>
+        </div>
+
+        <!-- Start Challenge Prominent Button -->
+        <div class="home-start-wrap">
+          <button type="button" class="primary-btn home-start-btn" id="btnStartGame">
+            <span class="start-btn-diff-tag" id="homeStartDiffLabel">EASY // SPIRAL VORTEX</span>
+            <div class="start-btn-main-row">
+              <span id="homeStartMainText">START 60s CHALLENGE</span>
+              <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.6">
+                <line x1="5" y1="12" x2="19" y2="12"/>
+                <polyline points="12 5 19 12 12 19"/>
+              </svg>
             </div>
-            <p class="diff-desc">Extract sequential numbers (1, 2, 3...) as fast as possible in 60 seconds. Extracting a target immediately spawns the next sequential number! Avoid non-target distractors (-2s penalty).</p>
-            <div class="diff-best" id="bestOffline">Best Offline Score: 0</div>
-          </div>
+          </button>
         </div>
 
-        <!-- Online Difficulty Selection (Shown when Online) -->
-        <div class="config-section" id="onlineDifficultySection">
-          <label class="config-label">1. Select Difficulty (60 Seconds Time Limit)</label>
-          <div class="difficulty-grid" id="difficultyGrid">
-            <button type="button" class="diff-card active" data-difficulty="easy">
-              <div class="diff-top">
-                <span class="diff-name">Easy</span>
-                <span class="diff-time">60s</span>
-              </div>
-              <div class="diff-range">12 / 20</div>
-              <p class="diff-desc">Pool of 20 (1–20): 12 targets &amp; 8 random distractors (60% ratio, ~5s/target). Relaxed scanning pace.</p>
-              <div class="diff-best" id="bestEasy">Best: — / 12</div>
-            </button>
-
-            <button type="button" class="diff-card" data-difficulty="medium">
-              <div class="diff-top">
-                <span class="diff-name">Medium</span>
-                <span class="diff-time">60s</span>
-              </div>
-              <div class="diff-range">20 / 36</div>
-              <p class="diff-desc">Pool of 36 (1–36): 20 targets &amp; 16 random distractors (~55% ratio, ~3s/target). Trains inhibitory control.</p>
-              <div class="diff-best" id="bestMedium">Best: — / 20</div>
-            </button>
-
-            <button type="button" class="diff-card" data-difficulty="hard">
-              <div class="diff-top">
-                <span class="diff-name">Hard</span>
-                <span class="diff-time">60s</span>
-              </div>
-              <div class="diff-range">25 / 50</div>
-              <p class="diff-desc">Pool of 50 (1–50): 25 targets &amp; 25 distractors (50% ratio, ~2.4s/target) at high trajectory velocity.</p>
-              <div class="diff-best" id="bestHard">Best: — / 25</div>
-            </button>
-          </div>
-        </div>
-
-        <!-- Movement Pattern Selection -->
-        <div class="config-section">
-          <label class="config-label">2. Select Trajectory Pattern</label>
-          <div class="pattern-grid" id="patternGrid">
-            <button type="button" class="pattern-chip active" data-pattern="spiral">
-              <span class="pattern-icon">🌀</span>
-              <div>
-                <strong>Spiral Vortex</strong>
-                <small>Concentric inward/outward spiral orbits</small>
-              </div>
-            </button>
-            <button type="button" class="pattern-chip" data-pattern="zigzag">
-              <span class="pattern-icon">⚡</span>
-              <div>
-                <strong>Zig-Zag Sweep</strong>
-                <small>Sharp angular sawtooth vectors</small>
-              </div>
-            </button>
-            <button type="button" class="pattern-chip" data-pattern="random">
-              <span class="pattern-icon">🎲</span>
-              <div>
-                <strong>Random Drift</strong>
-                <small>Chaotic multi-directional elastic motion</small>
-              </div>
-            </button>
-            <button type="button" class="pattern-chip" data-pattern="wave">
-              <span class="pattern-icon">🌊</span>
-              <div>
-                <strong>Harmonic Wave</strong>
-                <small>Flowing sinusoidal streams</small>
-              </div>
-            </button>
-            <button type="button" class="pattern-chip" data-pattern="mixed">
-              <span class="pattern-icon">🔀</span>
-              <div>
-                <strong>Hybrid Chaos</strong>
-                <small>Combines spiral, zig-zag &amp; random</small>
-              </div>
-            </button>
-          </div>
-        </div>
-
-        <!-- Cognitive Modifiers -->
-        <div class="config-section modifiers-row">
-          <label class="toggle-option" title="Allow short flicks or dragging across the border to extract faster">
-            <input type="checkbox" id="chkQuickFlick" checked />
+        <!-- Gameplay Toggles (Stacked Rows) -->
+        <div class="home-toggles-stack">
+          <label class="toggle-option retro-toggle-row" for="chkQuickFlick">
+            <input type="checkbox" id="chkQuickFlick" class="retro-checkbox" checked />
+            <span class="retro-checkbox-box" aria-hidden="true"></span>
             <span class="toggle-text">
               <strong>Quick-Flick Extraction</strong>
               <small>Extract by dragging across the border OR flicking outward</small>
             </span>
           </label>
 
-          <label class="toggle-option" title="Hide the next target number in the HUD so you must hold your count in working memory">
-            <input type="checkbox" id="chkMemoryMode" />
+          <label class="toggle-option retro-toggle-row" for="chkMemoryMode">
+            <input type="checkbox" id="chkMemoryMode" class="retro-checkbox" />
+            <span class="retro-checkbox-box" aria-hidden="true"></span>
             <span class="toggle-text">
               <strong>Working Memory Mode</strong>
               <small>Hides "Next Target" HUD — remember your count!</small>
@@ -310,16 +235,7 @@
           </label>
         </div>
 
-        <div class="modal-footer">
-          <button type="button" class="primary-btn" id="btnStartGame">
-            <span>START 60s CHALLENGE</span>
-            <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.5">
-              <line x1="5" y1="12" x2="19" y2="12"/>
-              <polyline points="12 5 19 12 12 19"/>
-            </svg>
-          </button>
-        </div>
-
+        <!-- Home Screen Credit -->
         <div class="modal-credit">
           <span>© MadeByKubo 2026</span>
           <span class="credit-sep">//</span>
@@ -330,12 +246,258 @@
       </div>
     </div>
 
-    <!-- Results / Cognitive Telemetry Modal -->
+    <!-- =====================================================================
+         2. LEVEL SELECT MODAL (#levelSelectModal — Gamepad Icon)
+         ===================================================================== -->
+    <div class="modal-backdrop" id="levelSelectModal">
+      <div class="modal-card level-select-card">
+        <div class="leaderboard-top-bar">
+          <div class="leaderboard-title-wrap">
+            <span class="badge-pill">STAGE SELECTION // 60s LIMIT</span>
+            <h2>SELECT DIFFICULTY</h2>
+          </div>
+          <button type="button" class="icon-btn icon-only" id="btnCloseLevelSelect" title="Close Level Select" aria-label="Close Level Select">
+            ✕
+          </button>
+        </div>
+
+        <div class="level-cards-vertical" id="difficultyGrid">
+          <!-- EASY CARD -->
+          <div class="level-vertical-card diff-card active" data-difficulty="easy">
+            <div class="level-card-info">
+              <div class="diff-top">
+                <span class="diff-name">EASY MODE</span>
+                <span class="diff-time">60s</span>
+              </div>
+              <div class="diff-range">12 / 20</div>
+              <p class="diff-desc">Pool of 20 (1–20): 12 targets &amp; 8 random distractors (60% ratio, ~5s/target). Relaxed scanning pace.</p>
+              <div class="diff-best" id="bestEasy">Total: 0 pts (Best: —/12)</div>
+            </div>
+            <button type="button" class="level-play-btn" data-play-diff="easy">
+              <span>PLAY</span>
+              <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><polygon points="6 4 20 12 6 20 6 4"/></svg>
+            </button>
+          </div>
+
+          <!-- MEDIUM CARD -->
+          <div class="level-vertical-card diff-card" data-difficulty="medium">
+            <div class="level-card-info">
+              <div class="diff-top">
+                <span class="diff-name">MEDIUM MODE</span>
+                <span class="diff-time">60s</span>
+              </div>
+              <div class="diff-range">20 / 36</div>
+              <p class="diff-desc">Pool of 36 (1–36): 20 targets &amp; 16 random distractors (~55% ratio, ~3s/target). Trains inhibitory control.</p>
+              <div class="diff-best" id="bestMedium">Total: 0 pts (Best: —/20)</div>
+            </div>
+            <button type="button" class="level-play-btn" data-play-diff="medium">
+              <span>PLAY</span>
+              <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><polygon points="6 4 20 12 6 20 6 4"/></svg>
+            </button>
+          </div>
+
+          <!-- HARD CARD -->
+          <div class="level-vertical-card diff-card" data-difficulty="hard">
+            <div class="level-card-info">
+              <div class="diff-top">
+                <span class="diff-name">HARD MODE</span>
+                <span class="diff-time">60s</span>
+              </div>
+              <div class="diff-range">25 / 50</div>
+              <p class="diff-desc">Pool of 50 (1–50): 25 targets &amp; 25 distractors (50% ratio, ~2.4s/target) at high trajectory velocity.</p>
+              <div class="diff-best" id="bestHard">Total: 0 pts (Best: —/25)</div>
+            </div>
+            <button type="button" class="level-play-btn" data-play-diff="hard">
+              <span>PLAY</span>
+              <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><polygon points="6 4 20 12 6 20 6 4"/></svg>
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- =====================================================================
+         3. HELP MODAL (#infoModal — ? Icon: ONLY Rules & Score)
+         ===================================================================== -->
+    <div class="modal-backdrop" id="infoModal">
+      <div class="modal-card info-card">
+        <div class="leaderboard-top-bar">
+          <div class="leaderboard-title-wrap">
+            <span class="badge-pill">SYSTEM MANUAL // GUIDE</span>
+            <h2>HOW TO PLAY</h2>
+          </div>
+          <button type="button" class="icon-btn icon-only" id="btnCloseInfo" title="Close Help" aria-label="Close Help">
+            ✕
+          </button>
+        </div>
+
+        <div class="info-grid">
+          <div class="info-block">
+            <h3>RULES</h3>
+            <p>Scan the moving numbers inside the arena and drag or flick valid target numbers across the dashed extraction border in strict ascending order within <strong>60 seconds</strong>.</p>
+            <p>Distractor ("gap") numbers are randomly interleaved within the number pool. Check the centered <strong>NEXT TARGET</strong> indicator (or the Ghost Trail number spawned where you dropped your last target) and ignore the distractor gaps!</p>
+          </div>
+
+          <div class="info-block">
+            <h3>SCORE</h3>
+            <p>Every valid target number you extract before the 60-second timer expires counts toward your <strong>Session Score</strong>:</p>
+            <ul class="info-list">
+              <li>• <strong>EASY:</strong> Up to 12 points per session (Pool of 20)</li>
+              <li>• <strong>MEDIUM:</strong> Up to 20 points per session (Pool of 36)</li>
+              <li>• <strong>HARD:</strong> Up to 25 points per session (Pool of 50, High Speed)</li>
+            </ul>
+            <p>At the end of each round, your <strong>Session Score</strong> is automatically added to your cumulative <strong>Total Score</strong> on the Global Leaderboard for that difficulty!</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- =====================================================================
+         4. SETTINGS MODAL (#settingsModal — Gear Icon)
+         ===================================================================== -->
+    <div class="modal-backdrop" id="settingsModal">
+      <div class="modal-card settings-card">
+        <div class="leaderboard-top-bar">
+          <div class="leaderboard-title-wrap">
+            <span class="badge-pill">SYSTEM CONFIGURATION</span>
+            <h2>SETTINGS</h2>
+          </div>
+          <button type="button" class="icon-btn icon-only" id="btnCloseSettings" title="Close Settings" aria-label="Close Settings">
+            ✕
+          </button>
+        </div>
+
+        <div class="settings-rows-list">
+          <!-- 1. Sounds Toggle Row -->
+          <button type="button" class="settings-row-btn" id="btnSettingSound">
+            <div class="settings-row-left">
+              <div class="settings-icon-box" id="settingSoundIconBox">
+                <svg id="settingSoundSvgOn" viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2.2">
+                  <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/>
+                  <path d="M15.54 8.46a5 5 0 0 1 0 7.07"/>
+                  <path d="M19.07 4.93a10 10 0 0 1 0 14.14"/>
+                </svg>
+                <svg id="settingSoundSvgOff" viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2.2" hidden>
+                  <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/>
+                  <line x1="23" y1="9" x2="17" y2="15"/>
+                  <line x1="17" y1="9" x2="23" y2="15"/>
+                </svg>
+              </div>
+              <div class="settings-row-text">
+                <span class="settings-row-title">SOUNDS</span>
+                <span class="settings-row-sub">Audio feedback &amp; harmonic chimes</span>
+              </div>
+            </div>
+            <span class="settings-value-badge" id="settingSoundValue">ON</span>
+          </button>
+
+          <!-- 2. Difficulty Cycling Row (Easy -> Medium -> Hard -> Easy) -->
+          <button type="button" class="settings-row-btn" id="btnSettingDifficulty">
+            <div class="settings-row-left">
+              <div class="settings-icon-box">
+                <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2.2">
+                  <rect x="3" y="14" width="4" height="7"/>
+                  <rect x="10" y="9" width="4" height="12"/>
+                  <rect x="17" y="4" width="4" height="17"/>
+                </svg>
+              </div>
+              <div class="settings-row-text">
+                <span class="settings-row-title">DIFFICULTY</span>
+                <span class="settings-row-sub">Tap to cycle: Easy → Medium → Hard</span>
+              </div>
+            </div>
+            <span class="settings-value-badge" id="settingDifficultyValue">EASY</span>
+          </button>
+
+          <!-- 3. Trajectory Pattern Row (Opens Sub-Popup) -->
+          <button type="button" class="settings-row-btn" id="btnSettingTrajectory">
+            <div class="settings-row-left">
+              <div class="settings-icon-box">
+                <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2.2">
+                  <path d="M12 12m-2 0a2 2 0 1 0 4 0a4 4 0 1 0 -8 0a6 6 0 1 0 12 0a8 8 0 1 0 -16 0"/>
+                </svg>
+              </div>
+              <div class="settings-row-text">
+                <span class="settings-row-title">TRAJECTORY PATTERN</span>
+                <span class="settings-row-sub">Tap to choose movement vector</span>
+              </div>
+            </div>
+            <span class="settings-value-badge" id="settingTrajectoryValue">SPIRAL VORTEX</span>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- =====================================================================
+         5. TRAJECTORY SUB-POPUP MODAL (#trajectoryModal)
+         ===================================================================== -->
+    <div class="modal-backdrop sub-modal-backdrop" id="trajectoryModal">
+      <div class="modal-card trajectory-popup-card">
+        <div class="leaderboard-top-bar">
+          <div class="leaderboard-title-wrap">
+            <span class="badge-pill">MOVEMENT VECTOR</span>
+            <h2>SELECT TRAJECTORY</h2>
+          </div>
+          <button type="button" class="icon-btn icon-only" id="btnCloseTrajectory" title="Cancel / Close" aria-label="Close Trajectory Popup">
+            ✕
+          </button>
+        </div>
+
+        <div class="trajectory-options-list" id="patternGrid">
+          <button type="button" class="pattern-chip active" data-pattern="spiral">
+            <span class="pattern-icon">🌀</span>
+            <div class="pattern-chip-info">
+              <strong>Spiral Vortex</strong>
+              <small>Concentric inward/outward spiral orbits</small>
+            </div>
+          </button>
+
+          <button type="button" class="pattern-chip" data-pattern="zigzag">
+            <span class="pattern-icon">⚡</span>
+            <div class="pattern-chip-info">
+              <strong>Zig-Zag Sweep</strong>
+              <small>Sharp angular sawtooth vectors</small>
+            </div>
+          </button>
+
+          <button type="button" class="pattern-chip" data-pattern="random">
+            <span class="pattern-icon">🎲</span>
+            <div class="pattern-chip-info">
+              <strong>Random Drift</strong>
+              <small>Chaotic multi-directional elastic motion</small>
+            </div>
+          </button>
+
+          <button type="button" class="pattern-chip" data-pattern="wave">
+            <span class="pattern-icon">🌊</span>
+            <div class="pattern-chip-info">
+              <strong>Harmonic Wave</strong>
+              <small>Flowing sinusoidal streams</small>
+            </div>
+          </button>
+
+          <button type="button" class="pattern-chip" data-pattern="mixed">
+            <span class="pattern-icon">🔀</span>
+            <div class="pattern-chip-info">
+              <strong>Hybrid Chaos</strong>
+              <small>Combines spiral, zig-zag &amp; random</small>
+            </div>
+          </button>
+        </div>
+
+        <div class="modal-footer">
+          <button type="button" class="secondary-btn" id="btnCancelTrajectory" style="width: 100%;">CANCEL</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- =====================================================================
+         6. RESULTS / COGNITIVE TELEMETRY MODAL (#resultsModal)
+         ===================================================================== -->
     <div class="modal-backdrop" id="resultsModal">
       <div class="modal-card results-card">
-        <!-- Top Strip on Results Screen: [ Orange Podium (Left) | Player Name (Center) | 3 Orange Lines Menu (Right) ] -->
         <div class="top-nav-strip modal-nav-strip">
-          <button type="button" class="top-strip-icon-btn" id="btnLeaderboardResults" title="Global High Scores Leaderboard" aria-label="Open High Scores Leaderboard">
+          <button type="button" class="top-strip-icon-btn" id="btnLeaderboardResults" title="Total Score Leaderboard" aria-label="Open Leaderboard">
             <svg viewBox="0 0 36 32" width="28" height="26" fill="currentColor" aria-hidden="true">
               <path d="M3 13 L10 13 L11 29 L5 29 Z" />
               <path d="M26 16 L33 16 L31 29 L25 29 Z" />
@@ -347,7 +509,7 @@
             <span class="top-player-name" id="resultsPlayerName">GUEST</span>
           </button>
 
-          <button type="button" class="top-strip-icon-btn" id="btnResultsMenuIcon" title="Open Setup Menu" aria-label="Open Setup Menu">
+          <button type="button" class="top-strip-icon-btn" id="btnResultsMenuIcon" title="Open Home Screen" aria-label="Open Home Screen">
             <svg viewBox="0 0 28 24" width="26" height="24" fill="currentColor" aria-hidden="true">
               <rect x="2" y="3" width="24" height="3.5" rx="1" />
               <rect x="2" y="10.25" width="24" height="3.5" rx="1" />
@@ -401,7 +563,7 @@
         </div>
 
         <div class="modal-footer results-actions">
-          <button type="button" class="secondary-btn" id="btnChangeConfig">Change Settings</button>
+          <button type="button" class="secondary-btn" id="btnChangeConfig">Home Screen</button>
           <button type="button" class="primary-btn" id="btnPlayAgain">
             <span>PLAY AGAIN</span>
           </button>
@@ -409,13 +571,15 @@
       </div>
     </div>
 
-    <!-- Player Registration Modal (Username & Email) -->
-    <div class="modal-backdrop" id="registerModal">
+    <!-- =====================================================================
+         7. PLAYER REGISTRATION MODAL (#registerModal)
+         ===================================================================== -->
+    <div class="modal-backdrop sub-modal-backdrop" id="registerModal">
       <div class="modal-card register-card">
         <div class="modal-header">
           <span class="badge-pill">GLOBAL LEADERBOARD PROFILE</span>
           <h2>Player Registration</h2>
-          <p>Enter your unique callsign and email to record your scores on the Global BrainSweep Leaderboard.</p>
+          <p>Enter your unique callsign and email to record your cumulative scores on the Global BrainSweep Leaderboard.</p>
         </div>
 
         <form id="registerForm" class="register-form" novalidate>
@@ -457,7 +621,9 @@
       </div>
     </div>
 
-    <!-- Global Cumulative Score Leaderboard Modal -->
+    <!-- =====================================================================
+         8. GLOBAL CUMULATIVE SCORE LEADERBOARD MODAL (#leaderboardModal)
+         ===================================================================== -->
     <div class="modal-backdrop" id="leaderboardModal">
       <div class="modal-card leaderboard-card">
         <div class="leaderboard-top-bar">
@@ -505,44 +671,59 @@
       </div>
     </div>
 
-    <!-- Information / Guide Modal -->
-    <div class="modal-backdrop" id="infoModal">
-      <div class="modal-card info-card">
-        <div class="modal-header">
-          <span class="badge-pill">SYSTEM MANUAL // INFO</span>
-          <h2>How BrainSweep Works</h2>
-          <p>BrainSweep is a high-speed visual-motor cognitive trainer designed to sharpen peripheral awareness, saccadic eye movements, and selective attention.</p>
-        </div>
+    <!-- =====================================================================
+         9. FIXED 5-ICON BOTTOM NAVIGATION TRAY (#bottomNav)
+         Order: 1. High Score | 2. Gamepad | 3. Home | 4. Help (?) | 5. Settings
+         ===================================================================== -->
+    <nav class="bottom-nav-tray" id="bottomNav" aria-label="Main Navigation">
+      <!-- 1. High Score Icon (Podium) -->
+      <button type="button" class="bottom-nav-btn" data-nav="leaderboard" id="navBtnLeaderboard" title="Total Score Leaderboard" aria-label="High Scores">
+        <svg viewBox="0 0 36 32" width="24" height="22" fill="currentColor" aria-hidden="true">
+          <path d="M3 14 L10 14 L11 28 L5 28 Z" />
+          <path d="M26 17 L33 17 L31 28 L25 28 Z" />
+          <path fill-rule="evenodd" clip-rule="evenodd" d="M12.5 5 L23.5 5 L22.5 28 L13.5 28 Z M17 9 L19.5 9 L19.5 20 L17 20 L17 12 L15.5 12 L15.5 10.2 Z" />
+        </svg>
+        <span class="bottom-nav-label">SCORES</span>
+      </button>
 
-        <div class="info-grid">
-          <div class="info-block">
-            <h3>1. Objective &amp; The "Gap" Rule</h3>
-            <p>Find and drag target numbers out of the arena in ascending order within <strong>60 seconds</strong>. Distractor numbers are randomly interleaved across the full number range—check <strong>NEXT TARGET</strong> and ignore the gaps!</p>
-          </div>
+      <!-- 2. Gamepad Icon (Play / Levels) -->
+      <button type="button" class="bottom-nav-btn" data-nav="levels" id="navBtnLevels" title="Select Difficulty / Stage" aria-label="Level Select">
+        <svg viewBox="0 0 28 24" width="24" height="22" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round" aria-hidden="true">
+          <rect x="2" y="6" width="24" height="13" rx="4" />
+          <line x1="8" y1="10" x2="8" y2="15" />
+          <line x1="5.5" y1="12.5" x2="10.5" y2="12.5" />
+          <circle cx="18.5" cy="11" r="1.3" fill="currentColor" stroke="none" />
+          <circle cx="21.5" cy="14" r="1.3" fill="currentColor" stroke="none" />
+        </svg>
+        <span class="bottom-nav-label">LEVELS</span>
+      </button>
 
-          <div class="info-block">
-            <h3>2. Stages, Ratios &amp; Distractors</h3>
-            <ul class="info-list">
-              <li><strong>EASY:</strong> Pool 20 (1–20) → <strong>12 Targets</strong>, 8 Distractors (60% ratio, ~5s/target)</li>
-              <li><strong>MEDIUM:</strong> Pool 36 (1–36) → <strong>20 Targets</strong>, 16 Distractors (~55% ratio, ~3s/target)</li>
-              <li><strong>HARD:</strong> Pool 50 (1–50) → <strong>25 Targets</strong>, 25 Distractors (50% ratio, ~2.4s/target, High Speed)</li>
-            </ul>
-          </div>
+      <!-- 3. Home Icon (House) -->
+      <button type="button" class="bottom-nav-btn active" data-nav="home" id="navBtnHome" title="Home Screen" aria-label="Home Screen">
+        <svg viewBox="0 0 24 24" width="24" height="22" fill="currentColor" aria-hidden="true">
+          <path d="M12 3L2 11.5h3V21h5v-6h4v6h5v-9.5h3L12 3z" />
+        </svg>
+        <span class="bottom-nav-label">HOME</span>
+      </button>
 
-          <div class="info-block">
-            <h3>3. Cognitive Skills Trained</h3>
-            <p><strong>Selective Attention &amp; Inhibitory Control:</strong> Suppressing impulse grabs on interleaved distractors.<br/>
-            <strong>Working Memory Mode:</strong> Briefly flashes each new target before masking the HUD as <strong>?</strong>.</p>
-          </div>
-        </div>
+      <!-- 4. Help Icon (Question Mark) -->
+      <button type="button" class="bottom-nav-btn" data-nav="help" id="navBtnHelp" title="Rules &amp; Scoring Guide" aria-label="Help">
+        <svg viewBox="0 0 24 24" width="24" height="22" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="square" aria-hidden="true">
+          <path d="M9 9a3 3 0 1 1 4.5 2.6c-.9.5-1.5 1.2-1.5 2.4v1" />
+          <rect x="11" y="18" width="2.2" height="2.2" fill="currentColor" stroke="none" />
+        </svg>
+        <span class="bottom-nav-label">HELP</span>
+      </button>
 
-        <div class="modal-footer">
-          <button type="button" class="primary-btn" id="btnCloseInfo">
-            <span>RESUME SESSION</span>
-          </button>
-        </div>
-      </div>
-    </div>
+      <!-- 5. Settings Icon (Gear / Cog) -->
+      <button type="button" class="bottom-nav-btn" data-nav="settings" id="navBtnSettings" title="Game Settings" aria-label="Settings">
+        <svg viewBox="0 0 24 24" width="24" height="22" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <circle cx="12" cy="12" r="3.2" />
+          <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" />
+        </svg>
+        <span class="bottom-nav-label">SETTINGS</span>
+      </button>
+    </nav>
 
     <!-- iOS PWA Installation Prompt Banner -->
     <div class="ios-install-banner" id="iosInstallBanner" role="region" aria-label="Install BrainSweep on iOS" hidden>

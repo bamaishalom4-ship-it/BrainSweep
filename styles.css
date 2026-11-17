@@ -1171,7 +1171,7 @@ body.offline-mode .hud-card {
 /* iOS PWA Install Prompt Banner */
 .ios-install-banner {
   position: fixed;
-  bottom: 10px;
+  bottom: 70px;
   left: 50%;
   transform: translateX(-50%);
   width: calc(100% - 20px);
@@ -1537,6 +1537,424 @@ body.offline-mode .hud-card {
   display: flex;
   align-items: center;
   gap: 8px;
+}
+
+/* =====================================================================
+   NEW HOME SCREEN, LEVEL SELECT, SETTINGS, TRAJECTORY POPUP & BOTTOM NAV
+   ===================================================================== */
+
+/* Reserve space at bottom of modals for the fixed 5-Icon Bottom Navigation Tray */
+.modal-backdrop {
+  padding: 14px 14px 76px 14px;
+}
+
+.sub-modal-backdrop {
+  z-index: 135;
+}
+
+.home-screen-card {
+  max-width: 540px;
+  gap: 16px;
+  padding: 20px 22px;
+}
+
+.home-player-strip {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-bottom: 10px;
+  border-bottom: 1px dashed var(--border-subtle);
+}
+
+.home-player-label {
+  font-family: var(--font-pixel);
+  font-size: 0.48rem;
+  color: var(--text-muted);
+  letter-spacing: 0.06em;
+}
+
+.home-player-btn {
+  background: transparent;
+  border: 1.5px solid var(--border-subtle);
+  color: var(--text-main);
+  padding: 4px 10px;
+  font-family: var(--font-pixel);
+  font-size: 0.54rem;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.home-player-btn:hover {
+  border-color: var(--text-main);
+  background: rgba(252, 98, 0, 0.14);
+}
+
+.edit-tag {
+  font-size: 0.44rem;
+  color: var(--text-bright);
+}
+
+.home-header {
+  text-align: left;
+}
+
+/* Best Play Central Display (Retro Highest Block) */
+.best-play-showcase {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 14px 12px;
+  background: #050200;
+  border: 2px solid var(--border-subtle);
+}
+
+.best-play-label {
+  font-family: var(--font-pixel);
+  font-size: 0.52rem;
+  color: var(--text-muted);
+  letter-spacing: 0.08em;
+}
+
+.best-play-block {
+  min-width: 96px;
+  height: 82px;
+  padding: 0 18px;
+  background: var(--text-main);
+  border: 3px solid var(--text-bright);
+  box-shadow: 5px 5px 0px #592200, 0 0 22px rgba(252, 98, 0, 0.35);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.best-play-number {
+  font-family: var(--font-pixel);
+  font-size: 1.65rem;
+  color: #050200;
+  line-height: 1;
+}
+
+.best-play-sub {
+  font-family: var(--font-pixel);
+  font-size: 0.46rem;
+  color: var(--text-bright);
+  letter-spacing: 0.06em;
+}
+
+/* Prominent Start Challenge Button with Dynamic Difficulty Header */
+.home-start-btn {
+  flex-direction: column;
+  gap: 6px;
+  padding: 14px 20px;
+  border: 3px solid var(--text-bright);
+  box-shadow: 0 0 24px rgba(252, 98, 0, 0.35);
+}
+
+.start-btn-diff-tag {
+  font-family: var(--font-pixel);
+  font-size: 0.5rem;
+  letter-spacing: 0.08em;
+  background: #050200;
+  color: var(--text-main);
+  padding: 4px 10px;
+  border: 1px solid #050200;
+}
+
+.start-btn-main-row {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  font-size: 0.78rem;
+}
+
+/* Stacked Gameplay Toggles (Orange when ON, Grey when OFF) */
+.home-toggles-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.retro-toggle-row {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: #060200;
+  border: 2px solid var(--border-subtle);
+  padding: 12px 14px;
+  cursor: pointer;
+  transition: border-color 0.12s ease;
+}
+
+.retro-toggle-row:hover {
+  border-color: var(--text-main);
+}
+
+.retro-checkbox {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.retro-checkbox-box {
+  width: 22px;
+  height: 22px;
+  border: 2px solid #6b7280;
+  background: #16191f;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  font-family: var(--font-pixel);
+  font-size: 0.65rem;
+  color: transparent;
+  transition: all 0.12s steps(2);
+}
+
+.retro-checkbox-box::after {
+  content: '✓';
+  font-weight: 900;
+}
+
+.retro-checkbox:checked + .retro-checkbox-box {
+  background: var(--text-main);
+  border-color: var(--text-bright);
+  color: #050200;
+  box-shadow: 0 0 10px rgba(252, 98, 0, 0.45);
+}
+
+/* Level Select Vertical Cards */
+.level-select-card {
+  max-width: 560px;
+}
+
+.level-cards-vertical {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.level-vertical-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  background: #060200;
+  border: 2px solid var(--border-subtle);
+  padding: 14px 16px;
+  transition: border-color 0.12s ease, background-color 0.12s ease;
+}
+
+.level-vertical-card.active {
+  background: rgba(252, 98, 0, 0.12);
+  border-color: var(--text-main);
+  color: var(--text-main);
+}
+
+.level-vertical-card.active .diff-range {
+  color: var(--text-bright);
+}
+
+.level-vertical-card.active .diff-desc {
+  color: var(--text-main);
+}
+
+.level-vertical-card.active .diff-best {
+  color: var(--text-bright);
+  border-top-color: var(--border-subtle);
+}
+
+.level-card-info {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+
+.level-play-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 14px 16px;
+  background: var(--text-main);
+  border: 2px solid var(--text-bright);
+  color: #050200;
+  font-family: var(--font-pixel);
+  font-size: 0.62rem;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: transform 0.12s steps(2), background-color 0.12s ease;
+}
+
+.level-play-btn:hover {
+  background: var(--text-bright);
+  border-color: #ffffff;
+  transform: scale(1.04);
+}
+
+/* Settings Modal Rows */
+.settings-card {
+  max-width: 520px;
+}
+
+.settings-rows-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.settings-row-btn {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 14px 16px;
+  background: #060200;
+  border: 2px solid var(--border-subtle);
+  color: var(--text-main);
+  text-align: left;
+  cursor: pointer;
+  transition: border-color 0.12s ease, background-color 0.12s ease;
+}
+
+.settings-row-btn:hover {
+  border-color: var(--text-main);
+  background: rgba(252, 98, 0, 0.1);
+}
+
+.settings-row-left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+
+.settings-icon-box {
+  width: 42px;
+  height: 42px;
+  background: #120600;
+  border: 2px solid var(--text-main);
+  color: var(--text-main);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.settings-icon-box.muted {
+  border-color: #4b5563;
+  color: #6b7280;
+  background: #111317;
+}
+
+.settings-row-text {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.settings-row-title {
+  font-family: var(--font-pixel);
+  font-size: 0.62rem;
+  color: var(--text-bright);
+}
+
+.settings-row-sub {
+  font-family: var(--font-terminal);
+  font-size: 1rem;
+  color: var(--text-muted);
+}
+
+.settings-value-badge {
+  padding: 6px 10px;
+  background: var(--text-main);
+  border: 1.5px solid var(--text-bright);
+  color: #050200;
+  font-family: var(--font-pixel);
+  font-size: 0.54rem;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.settings-value-badge.off {
+  background: #1f242d;
+  border-color: #4b5563;
+  color: #9ca3af;
+}
+
+/* Trajectory Sub-Popup Modal */
+.trajectory-popup-card {
+  max-width: 460px;
+}
+
+.trajectory-options-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+/* Fixed 5-Icon Bottom Navigation Tray */
+.bottom-nav-tray {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 62px;
+  background: #070200;
+  border-top: 2px solid var(--text-main);
+  box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.85);
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  z-index: 125;
+}
+
+body.playing-active .bottom-nav-tray {
+  display: none !important;
+}
+
+.bottom-nav-btn {
+  background: transparent;
+  border: none;
+  border-right: 1px solid rgba(252, 98, 0, 0.2);
+  color: #8a3a00;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  cursor: pointer;
+  position: relative;
+  transition: all 0.12s steps(2);
+}
+
+.bottom-nav-btn:last-child {
+  border-right: none;
+}
+
+.bottom-nav-btn:hover {
+  color: var(--text-bright);
+  background: rgba(252, 98, 0, 0.08);
+}
+
+.bottom-nav-btn.active {
+  background: var(--text-main);
+  color: #050200;
+  box-shadow: inset 0 3px 0 #fde047;
+}
+
+.bottom-nav-label {
+  font-family: var(--font-pixel);
+  font-size: 0.42rem;
+  letter-spacing: 0.04em;
 }
 
 /* Mobile & Compact Screen Optimizations */

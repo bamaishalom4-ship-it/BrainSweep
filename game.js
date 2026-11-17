@@ -362,25 +362,50 @@
 
   function updateHighScoreBadges() {
     const scores = loadHighScores();
+    let highestTotalScore = 0;
+
     ['easy', 'medium', 'hard'].forEach((diff) => {
       const cfg = DIFFICULTIES[diff];
       const el = document.getElementById(`best${diff.charAt(0).toUpperCase() + diff.slice(1)}`);
-      if (!el) return;
       const rec = scores[diff];
+      const tot = rec ? parseInt(rec.total, 10) || rec.extracted || 0 : 0;
+      if (tot > highestTotalScore) {
+        highestTotalScore = tot;
+      }
+      if (!el) return;
       if (!rec) {
         el.textContent = `Total: 0 pts (Best: —/${cfg.targetCount})`;
       } else {
-        const tot = parseInt(rec.total, 10) || rec.extracted || 0;
         el.textContent = `Total: ${tot} pts (Best: ${rec.extracted}/${cfg.targetCount})`;
       }
     });
 
     const offlineBest = getOfflineBestScore();
+    if (offlineBest > highestTotalScore) {
+      highestTotalScore = offlineBest;
+    }
+
     if (bestOfflineEl) {
       bestOfflineEl.textContent = `Best Offline Score: ${offlineBest}`;
     }
     if (offlineStageBest) {
       offlineStageBest.textContent = `Best Offline Score: ${offlineBest}`;
+    }
+
+    const homeBestScoreValue = document.getElementById('homeBestScoreValue');
+    const homeBestScoreSub = document.getElementById('homeBestScoreSub');
+    if (homeBestScoreValue) {
+      const curRec = scores[state.difficulty];
+      const curDiffTotal = curRec ? parseInt(curRec.total, 10) || curRec.extracted || 0 : 0;
+      const displayScore = state.isOfflineMode
+        ? offlineBest
+        : Math.max(curDiffTotal, highestTotalScore);
+      homeBestScoreValue.textContent = String(displayScore);
+    }
+    if (homeBestScoreSub) {
+      homeBestScoreSub.textContent = state.isOfflineMode
+        ? 'BEST OFFLINE SURVIVAL SCORE'
+        : `BEST: ${DIFFICULTIES[state.difficulty].label.toUpperCase()} MODE`;
     }
   }
 
@@ -400,7 +425,7 @@
       onlineDifficultySection.hidden = isOffline;
     }
 
-    const startSpan = btnStartGame ? btnStartGame.querySelector('span') : null;
+    const startSpan = document.getElementById('homeStartMainText');
     if (startSpan) {
       startSpan.textContent = isOffline
         ? 'START SURVIVAL SWEEP (60s)'
@@ -1536,6 +1561,13 @@
     setupModal.classList.remove('active');
     resultsModal.classList.remove('active');
     infoModal.classList.remove('active');
+    const lvlModal = document.getElementById('levelSelectModal');
+    const setModal = document.getElementById('settingsModal');
+    const trajModal = document.getElementById('trajectoryModal');
+    if (lvlModal) lvlModal.classList.remove('active');
+    if (setModal) setModal.classList.remove('active');
+    if (trajModal) trajModal.classList.remove('active');
+    document.body.classList.add('playing-active');
 
     resizeCanvas();
     createNodes();
@@ -1564,6 +1596,7 @@
 
   function finishGame(completedAll) {
     state.status = 'ended';
+    document.body.classList.remove('playing-active');
     state.draggingNode = null;
     extractionFrame.classList.remove('dragging-active');
 
@@ -1708,22 +1741,295 @@
     requestAnimationFrame(tick);
   }
 
+  // --- Persistent Settings, Screen Routing & Bottom Navigation ---
+  const SETTINGS_STORAGE_KEY = 'brainsweep_settings_v1';
+  const PATTERN_LABELS = {
+    spiral: 'SPIRAL VORTEX',
+    zigzag: 'ZIG-ZAG SWEEP',
+    random: 'RANDOM DRIFT',
+    wave: 'HARMONIC WAVE',
+    mixed: 'HYBRID CHAOS',
+  };
+
+  const levelSelectModal = document.getElementById('levelSelectModal');
+  const settingsModal = document.getElementById('settingsModal');
+  const trajectoryModal = document.getElementById('trajectoryModal');
+  const bottomNav = document.getElementById('bottomNav');
+
+  const btnCloseLevelSelect = document.getElementById('btnCloseLevelSelect');
+  const btnCloseSettings = document.getElementById('btnCloseSettings');
+  const btnCloseTrajectory = document.getElementById('btnCloseTrajectory');
+  const btnCancelTrajectory = document.getElementById('btnCancelTrajectory');
+
+  const btnSettingSound = document.getElementById('btnSettingSound');
+  const btnSettingDifficulty = document.getElementById('btnSettingDifficulty');
+  const btnSettingTrajectory = document.getElementById('btnSettingTrajectory');
+
+  const settingSoundIconBox = document.getElementById('settingSoundIconBox');
+  const settingSoundSvgOn = document.getElementById('settingSoundSvgOn');
+  const settingSoundSvgOff = document.getElementById('settingSoundSvgOff');
+  const settingSoundValue = document.getElementById('settingSoundValue');
+  const settingDifficultyValue = document.getElementById('settingDifficultyValue');
+  const settingTrajectoryValue = document.getElementById('settingTrajectoryValue');
+  const homeStartDiffLabel = document.getElementById('homeStartDiffLabel');
+
+  function loadPersistedSettings() {
+    try {
+      const raw = localStorage.getItem(SETTINGS_STORAGE_KEY);
+      if (!raw) return;
+      const parsed = JSON.parse(raw);
+      if (parsed && typeof parsed === 'object') {
+        if (typeof parsed.soundEnabled === 'boolean') {
+          sound.enabled = parsed.soundEnabled;
+        }
+        if (parsed.difficulty && DIFFICULTIES[parsed.difficulty]) {
+          state.difficulty = parsed.difficulty;
+        }
+        if (parsed.pattern && PATTERN_LABELS[parsed.pattern]) {
+          state.pattern = parsed.pattern;
+        }
+        if (typeof parsed.quickFlick === 'boolean' && chkQuickFlick) {
+          chkQuickFlick.checked = parsed.quickFlick;
+          state.quickFlick = parsed.quickFlick;
+        }
+        if (typeof parsed.memoryMode === 'boolean' && chkMemoryMode) {
+          chkMemoryMode.checked = parsed.memoryMode;
+          state.memoryMode = parsed.memoryMode;
+        }
+      }
+    } catch {
+      // ignore storage errors
+    }
+  }
+
+  function savePersistedSettings() {
+    try {
+      const payload = {
+        soundEnabled: sound.enabled,
+        difficulty: state.difficulty,
+        pattern: state.pattern,
+        quickFlick: chkQuickFlick ? chkQuickFlick.checked : true,
+        memoryMode: chkMemoryMode ? chkMemoryMode.checked : false,
+      };
+      localStorage.setItem(SETTINGS_STORAGE_KEY, JSON.stringify(payload));
+    } catch {
+      // ignore storage errors
+    }
+  }
+
+  function syncSettingsUI() {
+    // 1. Sync Sound UI
+    if (btnSound) {
+      btnSound.style.opacity = sound.enabled ? '1' : '0.45';
+    }
+    if (settingSoundValue) {
+      settingSoundValue.textContent = sound.enabled ? 'ON' : 'OFF';
+      settingSoundValue.classList.toggle('off', !sound.enabled);
+    }
+    if (settingSoundIconBox) {
+      settingSoundIconBox.classList.toggle('muted', !sound.enabled);
+    }
+    if (settingSoundSvgOn && settingSoundSvgOff) {
+      settingSoundSvgOn.hidden = !sound.enabled;
+      settingSoundSvgOff.hidden = sound.enabled;
+    }
+
+    // 2. Sync Difficulty UI (Settings row, Level Select cards, Home Start button, Best Play display)
+    const diffUpper = DIFFICULTIES[state.difficulty].label.toUpperCase();
+    const patUpper = PATTERN_LABELS[state.pattern] || 'SPIRAL VORTEX';
+
+    if (settingDifficultyValue) {
+      settingDifficultyValue.textContent = diffUpper;
+    }
+    if (settingTrajectoryValue) {
+      settingTrajectoryValue.textContent = patUpper;
+    }
+    if (homeStartDiffLabel) {
+      homeStartDiffLabel.textContent = state.isOfflineMode
+        ? `OFFLINE // ${patUpper}`
+        : `${diffUpper} // ${patUpper}`;
+    }
+
+    if (difficultyGrid) {
+      difficultyGrid.querySelectorAll('.diff-card').forEach((c) => {
+        c.classList.toggle('active', c.dataset.difficulty === state.difficulty);
+      });
+    }
+
+    if (patternGrid) {
+      patternGrid.querySelectorAll('.pattern-chip').forEach((c) => {
+        c.classList.toggle('active', c.dataset.pattern === state.pattern);
+      });
+    }
+
+    updateHighScoreBadges();
+  }
+
+  function setBottomNavActiveTab(tabName) {
+    if (!bottomNav) return;
+    bottomNav.querySelectorAll('.bottom-nav-btn').forEach((btn) => {
+      btn.classList.toggle('active', btn.dataset.nav === tabName);
+    });
+  }
+
+  function closeAllOverlayModals() {
+    setupModal.classList.remove('active');
+    if (levelSelectModal) levelSelectModal.classList.remove('active');
+    if (settingsModal) settingsModal.classList.remove('active');
+    if (trajectoryModal) trajectoryModal.classList.remove('active');
+    if (infoModal) infoModal.classList.remove('active');
+    if (leaderboardModal) leaderboardModal.classList.remove('active');
+    if (resultsModal) resultsModal.classList.remove('active');
+  }
+
+  function navigateToScreen(tabName) {
+    document.body.classList.remove('playing-active');
+    if (state.status === 'playing') {
+      state.status = 'menu';
+      state.draggingNode = null;
+      extractionFrame.classList.remove('dragging-active');
+    }
+
+    if (tabName === 'leaderboard') {
+      const user = getSavedUser();
+      if (!user) {
+        openRegistrationModal({
+          prefill: false,
+          onComplete: () => navigateToScreen('leaderboard'),
+        });
+        return;
+      }
+      closeAllOverlayModals();
+      setBottomNavActiveTab('leaderboard');
+      syncPlayerProfileUI();
+      leaderboardModal.classList.add('active');
+      loadLeaderboardTab(state.difficulty || 'easy');
+      return;
+    }
+
+    closeAllOverlayModals();
+    setBottomNavActiveTab(tabName);
+
+    if (tabName === 'levels' && levelSelectModal) {
+      syncSettingsUI();
+      levelSelectModal.classList.add('active');
+    } else if (tabName === 'help' && infoModal) {
+      infoModal.classList.add('active');
+    } else if (tabName === 'settings' && settingsModal) {
+      syncSettingsUI();
+      settingsModal.classList.add('active');
+    } else {
+      // Default: 'home'
+      setBottomNavActiveTab('home');
+      syncNetworkModeUI();
+      syncSettingsUI();
+      setupModal.classList.add('active');
+    }
+  }
+
   // --- UI Event Listeners ---
+  if (bottomNav) {
+    bottomNav.addEventListener('click', (e) => {
+      const btn = e.target.closest('.bottom-nav-btn');
+      if (!btn) return;
+      navigateToScreen(btn.dataset.nav);
+    });
+  }
+
   difficultyGrid.addEventListener('click', (e) => {
+    const playBtn = e.target.closest('[data-play-diff]');
+    if (playBtn) {
+      state.difficulty = playBtn.dataset.playDiff;
+      savePersistedSettings();
+      syncSettingsUI();
+      sound.init();
+      startGame();
+      return;
+    }
+
     const card = e.target.closest('.diff-card');
     if (!card) return;
-    difficultyGrid.querySelectorAll('.diff-card').forEach((c) => c.classList.remove('active'));
-    card.classList.add('active');
     state.difficulty = card.dataset.difficulty;
+    savePersistedSettings();
+    syncSettingsUI();
   });
 
   patternGrid.addEventListener('click', (e) => {
     const chip = e.target.closest('.pattern-chip');
     if (!chip) return;
-    patternGrid.querySelectorAll('.pattern-chip').forEach((c) => c.classList.remove('active'));
-    chip.classList.add('active');
     state.pattern = chip.dataset.pattern;
+    savePersistedSettings();
+    syncSettingsUI();
+    if (trajectoryModal) {
+      trajectoryModal.classList.remove('active');
+    }
   });
+
+  if (chkQuickFlick) {
+    chkQuickFlick.addEventListener('change', () => {
+      state.quickFlick = chkQuickFlick.checked;
+      savePersistedSettings();
+    });
+  }
+
+  if (chkMemoryMode) {
+    chkMemoryMode.addEventListener('change', () => {
+      state.memoryMode = chkMemoryMode.checked;
+      savePersistedSettings();
+    });
+  }
+
+  if (btnSettingSound) {
+    btnSettingSound.addEventListener('click', () => {
+      sound.enabled = !sound.enabled;
+      if (sound.enabled) sound.playGrab();
+      savePersistedSettings();
+      syncSettingsUI();
+    });
+  }
+
+  if (btnSettingDifficulty) {
+    btnSettingDifficulty.addEventListener('click', () => {
+      const order = ['easy', 'medium', 'hard'];
+      const nextIdx = (order.indexOf(state.difficulty) + 1) % order.length;
+      state.difficulty = order[nextIdx];
+      savePersistedSettings();
+      syncSettingsUI();
+    });
+  }
+
+  if (btnSettingTrajectory) {
+    btnSettingTrajectory.addEventListener('click', () => {
+      syncSettingsUI();
+      if (trajectoryModal) {
+        trajectoryModal.classList.add('active');
+      }
+    });
+  }
+
+  if (btnCloseTrajectory) {
+    btnCloseTrajectory.addEventListener('click', () => {
+      trajectoryModal.classList.remove('active');
+    });
+  }
+
+  if (btnCancelTrajectory) {
+    btnCancelTrajectory.addEventListener('click', () => {
+      trajectoryModal.classList.remove('active');
+    });
+  }
+
+  if (btnCloseLevelSelect) {
+    btnCloseLevelSelect.addEventListener('click', () => {
+      navigateToScreen('home');
+    });
+  }
+
+  if (btnCloseSettings) {
+    btnCloseSettings.addEventListener('click', () => {
+      navigateToScreen('home');
+    });
+  }
 
   btnStartGame.addEventListener('click', () => {
     sound.init();
@@ -1735,19 +2041,11 @@
   });
 
   btnChangeConfig.addEventListener('click', () => {
-    syncNetworkModeUI();
-    resultsModal.classList.remove('active');
-    setupModal.classList.add('active');
+    navigateToScreen('home');
   });
 
   btnMenu.addEventListener('click', () => {
-    syncNetworkModeUI();
-    state.status = 'menu';
-    state.draggingNode = null;
-    extractionFrame.classList.remove('dragging-active');
-    resultsModal.classList.remove('active');
-    infoModal.classList.remove('active');
-    setupModal.classList.add('active');
+    navigateToScreen('home');
   });
 
   btnReset.addEventListener('click', () => {
@@ -1768,15 +2066,20 @@
       state.status = 'paused';
       state.draggingNode = null;
       extractionFrame.classList.remove('dragging-active');
+      infoModal.classList.add('active');
+    } else {
+      navigateToScreen('help');
     }
-    infoModal.classList.add('active');
   });
 
   btnCloseInfo.addEventListener('click', () => {
     infoModal.classList.remove('active');
     if (prevStatusBeforeInfo === 'playing' && state.status === 'paused') {
       state.status = 'playing';
+      document.body.classList.add('playing-active');
       state.lastFrameTime = performance.now();
+    } else {
+      navigateToScreen('home');
     }
   });
 
@@ -1789,7 +2092,8 @@
 
   btnSound.addEventListener('click', () => {
     sound.enabled = !sound.enabled;
-    btnSound.style.opacity = sound.enabled ? '1' : '0.45';
+    savePersistedSettings();
+    syncSettingsUI();
   });
 
   window.addEventListener('keydown', (e) => {
@@ -1812,8 +2116,14 @@
     } else if (e.key === 'Escape') {
       if (registerModal && registerModal.classList.contains('active')) {
         btnCancelRegister.click();
+      } else if (trajectoryModal && trajectoryModal.classList.contains('active')) {
+        trajectoryModal.classList.remove('active');
       } else if (leaderboardModal && leaderboardModal.classList.contains('active')) {
         btnCloseLeaderboard.click();
+      } else if (levelSelectModal && levelSelectModal.classList.contains('active')) {
+        btnCloseLevelSelect.click();
+      } else if (settingsModal && settingsModal.classList.contains('active')) {
+        btnCloseSettings.click();
       } else if (infoModal.classList.contains('active')) {
         btnCloseInfo.click();
       } else {
@@ -2419,7 +2729,7 @@
 
   if (btnCloseLeaderboard) {
     btnCloseLeaderboard.addEventListener('click', () => {
-      leaderboardModal.classList.remove('active');
+      navigateToScreen('home');
     });
   }
 
@@ -2438,9 +2748,11 @@
   }
 
   // --- Initial Boot ---
+  loadPersistedSettings();
   syncPlayerProfileUI();
   initIosInstallPrompt();
   syncNetworkModeUI();
+  syncSettingsUI();
   resizeCanvas();
   createNodes();
   updateHUD();
