@@ -57,30 +57,60 @@ html, body {
   gap: 8px;
 }
 
-/* Top Bar */
+/* Top Bar (Gameplay Screen) */
 .top-bar {
   display: flex;
-  flex-direction: column;
-  gap: 8px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
   background: #080300;
   border: 2px solid var(--text-main);
-  padding: 8px 12px;
+  padding: 8px 14px;
   flex-shrink: 0;
 }
 
-/* Top Navigation Strip: [ Orange Podium (Left) | Player Name (Center) | 3 Orange Lines (Right) ] */
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.brand-logo {
+  width: 38px;
+  height: 38px;
+  background: var(--text-main);
+  border: 2px solid var(--text-main);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #050200;
+  flex-shrink: 0;
+}
+
+.brand-title {
+  font-family: var(--font-pixel);
+  font-size: 0.92rem;
+  letter-spacing: 0.03em;
+  color: var(--text-main);
+}
+
+.brand-subtitle {
+  font-family: var(--font-terminal);
+  font-size: 0.95rem;
+  letter-spacing: 0.06em;
+  color: var(--text-muted);
+  margin-top: 2px;
+}
+
+/* Top Navigation Strip on Home & Results Modals: [ Orange Podium (Left) | Player Name (Center) | 3 Orange Lines (Right) ] */
 .top-nav-strip {
   display: grid;
   grid-template-columns: 42px 1fr 42px;
   align-items: center;
   width: 100%;
-  padding-bottom: 6px;
-  border-bottom: 1px dashed var(--border-subtle);
-}
-
-.modal-nav-strip {
   padding-bottom: 12px;
   margin-bottom: -4px;
+  border-bottom: 1px dashed var(--border-subtle);
 }
 
 .top-strip-icon-btn {
@@ -135,11 +165,9 @@ html, body {
 
 /* HUD Bar */
 .hud-bar {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  display: flex;
   align-items: stretch;
-  gap: 8px;
-  width: 100%;
+  gap: 10px;
 }
 
 .hud-card {
@@ -888,6 +916,21 @@ body.offline-mode .hud-card {
   display: flex;
   justify-content: flex-end;
   gap: 12px;
+}
+
+.results-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.results-actions .secondary-btn,
+.results-actions .primary-btn {
+  width: 100%;
+  padding: 13px 10px;
+  font-size: 0.62rem;
+  text-align: center;
+  justify-content: center;
 }
 
 .primary-btn {

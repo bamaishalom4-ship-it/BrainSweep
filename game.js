@@ -1858,13 +1858,13 @@
   const btnLbChangeUser = document.getElementById('btnLbChangeUser');
 
   const btnLeaderboardHome = document.getElementById('btnLeaderboardHome');
-  const btnLeaderboardTop = document.getElementById('btnLeaderboardTop');
   const btnLeaderboardResults = document.getElementById('btnLeaderboardResults');
   const btnChangeUser = document.getElementById('btnChangeUser');
-  const btnTopPlayerName = document.getElementById('btnTopPlayerName');
+  const btnResultsChangeUser = document.getElementById('btnResultsChangeUser');
   const btnSetupMenuIcon = document.getElementById('btnSetupMenuIcon');
+  const btnResultsMenuIcon = document.getElementById('btnResultsMenuIcon');
   const currentPlayerNameEl = document.getElementById('currentPlayerName');
-  const topPlayerNameTextEl = document.getElementById('topPlayerNameText');
+  const resultsPlayerNameEl = document.getElementById('resultsPlayerName');
 
   let activeLeaderboardTab = 'easy';
   let pendingPostRegistrationCallback = null;
@@ -1907,8 +1907,8 @@
     if (currentPlayerNameEl) {
       currentPlayerNameEl.textContent = displayName;
     }
-    if (topPlayerNameTextEl) {
-      topPlayerNameTextEl.textContent = displayName;
+    if (resultsPlayerNameEl) {
+      resultsPlayerNameEl.textContent = displayName;
     }
     if (lbUserIndicator) {
       lbUserIndicator.textContent = user ? `Playing as: ${user.username}` : 'Playing as: Guest';
@@ -2286,12 +2286,6 @@
     });
   }
 
-  if (btnLeaderboardTop) {
-    btnLeaderboardTop.addEventListener('click', () => {
-      openLeaderboardModal(state.difficulty);
-    });
-  }
-
   if (btnLeaderboardResults) {
     btnLeaderboardResults.addEventListener('click', () => {
       openLeaderboardModal(state.difficulty);
@@ -2304,8 +2298,8 @@
     });
   }
 
-  if (btnTopPlayerName) {
-    btnTopPlayerName.addEventListener('click', () => {
+  if (btnResultsChangeUser) {
+    btnResultsChangeUser.addEventListener('click', () => {
       openRegistrationModal({ prefill: true });
     });
   }
@@ -2313,6 +2307,12 @@
   if (btnSetupMenuIcon) {
     btnSetupMenuIcon.addEventListener('click', () => {
       btnInfo.click();
+    });
+  }
+
+  if (btnResultsMenuIcon) {
+    btnResultsMenuIcon.addEventListener('click', () => {
+      btnChangeConfig.click();
     });
   }
 
