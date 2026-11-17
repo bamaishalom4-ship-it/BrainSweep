@@ -317,19 +317,25 @@
   function saveHighScore(diff, extractedCount, targetTotal, timeTaken) {
     try {
       const scores = loadHighScores();
-      const prev = scores[diff];
+      const prev = scores[diff] || { extracted: 0, max: targetTotal, time: 60, total: 0 };
       const isBetter =
-        !prev ||
-        extractedCount > prev.extracted ||
-        (extractedCount === prev.extracted && timeTaken < prev.time);
+        extractedCount > (prev.extracted || 0) ||
+        (extractedCount === prev.extracted && timeTaken < (prev.time || 60));
 
-      if (isBetter) {
-        scores[diff] = { extracted: extractedCount, max: targetTotal, time: timeTaken };
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(scores));
-      }
+      const cumulativeTotal =
+        (parseInt(prev.total, 10) || 0) + (parseInt(extractedCount, 10) || 0);
+
+      scores[diff] = {
+        extracted: isBetter ? extractedCount : prev.extracted || 0,
+        max: targetTotal,
+        time: isBetter ? timeTaken : prev.time || 60,
+        total: cumulativeTotal,
+      };
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(scores));
       updateHighScoreBadges();
+      return cumulativeTotal;
     } catch {
-      // ignore storage errors
+      return extractedCount;
     }
   }
 
@@ -362,11 +368,10 @@
       if (!el) return;
       const rec = scores[diff];
       if (!rec) {
-        el.textContent = `Best: — / ${cfg.targetCount}`;
-      } else if (rec.extracted >= cfg.targetCount) {
-        el.textContent = `Best: ${cfg.targetCount}/${cfg.targetCount} in ${rec.time.toFixed(1)}s`;
+        el.textContent = `Total: 0 pts (Best: —/${cfg.targetCount})`;
       } else {
-        el.textContent = `Best: ${rec.extracted} / ${cfg.targetCount} extracted`;
+        const tot = parseInt(rec.total, 10) || rec.extracted || 0;
+        el.textContent = `Total: ${tot} pts (Best: ${rec.extracted}/${cfg.targetCount})`;
       }
     });
 
@@ -1565,6 +1570,8 @@
     const resultBadge = document.getElementById('resultBadge');
     const resultHeadline = document.getElementById('resultHeadline');
     const resultSubheadline = document.getElementById('resultSubheadline');
+    const resSessionScoreBanner = document.getElementById('resSessionScoreBanner');
+    const resTotalScoreBanner = document.getElementById('resTotalScoreBanner');
 
     if (state.isOfflineMode) {
       const extractedCount = state.currentStepIndex;
@@ -1580,8 +1587,15 @@
       resultHeadline.textContent = `Time's up! You extracted ${extractedCount} numbers. Your best is ${bestOffline}.`;
       resultSubheadline.textContent = `60-second endless sequential pull complete. Best Offline Score: ${bestOffline}.`;
 
+      if (resSessionScoreBanner) {
+        resSessionScoreBanner.textContent = `Session Score: ${extractedCount}`;
+      }
+      if (resTotalScoreBanner) {
+        resTotalScoreBanner.textContent = `Best Offline: ${bestOffline}`;
+      }
+
       document.getElementById('resExtracted').textContent = String(extractedCount);
-      document.getElementById('resTime').textContent = '60.0s';
+      document.getElementById('resTime').textContent = String(bestOffline);
       const avgSpeed = extractedCount > 0 ? `${(60 / extractedCount).toFixed(2)}s / #` : '—';
       document.getElementById('resAvgSpeed').textContent = avgSpeed;
 
@@ -1591,7 +1605,7 @@
       document.getElementById('resAccuracy').textContent = `${accuracy}%`;
       document.getElementById('resCognitiveRank').textContent = `Best Offline Score: ${bestOffline}`;
     } else {
-      const extractedCount = completedAll ? state.targetCount : state.currentStepIndex;
+      const sessionScore = completedAll ? state.targetCount : state.currentStepIndex;
       const timeTaken = Math.min(
         state.totalDuration,
         Math.max(0.1, state.totalDuration - state.timeRemaining)
@@ -1603,30 +1617,42 @@
         sound.playError();
       }
 
-      saveHighScore(state.difficulty, extractedCount, state.targetCount, timeTaken);
+      const localCumulativeTotal = saveHighScore(
+        state.difficulty,
+        sessionScore,
+        state.targetCount,
+        timeTaken
+      );
       const cfg = DIFFICULTIES[state.difficulty];
 
       if (completedAll) {
         resultBadge.textContent = 'CHALLENGE CONQUERED';
         resultHeadline.textContent = `Cleared ${state.targetCount} Targets in ${timeTaken.toFixed(1)}s!`;
-        resultSubheadline.textContent = `Filtered out ${cfg.distractorCount} interleaved distractors across a pool of ${cfg.poolSize} on ${cfg.label} (${state.pattern.toUpperCase()}).`;
+        resultSubheadline.textContent = `Session Score: ${sessionScore} added to your ${cfg.label} Total Score!`;
       } else {
         resultBadge.textContent = 'TIME EXPIRED (60.0s)';
-        resultHeadline.textContent = `Extracted ${extractedCount} of ${state.targetCount} Targets`;
-        resultSubheadline.textContent = `Pool of ${cfg.poolSize} (${cfg.targetCount} targets, ${cfg.distractorCount} distractors) on ${cfg.label} (${state.pattern.toUpperCase()}).`;
+        resultHeadline.textContent = `Extracted ${sessionScore} of ${state.targetCount} Targets`;
+        resultSubheadline.textContent = `Session Score: ${sessionScore} added to your ${cfg.label} Total Score!`;
       }
 
-      document.getElementById('resExtracted').textContent = `${extractedCount} / ${state.targetCount}`;
-      document.getElementById('resTime').textContent = `${timeTaken.toFixed(1)}s`;
-      const avgSpeed = extractedCount > 0 ? `${(timeTaken / extractedCount).toFixed(2)}s / #` : '—';
+      if (resSessionScoreBanner) {
+        resSessionScoreBanner.textContent = `Session Score: ${sessionScore}`;
+      }
+      if (resTotalScoreBanner) {
+        resTotalScoreBanner.textContent = `Total Score: ${localCumulativeTotal}`;
+      }
+
+      document.getElementById('resExtracted').textContent = `${sessionScore}`;
+      document.getElementById('resTime').textContent = `${localCumulativeTotal}`;
+      const avgSpeed = sessionScore > 0 ? `${(timeTaken / sessionScore).toFixed(2)}s / #` : '—';
       document.getElementById('resAvgSpeed').textContent = avgSpeed;
 
-      const totalAttempts = extractedCount + state.mistakes;
+      const totalAttempts = sessionScore + state.mistakes;
       const accuracy =
-        totalAttempts > 0 ? Math.round((extractedCount / totalAttempts) * 100) : 100;
+        totalAttempts > 0 ? Math.round((sessionScore / totalAttempts) * 100) : 100;
       document.getElementById('resAccuracy').textContent = `${accuracy}%`;
 
-      const completionRatio = extractedCount / state.targetCount;
+      const completionRatio = sessionScore / state.targetCount;
       let rank = 'C';
       if (completedAll && accuracy >= 95) rank = 'S+ Elite';
       else if (completedAll) rank = 'S';
@@ -1634,8 +1660,8 @@
       else if (completionRatio >= 0.55) rank = 'B';
       document.getElementById('resCognitiveRank').textContent = `Cognitive Rating: ${rank}`;
 
-      // Step 4: Submit score to Global Leaderboard or prompt registration if no user profile exists
-      handleGameEndLeaderboardSubmission(state.difficulty, extractedCount);
+      // Step 3: Submit sessionScore to Google Apps Script & update Total Score with backend response
+      handleGameEndLeaderboardSubmission(state.difficulty, sessionScore);
     }
 
     const splitContainer = document.getElementById('splitBarsContainer');
@@ -1933,11 +1959,19 @@
     }
   }
 
-  function upsertLocalLeaderboardMirror({ username, email, difficulty, score }) {
+  function upsertLocalLeaderboardMirror({ username, email, difficulty, sessionScore, exactTotal }) {
     const rows = loadLocalLeaderboardMirror();
     const normUser = username.trim().toLowerCase();
     const normEmail = email.trim().toLowerCase();
     const existing = rows.find((r) => String(r.username).trim().toLowerCase() === normUser);
+    const addScore = Math.max(0, parseInt(sessionScore, 10) || 0);
+
+    const key =
+      difficulty === 'medium'
+        ? 'mediumScore'
+        : difficulty === 'hard'
+          ? 'hardScore'
+          : 'easyScore';
 
     if (existing) {
       if (existing.email && existing.email.toLowerCase() !== normEmail) {
@@ -1947,28 +1981,25 @@
           message: 'Username already taken. Please choose another.',
         };
       }
-      const key =
-        difficulty === 'medium'
-          ? 'mediumScore'
-          : difficulty === 'hard'
-            ? 'hardScore'
-            : 'easyScore';
-      if ((Number(score) || 0) > (Number(existing[key]) || 0)) {
-        existing[key] = Number(score) || 0;
-      }
+      const prevTotal = Math.max(0, parseInt(existing[key], 10) || 0);
+      const newTotal =
+        exactTotal !== undefined ? Math.max(0, parseInt(exactTotal, 10) || 0) : prevTotal + addScore;
+      existing[key] = newTotal;
       saveLocalLeaderboardMirror(rows);
-      return { status: 'ok', updated: true };
+      return { status: 'ok', updated: true, sessionScore: addScore, newTotal };
     }
 
+    const initialTotal =
+      exactTotal !== undefined ? Math.max(0, parseInt(exactTotal, 10) || 0) : addScore;
     rows.push({
       username: username.trim(),
       email: normEmail,
-      easyScore: difficulty === 'easy' ? Number(score) || 0 : 0,
-      mediumScore: difficulty === 'medium' ? Number(score) || 0 : 0,
-      hardScore: difficulty === 'hard' ? Number(score) || 0 : 0,
+      easyScore: difficulty === 'easy' ? initialTotal : 0,
+      mediumScore: difficulty === 'medium' ? initialTotal : 0,
+      hardScore: difficulty === 'hard' ? initialTotal : 0,
     });
     saveLocalLeaderboardMirror(rows);
-    return { status: 'ok', created: true };
+    return { status: 'ok', created: true, sessionScore: addScore, newTotal: initialTotal };
   }
 
   function getLocalTop50ForDifficulty(difficulty) {
@@ -1991,10 +2022,39 @@
       }));
   }
 
-  // Send POST request to Google Apps Script Web App
-  async function postScoreToBackend({ username, email, difficulty, score, action = 'submit' }) {
+  function applyBackendTotalToUI(diff, newTotal) {
+    if (!Number.isFinite(newTotal)) return;
+    const resTotalScoreBanner = document.getElementById('resTotalScoreBanner');
+    const resTimeBox = document.getElementById('resTime');
+    if (resTotalScoreBanner) {
+      resTotalScoreBanner.textContent = `Total Score: ${newTotal}`;
+    }
+    if (resTimeBox) {
+      resTimeBox.textContent = String(newTotal);
+    }
+    // Sync local difficulty badge total with authoritative backend cumulative total
+    try {
+      const scores = loadHighScores();
+      if (scores[diff]) {
+        scores[diff].total = newTotal;
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(scores));
+        updateHighScoreBadges();
+      }
+    } catch {
+      // ignore
+    }
+  }
+
+  // Send POST request to Google Apps Script Web App with sessionScore
+  async function postScoreToBackend({ username, email, difficulty, sessionScore, action = 'submit' }) {
+    const cleanSessionScore = Math.max(0, parseInt(sessionScore, 10) || 0);
     if (!isApiUrlConfigured()) {
-      return upsertLocalLeaderboardMirror({ username, email, difficulty, score });
+      return upsertLocalLeaderboardMirror({
+        username,
+        email,
+        difficulty,
+        sessionScore: cleanSessionScore,
+      });
     }
 
     const apiUrl = getLeaderboardApiUrl();
@@ -2009,13 +2069,30 @@
         username: username.trim(),
         email: email.trim().toLowerCase(),
         difficulty: difficulty || 'easy',
-        score: Number(score) || 0,
+        sessionScore: cleanSessionScore,
+        score: cleanSessionScore, // included for backward compatibility
       }),
     });
 
     const data = await response.json();
     if (data && data.status === 'ok') {
-      upsertLocalLeaderboardMirror({ username, email, difficulty, score });
+      const backendTotal =
+        data.newTotal !== undefined
+          ? parseInt(data.newTotal, 10)
+          : data.bestScore !== undefined
+            ? parseInt(data.bestScore, 10)
+            : undefined;
+
+      const mirrorResult = upsertLocalLeaderboardMirror({
+        username,
+        email,
+        difficulty,
+        sessionScore: cleanSessionScore,
+        exactTotal: backendTotal,
+      });
+      if (data.newTotal === undefined) {
+        data.newTotal = mirrorResult.newTotal;
+      }
     }
     return data;
   }
@@ -2159,21 +2236,27 @@
     loadLeaderboardTab(defaultDiff || 'easy');
   }
 
-  function handleGameEndLeaderboardSubmission(difficulty, score) {
+  function handleGameEndLeaderboardSubmission(difficulty, sessionScore) {
     const user = getSavedUser();
     if (user) {
       postScoreToBackend({
         username: user.username,
         email: user.email,
         difficulty,
-        score,
+        sessionScore,
         action: 'submit_score',
-      }).catch(() => {
-        // Fallback saved in local mirror
-      });
+      })
+        .then((res) => {
+          if (res && res.status === 'ok' && res.newTotal !== undefined) {
+            applyBackendTotalToUI(difficulty, Number(res.newTotal));
+          }
+        })
+        .catch(() => {
+          // Local cumulative fallback already displayed
+        });
     } else {
-      // No saved user in localStorage: prompt Registration Modal to record their score
-      pendingScorePayload = { difficulty, score };
+      // No saved user in localStorage: prompt Registration Modal to record their sessionScore
+      pendingScorePayload = { difficulty, sessionScore };
       openRegistrationModal({
         prefill: false,
         onComplete: () => {
@@ -2209,13 +2292,13 @@
 
       try {
         const diffToSubmit = pendingScorePayload ? pendingScorePayload.difficulty : state.difficulty;
-        const scoreToSubmit = pendingScorePayload ? pendingScorePayload.score : 0;
+        const sessionScoreToSubmit = pendingScorePayload ? pendingScorePayload.sessionScore : 0;
 
         const result = await postScoreToBackend({
           username,
           email,
           difficulty: diffToSubmit,
-          score: scoreToSubmit,
+          sessionScore: sessionScoreToSubmit,
           action: 'register',
         });
 
@@ -2234,6 +2317,10 @@
           return;
         }
 
+        if (result && result.newTotal !== undefined) {
+          applyBackendTotalToUI(diffToSubmit, Number(result.newTotal));
+        }
+
         // Save verified user to localStorage
         saveUserToLocalStorage(username, email);
         pendingScorePayload = null;
@@ -2245,16 +2332,20 @@
           cb();
         }
       } catch {
-        // Offline or network error: still check local mirror and save profile
+        const diffToSubmit = pendingScorePayload ? pendingScorePayload.difficulty : state.difficulty;
+        const sessionScoreToSubmit = pendingScorePayload ? pendingScorePayload.sessionScore : 0;
         const localCheck = upsertLocalLeaderboardMirror({
           username,
           email,
-          difficulty: pendingScorePayload ? pendingScorePayload.difficulty : state.difficulty,
-          score: pendingScorePayload ? pendingScorePayload.score : 0,
+          difficulty: diffToSubmit,
+          sessionScore: sessionScoreToSubmit,
         });
         if (localCheck.code === 'USERNAME_TAKEN') {
           showRegistrationError('Username already taken. Please choose another.');
           return;
+        }
+        if (localCheck.newTotal !== undefined) {
+          applyBackendTotalToUI(diffToSubmit, Number(localCheck.newTotal));
         }
         saveUserToLocalStorage(username, email);
         pendingScorePayload = null;

@@ -362,14 +362,24 @@
           <p id="resultSubheadline">Here is your cognitive visual-motor breakdown.</p>
         </div>
 
+        <!-- Cumulative Score Summary Banner (Session Score + Total Score) -->
+        <div class="cumulative-score-banner" id="cumulativeScoreBanner">
+          <div class="cum-score-pill">
+            <span class="cum-score-text" id="resSessionScoreBanner">Session Score: 0</span>
+          </div>
+          <div class="cum-score-pill total-pill">
+            <span class="cum-score-text" id="resTotalScoreBanner">Total Score: Syncing...</span>
+          </div>
+        </div>
+
         <div class="stats-grid">
           <div class="stat-box">
-            <span class="stat-label">EXTRACTED</span>
-            <span class="stat-val accent-cyan" id="resExtracted">14 / 14</span>
+            <span class="stat-label">SESSION SCORE</span>
+            <span class="stat-val accent-cyan" id="resExtracted">0</span>
           </div>
           <div class="stat-box">
-            <span class="stat-label">TIME TAKEN</span>
-            <span class="stat-val mono" id="resTime">42.8s</span>
+            <span class="stat-label">TOTAL SCORE</span>
+            <span class="stat-val mono accent-amber" id="resTime">—</span>
           </div>
           <div class="stat-box">
             <span class="stat-label">AVG SPEED</span>
@@ -447,24 +457,24 @@
       </div>
     </div>
 
-    <!-- Global High Scores Leaderboard Modal -->
+    <!-- Global Cumulative Score Leaderboard Modal -->
     <div class="modal-backdrop" id="leaderboardModal">
       <div class="modal-card leaderboard-card">
         <div class="leaderboard-top-bar">
           <div class="leaderboard-title-wrap">
             <span class="badge-pill">TOP 50 GLOBAL RANKINGS</span>
-            <h2>HIGH SCORES</h2>
+            <h2>TOTAL SCORE LEADERBOARD</h2>
           </div>
           <button type="button" class="icon-btn icon-only" id="btnCloseLeaderboard" title="Close Leaderboard" aria-label="Close Leaderboard">
             ✕
           </button>
         </div>
 
-        <!-- 3 Difficulty Tabs: EASY | MEDIUM | HARD -->
+        <!-- 3 Difficulty Cumulative Tabs: EASY TOTAL | MEDIUM TOTAL | HARD TOTAL -->
         <div class="leaderboard-tabs" id="leaderboardTabs" role="tablist">
-          <button type="button" class="lb-tab active" data-lb-diff="easy" role="tab" aria-selected="true">EASY</button>
-          <button type="button" class="lb-tab" data-lb-diff="medium" role="tab" aria-selected="false">MEDIUM</button>
-          <button type="button" class="lb-tab" data-lb-diff="hard" role="tab" aria-selected="false">HARD</button>
+          <button type="button" class="lb-tab active" data-lb-diff="easy" role="tab" aria-selected="true">EASY TOTAL</button>
+          <button type="button" class="lb-tab" data-lb-diff="medium" role="tab" aria-selected="false">MEDIUM TOTAL</button>
+          <button type="button" class="lb-tab" data-lb-diff="hard" role="tab" aria-selected="false">HARD TOTAL</button>
         </div>
 
         <!-- Leaderboard Table Container -->
