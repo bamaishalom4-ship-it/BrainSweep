@@ -1760,8 +1760,11 @@
 
   const btnCloseLevelSelect = document.getElementById('btnCloseLevelSelect');
   const btnCloseSettings = document.getElementById('btnCloseSettings');
+  const btnCancelSettings = document.getElementById('btnCancelSettings');
   const btnCloseTrajectory = document.getElementById('btnCloseTrajectory');
   const btnCancelTrajectory = document.getElementById('btnCancelTrajectory');
+
+  let returnToResultsOnClose = false;
 
   const btnSettingSound = document.getElementById('btnSettingSound');
   const btnSettingDifficulty = document.getElementById('btnSettingDifficulty');
@@ -2028,10 +2031,23 @@
     });
   }
 
-  if (btnCloseSettings) {
-    btnCloseSettings.addEventListener('click', () => {
+  function closeSettingsAndReturn() {
+    if (returnToResultsOnClose) {
+      returnToResultsOnClose = false;
+      if (settingsModal) settingsModal.classList.remove('active');
+      document.body.classList.add('results-active');
+      resultsModal.classList.add('active');
+    } else {
       navigateToScreen('home');
-    });
+    }
+  }
+
+  if (btnCloseSettings) {
+    btnCloseSettings.addEventListener('click', closeSettingsAndReturn);
+  }
+
+  if (btnCancelSettings) {
+    btnCancelSettings.addEventListener('click', closeSettingsAndReturn);
   }
 
   btnStartGame.addEventListener('click', () => {
@@ -2692,6 +2708,8 @@
 
   if (btnLeaderboardResults) {
     btnLeaderboardResults.addEventListener('click', () => {
+      returnToResultsOnClose = true;
+      resultsModal.classList.remove('active');
       openLeaderboardModal(state.difficulty);
     });
   }
@@ -2716,7 +2734,12 @@
 
   if (btnResultsMenuIcon) {
     btnResultsMenuIcon.addEventListener('click', () => {
-      btnChangeConfig.click();
+      returnToResultsOnClose = true;
+      resultsModal.classList.remove('active');
+      syncSettingsUI();
+      if (settingsModal) {
+        settingsModal.classList.add('active');
+      }
     });
   }
 
@@ -2732,7 +2755,14 @@
 
   if (btnCloseLeaderboard) {
     btnCloseLeaderboard.addEventListener('click', () => {
-      navigateToScreen('home');
+      if (returnToResultsOnClose) {
+        returnToResultsOnClose = false;
+        leaderboardModal.classList.remove('active');
+        document.body.classList.add('results-active');
+        resultsModal.classList.add('active');
+      } else {
+        navigateToScreen('home');
+      }
     });
   }
 
