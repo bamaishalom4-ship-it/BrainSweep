@@ -360,18 +360,57 @@
     }
   }
 
+  const CAROUSEL_DIFFS = ['easy', 'medium', 'hard'];
+  let homeCarouselIdx = 0;
+
+  function renderHomeScoreCarouselStep(animate = false) {
+    const homeBestScoreBlock = document.getElementById('homeBestScoreBlock');
+    const homeBestScoreValue = document.getElementById('homeBestScoreValue');
+    const homeBestScoreSub = document.getElementById('homeBestScoreSub');
+    if (!homeBestScoreValue || !homeBestScoreSub) return;
+
+    if (state.isOfflineMode) {
+      homeBestScoreValue.textContent = String(getOfflineBestScore());
+      homeBestScoreSub.textContent = 'OFFLINE MODE';
+      return;
+    }
+
+    const diffKey = CAROUSEL_DIFFS[homeCarouselIdx % CAROUSEL_DIFFS.length];
+    const scores = loadHighScores();
+    const rec = scores[diffKey];
+    const diffScore = rec ? parseInt(rec.total, 10) || rec.extracted || 0 : 0;
+
+    homeBestScoreValue.textContent = String(diffScore);
+    homeBestScoreSub.textContent = `${DIFFICULTIES[diffKey].label.toUpperCase()} MODE`;
+
+    if (animate) {
+      if (homeBestScoreBlock) {
+        homeBestScoreBlock.classList.remove('score-cycle-anim');
+        void homeBestScoreBlock.offsetWidth;
+        homeBestScoreBlock.classList.add('score-cycle-anim');
+      }
+      homeBestScoreSub.classList.remove('score-cycle-anim');
+      void homeBestScoreSub.offsetWidth;
+      homeBestScoreSub.classList.add('score-cycle-anim');
+    }
+  }
+
+  setInterval(() => {
+    if (!setupModal || !setupModal.classList.contains('active') || state.isOfflineMode) {
+      return;
+    }
+    homeCarouselIdx = (homeCarouselIdx + 1) % CAROUSEL_DIFFS.length;
+    renderHomeScoreCarouselStep(true);
+  }, 2400);
+
   function updateHighScoreBadges() {
     const scores = loadHighScores();
-    let highestTotalScore = 0;
 
     ['easy', 'medium', 'hard'].forEach((diff) => {
       const cfg = DIFFICULTIES[diff];
       const el = document.getElementById(`best${diff.charAt(0).toUpperCase() + diff.slice(1)}`);
       const rec = scores[diff];
       const tot = rec ? parseInt(rec.total, 10) || rec.extracted || 0 : 0;
-      if (tot > highestTotalScore) {
-        highestTotalScore = tot;
-      }
       if (!el) return;
       if (!rec) {
         el.textContent = `Total: 0 pts (Best: —/${cfg.targetCount})`;
@@ -381,10 +420,6 @@
     });
 
     const offlineBest = getOfflineBestScore();
-    if (offlineBest > highestTotalScore) {
-      highestTotalScore = offlineBest;
-    }
-
     if (bestOfflineEl) {
       bestOfflineEl.textContent = `Best Offline Score: ${offlineBest}`;
     }
@@ -392,21 +427,7 @@
       offlineStageBest.textContent = `Best Offline Score: ${offlineBest}`;
     }
 
-    const homeBestScoreValue = document.getElementById('homeBestScoreValue');
-    const homeBestScoreSub = document.getElementById('homeBestScoreSub');
-    if (homeBestScoreValue) {
-      const curRec = scores[state.difficulty];
-      const curDiffTotal = curRec ? parseInt(curRec.total, 10) || curRec.extracted || 0 : 0;
-      const displayScore = state.isOfflineMode
-        ? offlineBest
-        : Math.max(curDiffTotal, highestTotalScore);
-      homeBestScoreValue.textContent = String(displayScore);
-    }
-    if (homeBestScoreSub) {
-      homeBestScoreSub.textContent = state.isOfflineMode
-        ? 'BEST OFFLINE SURVIVAL SCORE'
-        : `BEST: ${DIFFICULTIES[state.difficulty].label.toUpperCase()} MODE`;
-    }
+    renderHomeScoreCarouselStep(false);
   }
 
   // --- Network Status Listener (Online vs Offline "Survival Sweep") ---

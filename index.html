@@ -173,14 +173,12 @@
           <span class="home-player-label">OPERATOR:</span>
           <button type="button" class="home-player-btn" id="btnChangeUser" title="Click to set or change Player Name">
             <span id="currentPlayerName">GUEST</span>
-            <span class="edit-tag">[EDIT]</span>
           </button>
         </div>
 
         <!-- Header -->
         <div class="modal-header home-header">
           <span class="badge-pill" id="setupBadgePill">BRAINSWEEP // COGNITIVE MATRIX</span>
-          <h2 id="setupHeadline">Configure Your Session</h2>
           <p id="setupSubheadline">Scan the moving field, filter out interleaved distractor gaps, and drag targets out in ascending order before the 60s timer expires.</p>
         </div>
 
@@ -191,13 +189,13 @@
           </div>
         </div>
 
-        <!-- Best Play Central Display (Retro Block / Cube Badge) -->
+        <!-- Highest Score Central Display (Animated Loop: Easy -> Medium -> Hard) -->
         <div class="best-play-showcase">
-          <div class="best-play-label">BEST PLAY // HIGHEST SCORE</div>
-          <div class="best-play-block">
+          <div class="best-play-label">HIGHEST SCORE</div>
+          <div class="best-play-block" id="homeBestScoreBlock">
             <span class="best-play-number" id="homeBestScoreValue">0</span>
           </div>
-          <div class="best-play-sub" id="homeBestScoreSub">TOTAL CUMULATIVE SCORE</div>
+          <div class="best-play-sub" id="homeBestScoreSub">EASY MODE</div>
         </div>
 
         <!-- Start Challenge Prominent Button -->
@@ -238,10 +236,6 @@
         <!-- Home Screen Credit -->
         <div class="modal-credit">
           <span>© MadeByKubo 2026</span>
-          <span class="credit-sep">//</span>
-          <a href="https://youtube.com/@madebykubo" target="_blank" rel="noopener noreferrer" class="footer-link">YOUTUBE</a>
-          <span class="credit-sep">•</span>
-          <a href="https://www.instagram.com/madebykubo" target="_blank" rel="noopener noreferrer" class="footer-link">INSTAGRAM</a>
         </div>
       </div>
     </div>
@@ -347,6 +341,15 @@
               <li>• <strong>HARD:</strong> Up to 25 points per session (Pool of 50, High Speed)</li>
             </ul>
             <p>At the end of each round, your <strong>Session Score</strong> is automatically added to your cumulative <strong>Total Score</strong> on the Global Leaderboard for that difficulty!</p>
+          </div>
+
+          <div class="info-block">
+            <h3>CREDIT</h3>
+            <p>© MadeByKubo 2026</p>
+            <div class="help-credit-links">
+              <a href="https://youtube.com/@madebykubo" target="_blank" rel="noopener noreferrer" class="footer-link">[ YOUTUBE ]</a>
+              <a href="https://www.instagram.com/madebykubo" target="_blank" rel="noopener noreferrer" class="footer-link">[ INSTAGRAM ]</a>
+            </div>
           </div>
         </div>
       </div>
@@ -574,10 +577,6 @@
 
         <div class="modal-credit">
           <span>© MadeByKubo 2026</span>
-          <span class="credit-sep">//</span>
-          <a href="https://youtube.com/@madebykubo" target="_blank" rel="noopener noreferrer" class="footer-link">YOUTUBE</a>
-          <span class="credit-sep">•</span>
-          <a href="https://www.instagram.com/madebykubo" target="_blank" rel="noopener noreferrer" class="footer-link">INSTAGRAM</a>
         </div>
       </div>
     </div>

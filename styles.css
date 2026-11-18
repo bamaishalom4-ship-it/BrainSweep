@@ -1644,9 +1644,52 @@ body.offline-mode .hud-card {
 
 .best-play-sub {
   font-family: var(--font-pixel);
-  font-size: 0.46rem;
+  font-size: 0.5rem;
   color: var(--text-bright);
   letter-spacing: 0.06em;
+}
+
+.best-play-block.score-cycle-anim {
+  animation: scoreBlockCycle 0.42s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.best-play-sub.score-cycle-anim {
+  animation: scoreLabelCycle 0.42s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+@keyframes scoreBlockCycle {
+  0% {
+    transform: translateY(6px) scale(0.88);
+    opacity: 0.25;
+  }
+  55% {
+    transform: translateY(-2px) scale(1.05);
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(0) scale(1);
+    opacity: 1;
+  }
+}
+
+@keyframes scoreLabelCycle {
+  0% {
+    transform: translateY(4px);
+    opacity: 0;
+  }
+  100% {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+.help-credit-links {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-top: 4px;
+  font-family: var(--font-pixel);
+  font-size: 0.55rem;
 }
 
 /* Prominent Start Challenge Button with Dynamic Difficulty Header */
