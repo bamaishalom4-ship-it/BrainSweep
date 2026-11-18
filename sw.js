@@ -2,7 +2,7 @@
  * BrainSweep Service Worker — 100% Offline PWA Cache
  */
 
-const CACHE_NAME = 'brainsweep-pwa-v10';
+const CACHE_NAME = 'brainsweep-pwa-v11';
 const CORE_ASSETS = [
   './',
   './index.html',

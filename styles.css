@@ -102,20 +102,20 @@ html, body {
   margin-top: 2px;
 }
 
-/* Top Navigation Strip on Home & Results Modals: [ Orange Podium (Left) | Player Name (Center) | 3 Orange Lines (Right) ] */
+/* Top Navigation Strip on Home & Results Modals: [ Orange Podium (Left) | Player Name (Center) | Settings (Right) ] */
 .top-nav-strip {
   display: grid;
-  grid-template-columns: 42px 1fr 42px;
+  grid-template-columns: 38px 1fr 38px;
   align-items: center;
   width: 100%;
-  padding-bottom: 12px;
-  margin-bottom: -4px;
+  padding-bottom: 5px;
+  margin-bottom: -6px;
   border-bottom: 1px dashed var(--border-subtle);
 }
 
 .top-strip-icon-btn {
-  width: 38px;
-  height: 36px;
+  width: 34px;
+  height: 30px;
   background: transparent;
   color: var(--text-main);
   border: none;
@@ -1550,6 +1550,14 @@ body.offline-mode .hud-card {
 
 #resultsModal {
   padding: 14px;
+}
+
+.results-card {
+  padding-top: 8px;
+}
+
+body.results-active .site-footer {
+  display: none !important;
 }
 
 .sub-modal-backdrop {
