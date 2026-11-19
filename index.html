@@ -13,6 +13,29 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=VT323&display=swap" rel="stylesheet">
+  <script>
+    // Apply saved color theme immediately before first paint to prevent theme flash
+    (function () {
+      var THEMES = {
+        amber:   { bg: '#000000', primary: '#FF8C00', border: '#FF8C00', accent: '#FFFFFF' },
+        green:   { bg: '#001100', primary: '#39FF14', border: '#008F11', accent: '#FFFFFF' },
+        cyan:    { bg: '#0B0C10', primary: '#00E5FF', border: '#00E5FF', accent: '#FF007F' },
+        magenta: { bg: '#1A0B1F', primary: '#FF00CC', border: '#FF00CC', accent: '#FFE600' }
+      };
+      try {
+        var saved = localStorage.getItem('brainsweep_theme') || 'amber';
+        var t = THEMES[saved] || THEMES.amber;
+        var root = document.documentElement;
+        root.setAttribute('data-theme', saved in THEMES ? saved : 'amber');
+        root.style.setProperty('--bg-color', t.bg);
+        root.style.setProperty('--primary-text', t.primary);
+        root.style.setProperty('--border-color', t.border);
+        root.style.setProperty('--accent-color', t.accent);
+        var metaTheme = document.querySelector('meta[name="theme-color"]');
+        if (metaTheme) metaTheme.setAttribute('content', t.primary);
+      } catch (e) {}
+    })();
+  </script>
   <link rel="stylesheet" href="styles.css" />
 </head>
 <body>
@@ -22,10 +45,10 @@
     <header class="top-bar">
       <div class="brand">
         <div class="brand-logo" aria-hidden="true">
-          <svg viewBox="0 0 32 32" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2.4">
+          <svg class="brainsweep-logo-svg" viewBox="0 0 32 32" width="24" height="24" fill="none" stroke="var(--primary-text)" stroke-width="2.4">
             <circle cx="16" cy="16" r="12" stroke-dasharray="6 4" />
             <path d="M16 8a8 8 0 1 0 8 8" stroke-linecap="round" />
-            <circle cx="16" cy="16" r="3" fill="currentColor" />
+            <circle cx="16" cy="16" r="3" fill="var(--primary-text)" stroke="none" />
           </svg>
         </div>
         <div>
@@ -176,9 +199,18 @@
           </button>
         </div>
 
-        <!-- Header -->
+        <!-- Header with Inline Dynamic Theme SVG Logo -->
         <div class="modal-header home-header">
-          <span class="badge-pill" id="setupBadgePill">BRAINSWEEP // COGNITIVE MATRIX</span>
+          <div class="home-brand-banner">
+            <div class="brand-logo home-brand-logo" aria-hidden="true">
+              <svg class="brainsweep-logo-svg" viewBox="0 0 32 32" width="24" height="24" fill="none" stroke="var(--primary-text)" stroke-width="2.4">
+                <circle cx="16" cy="16" r="12" stroke-dasharray="6 4" />
+                <path d="M16 8a8 8 0 1 0 8 8" stroke-linecap="round" />
+                <circle cx="16" cy="16" r="3" fill="var(--primary-text)" stroke="none" />
+              </svg>
+            </div>
+            <span class="badge-pill" id="setupBadgePill">BRAINSWEEP // COGNITIVE MATRIX</span>
+          </div>
           <p id="setupSubheadline">Scan the moving field, filter out interleaved distractor gaps, and drag targets out in ascending order before the 60s timer expires.</p>
         </div>
 
@@ -427,6 +459,26 @@
             </div>
             <span class="settings-value-badge" id="settingTrajectoryValue">SPIRAL VORTEX</span>
           </button>
+
+          <!-- 4. Color Theme Row (Opens Sub-Popup) -->
+          <button type="button" class="settings-row-btn" id="btnSettingTheme">
+            <div class="settings-row-left">
+              <div class="settings-icon-box">
+                <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2.2">
+                  <circle cx="12" cy="12" r="9"/>
+                  <circle cx="9.5" cy="9.5" r="1.3" fill="currentColor"/>
+                  <circle cx="14.5" cy="9.5" r="1.3" fill="currentColor"/>
+                  <circle cx="8.5" cy="14" r="1.3" fill="currentColor"/>
+                  <circle cx="15" cy="14.5" r="1.6" fill="currentColor"/>
+                </svg>
+              </div>
+              <div class="settings-row-text">
+                <span class="settings-row-title">COLOR THEME</span>
+                <span class="settings-row-sub">Customize terminal &amp; logo palette</span>
+              </div>
+            </div>
+            <span class="settings-value-badge" id="settingThemeValue">CRT AMBER</span>
+          </button>
         </div>
 
         <div class="modal-footer">
@@ -494,6 +546,69 @@
 
         <div class="modal-footer">
           <button type="button" class="secondary-btn" id="btnCancelTrajectory" style="width: 100%;">CANCEL</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- =====================================================================
+         5B. COLOR THEME SUB-POPUP MODAL (#themeModal)
+         ===================================================================== -->
+    <div class="modal-backdrop sub-modal-backdrop" id="themeModal">
+      <div class="modal-card trajectory-popup-card theme-popup-card">
+        <div class="leaderboard-top-bar">
+          <div class="leaderboard-title-wrap">
+            <span class="badge-pill">DISPLAY PALETTE</span>
+            <h2>COLOR THEME</h2>
+          </div>
+          <button type="button" class="icon-btn icon-only" id="btnCloseTheme" title="Cancel / Close" aria-label="Close Color Theme Popup">
+            ✕
+          </button>
+        </div>
+
+        <div class="trajectory-options-list" id="themeGrid">
+          <button type="button" class="pattern-chip theme-chip active" data-theme-id="amber">
+            <span class="theme-swatch" style="background: #000000; border-color: #FF8C00;">
+              <span class="theme-swatch-dot" style="background: #FF8C00;"></span>
+            </span>
+            <div class="pattern-chip-info">
+              <strong>Default (CRT Amber)</strong>
+              <small>BG: #000000 • Primary: #FF8C00 • Accent: #FFFFFF</small>
+            </div>
+          </button>
+
+          <button type="button" class="pattern-chip theme-chip" data-theme-id="green">
+            <span class="theme-swatch" style="background: #001100; border-color: #008F11;">
+              <span class="theme-swatch-dot" style="background: #39FF14;"></span>
+            </span>
+            <div class="pattern-chip-info">
+              <strong>Phosphor Green</strong>
+              <small>BG: #001100 • Primary: #39FF14 • Border: #008F11</small>
+            </div>
+          </button>
+
+          <button type="button" class="pattern-chip theme-chip" data-theme-id="cyan">
+            <span class="theme-swatch" style="background: #0B0C10; border-color: #00E5FF;">
+              <span class="theme-swatch-dot" style="background: #00E5FF; box-shadow: 0 0 6px #FF007F;"></span>
+            </span>
+            <div class="pattern-chip-info">
+              <strong>Cyberpunk Cyan</strong>
+              <small>BG: #0B0C10 • Primary: #00E5FF • Accent: #FF007F</small>
+            </div>
+          </button>
+
+          <button type="button" class="pattern-chip theme-chip" data-theme-id="magenta">
+            <span class="theme-swatch" style="background: #1A0B1F; border-color: #FF00CC;">
+              <span class="theme-swatch-dot" style="background: #FF00CC; box-shadow: 0 0 6px #FFE600;"></span>
+            </span>
+            <div class="pattern-chip-info">
+              <strong>Vaporwave Magenta</strong>
+              <small>BG: #1A0B1F • Primary: #FF00CC • Accent: #FFE600</small>
+            </div>
+          </button>
+        </div>
+
+        <div class="modal-footer">
+          <button type="button" class="secondary-btn" id="btnCancelTheme" style="width: 100%;">CANCEL</button>
         </div>
       </div>
     </div>

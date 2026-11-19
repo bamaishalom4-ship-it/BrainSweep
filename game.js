@@ -260,6 +260,7 @@
     isOfflineMode: !navigator.onLine,
     difficulty: 'easy',
     pattern: 'spiral',
+    theme: 'amber',
     quickFlick: true,
     memoryMode: false,
 
@@ -1075,7 +1076,8 @@
     state.currentStepIndex += 1;
     state.streak += 1;
     sound.playExtract(state.currentStepIndex, state.isOfflineMode ? 30 : state.targetCount);
-    spawnExtractParticles(dropX, dropY, '#fc6200');
+    const activeTheme = getActiveThemeColors();
+    spawnExtractParticles(dropX, dropY, activeTheme.primary);
 
     const badge = document.createElement('span');
     badge.className = 'extracted-badge';
@@ -1146,7 +1148,7 @@
 
     // Check if all targetCount targets (12, 20, or 25) have been found!
     if (state.currentStepIndex >= state.targetCount) {
-      spawnFloatingText(dropX, dropY, `#${node.value} CLEAR!`, '#ffa347');
+      spawnFloatingText(dropX, dropY, `#${node.value} CLEAR!`, activeTheme.accent);
       updateHUD();
       finishGame(true);
     } else {
@@ -1327,10 +1329,11 @@
 
   // --- Toast Helper ---
   let toastTimeout = null;
-  function showArenaToast(text, bgColor = '#1c0a00') {
+  function showArenaToast(text, bgColor = '') {
+    const t = getActiveThemeColors();
     arenaFeedback.textContent = text;
-    arenaFeedback.style.background = bgColor;
-    arenaFeedback.style.color = '#fc6200';
+    arenaFeedback.style.background = bgColor && bgColor !== '#1c0a00' ? bgColor : t.bg;
+    arenaFeedback.style.color = t.primary;
     arenaFeedback.classList.add('show');
     if (toastTimeout) clearTimeout(toastTimeout);
     toastTimeout = setTimeout(() => {
@@ -1338,10 +1341,11 @@
     }, 1300);
   }
 
-  // --- Clean, Eye-Friendly Rendering ---
+  // --- Clean, Eye-Friendly Rendering (Dynamic Theme Colors) ---
   function drawBackgroundGrid() {
+    const t = getActiveThemeColors();
     ctx.save();
-    ctx.strokeStyle = 'rgba(252, 98, 0, 0.05)';
+    ctx.strokeStyle = hexToRgba(t.border, 0.08);
     ctx.lineWidth = 1;
 
     const step = 56;
@@ -1360,8 +1364,8 @@
 
     const borderZone = 20;
     ctx.strokeStyle = state.draggingNode
-      ? 'rgba(252, 98, 0, 0.85)'
-      : 'rgba(252, 98, 0, 0.24)';
+      ? hexToRgba(t.border, 0.88)
+      : hexToRgba(t.border, 0.28);
     ctx.setLineDash([6, 6]);
     ctx.lineWidth = state.draggingNode ? 2 : 1;
     ctx.strokeRect(
@@ -1387,6 +1391,7 @@
   }
 
   function render() {
+    const t = getActiveThemeColors();
     ctx.clearRect(0, 0, canvasWidth, canvasHeight);
     drawBackgroundGrid();
 
@@ -1398,15 +1403,15 @@
       if (dn.trail.length > 1) {
         ctx.beginPath();
         ctx.moveTo(dn.trail[0].x, dn.trail[0].y);
-        for (let t = 1; t < dn.trail.length; t++) {
-          ctx.lineTo(dn.trail[t].x, dn.trail[t].y);
+        for (let idx = 1; idx < dn.trail.length; idx++) {
+          ctx.lineTo(dn.trail[idx].x, dn.trail[idx].y);
         }
-        ctx.strokeStyle = 'rgba(255, 163, 71, 0.65)';
+        ctx.strokeStyle = hexToRgba(t.accent, 0.65);
         ctx.lineWidth = 3;
         ctx.stroke();
       }
 
-      ctx.strokeStyle = 'rgba(252, 98, 0, 0.85)';
+      ctx.strokeStyle = hexToRgba(t.primary, 0.85);
       ctx.lineWidth = 2;
       ctx.setLineDash([5, 5]);
       ctx.beginPath();
@@ -1419,7 +1424,7 @@
         const progress = Math.min(1, dragDist / 52);
         ctx.setLineDash([]);
         ctx.strokeStyle =
-          progress >= 1 ? '#ffa347' : 'rgba(252, 98, 0, 0.45)';
+          progress >= 1 ? t.accent : hexToRgba(t.primary, 0.45);
         ctx.lineWidth = 2;
         ctx.beginPath();
         ctx.arc(state.dragStartX, state.dragStartY, 52, 0, Math.PI * 2 * progress);
@@ -1443,7 +1448,7 @@
         if (isHinting) {
           const pulseRadius = n.radius + 7 + ((1.5 - state.hintPulseTimer) * 34) % 30;
           ctx.save();
-          ctx.strokeStyle = '#ffc400';
+          ctx.strokeStyle = t.accent;
           ctx.lineWidth = 2.5;
           ctx.beginPath();
           ctx.arc(n.x, n.y, pulseRadius, 0, Math.PI * 2);
@@ -1462,23 +1467,23 @@
           ctx.strokeStyle = '#ff4d6d';
           ctx.lineWidth = 2.2;
         } else if (isDragging) {
-          ctx.fillStyle = '#fc6200';
-          ctx.strokeStyle = '#ffa347';
+          ctx.fillStyle = t.primary;
+          ctx.strokeStyle = t.accent;
           ctx.lineWidth = 2.5;
         } else if (isHinting) {
-          ctx.fillStyle = '#fc6200';
-          ctx.strokeStyle = '#ffffff';
+          ctx.fillStyle = t.primary;
+          ctx.strokeStyle = t.accent;
           ctx.lineWidth = 2.5;
         } else {
-          ctx.fillStyle = '#0b0400';
-          ctx.strokeStyle = '#fc6200';
+          ctx.fillStyle = t.bg;
+          ctx.strokeStyle = t.border;
           ctx.lineWidth = 1.8;
         }
 
         ctx.fill();
         ctx.stroke();
 
-        ctx.fillStyle = isDragging || isHinting ? '#050200' : '#fc6200';
+        ctx.fillStyle = isDragging || isHinting ? t.bg : t.primary;
         const fontSize = Math.max(8, Math.round(r * 0.56));
         ctx.font = `${fontSize}px "Press Start 2P", monospace`;
         ctx.textAlign = 'center';
@@ -1764,8 +1769,84 @@
     requestAnimationFrame(tick);
   }
 
-  // --- Persistent Settings, Screen Routing & Bottom Navigation ---
+  // --- Persistent Settings, Color Themes, Screen Routing & Bottom Navigation ---
   const SETTINGS_STORAGE_KEY = 'brainsweep_settings_v1';
+  const THEME_STORAGE_KEY = 'brainsweep_theme';
+
+  const COLOR_THEMES = {
+    amber: {
+      id: 'amber',
+      label: 'CRT AMBER',
+      bg: '#000000',
+      primary: '#FF8C00',
+      border: '#FF8C00',
+      accent: '#FFFFFF',
+    },
+    green: {
+      id: 'green',
+      label: 'PHOSPHOR GREEN',
+      bg: '#001100',
+      primary: '#39FF14',
+      border: '#008F11',
+      accent: '#FFFFFF',
+    },
+    cyan: {
+      id: 'cyan',
+      label: 'CYBERPUNK CYAN',
+      bg: '#0B0C10',
+      primary: '#00E5FF',
+      border: '#00E5FF',
+      accent: '#FF007F',
+    },
+    magenta: {
+      id: 'magenta',
+      label: 'VAPORWAVE MAGENTA',
+      bg: '#1A0B1F',
+      primary: '#FF00CC',
+      border: '#FF00CC',
+      accent: '#FFE600',
+    },
+  };
+
+  function hexToRgba(hex, alpha = 1) {
+    const clean = String(hex || '#FF8C00').replace('#', '');
+    const num = parseInt(clean, 16);
+    const r = (num >> 16) & 255;
+    const g = (num >> 8) & 255;
+    const b = num & 255;
+    return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+  }
+
+  function getActiveThemeColors() {
+    return COLOR_THEMES[state.theme] || COLOR_THEMES.amber;
+  }
+
+  function applyColorTheme(themeId, persist = true) {
+    const validKey = COLOR_THEMES[themeId] ? themeId : 'amber';
+    const theme = COLOR_THEMES[validKey];
+    state.theme = validKey;
+
+    const root = document.documentElement;
+    root.setAttribute('data-theme', validKey);
+    root.style.setProperty('--bg-color', theme.bg);
+    root.style.setProperty('--primary-text', theme.primary);
+    root.style.setProperty('--border-color', theme.border);
+    root.style.setProperty('--accent-color', theme.accent);
+
+    const metaTheme = document.querySelector('meta[name="theme-color"]');
+    if (metaTheme) {
+      metaTheme.setAttribute('content', theme.primary);
+    }
+
+    if (persist) {
+      try {
+        localStorage.setItem(THEME_STORAGE_KEY, validKey);
+      } catch {
+        // ignore storage errors
+      }
+    }
+  }
+
   const PATTERN_LABELS = {
     spiral: 'SPIRAL VORTEX',
     zigzag: 'ZIG-ZAG SWEEP',
@@ -1777,6 +1858,8 @@
   const levelSelectModal = document.getElementById('levelSelectModal');
   const settingsModal = document.getElementById('settingsModal');
   const trajectoryModal = document.getElementById('trajectoryModal');
+  const themeModal = document.getElementById('themeModal');
+  const themeGrid = document.getElementById('themeGrid');
   const bottomNav = document.getElementById('bottomNav');
 
   const btnCloseLevelSelect = document.getElementById('btnCloseLevelSelect');
@@ -1784,12 +1867,15 @@
   const btnCancelSettings = document.getElementById('btnCancelSettings');
   const btnCloseTrajectory = document.getElementById('btnCloseTrajectory');
   const btnCancelTrajectory = document.getElementById('btnCancelTrajectory');
+  const btnCloseTheme = document.getElementById('btnCloseTheme');
+  const btnCancelTheme = document.getElementById('btnCancelTheme');
 
   let returnToResultsOnClose = false;
 
   const btnSettingSound = document.getElementById('btnSettingSound');
   const btnSettingDifficulty = document.getElementById('btnSettingDifficulty');
   const btnSettingTrajectory = document.getElementById('btnSettingTrajectory');
+  const btnSettingTheme = document.getElementById('btnSettingTheme');
 
   const settingSoundIconBox = document.getElementById('settingSoundIconBox');
   const settingSoundSvgOn = document.getElementById('settingSoundSvgOn');
@@ -1797,9 +1883,17 @@
   const settingSoundValue = document.getElementById('settingSoundValue');
   const settingDifficultyValue = document.getElementById('settingDifficultyValue');
   const settingTrajectoryValue = document.getElementById('settingTrajectoryValue');
+  const settingThemeValue = document.getElementById('settingThemeValue');
   const homeStartDiffLabel = document.getElementById('homeStartDiffLabel');
 
   function loadPersistedSettings() {
+    try {
+      const savedTheme = localStorage.getItem(THEME_STORAGE_KEY);
+      applyColorTheme(savedTheme || 'amber', false);
+    } catch {
+      applyColorTheme('amber', false);
+    }
+
     try {
       const raw = localStorage.getItem(SETTINGS_STORAGE_KEY);
       if (!raw) return;
@@ -1860,15 +1954,19 @@
       settingSoundSvgOff.hidden = sound.enabled;
     }
 
-    // 2. Sync Difficulty UI (Settings row, Level Select cards, Home Start button, Best Play display)
+    // 2. Sync Difficulty, Trajectory & Theme UI
     const diffUpper = DIFFICULTIES[state.difficulty].label.toUpperCase();
     const patUpper = PATTERN_LABELS[state.pattern] || 'SPIRAL VORTEX';
+    const activeTheme = getActiveThemeColors();
 
     if (settingDifficultyValue) {
       settingDifficultyValue.textContent = diffUpper;
     }
     if (settingTrajectoryValue) {
       settingTrajectoryValue.textContent = patUpper;
+    }
+    if (settingThemeValue) {
+      settingThemeValue.textContent = activeTheme.label;
     }
     if (homeStartDiffLabel) {
       homeStartDiffLabel.textContent = state.isOfflineMode
@@ -1888,6 +1986,12 @@
       });
     }
 
+    if (themeGrid) {
+      themeGrid.querySelectorAll('.theme-chip').forEach((c) => {
+        c.classList.toggle('active', c.dataset.themeId === state.theme);
+      });
+    }
+
     updateHighScoreBadges();
   }
 
@@ -1903,6 +2007,7 @@
     if (levelSelectModal) levelSelectModal.classList.remove('active');
     if (settingsModal) settingsModal.classList.remove('active');
     if (trajectoryModal) trajectoryModal.classList.remove('active');
+    if (themeModal) themeModal.classList.remove('active');
     if (infoModal) infoModal.classList.remove('active');
     if (leaderboardModal) leaderboardModal.classList.remove('active');
     if (resultsModal) resultsModal.classList.remove('active');
@@ -2043,6 +2148,40 @@
   if (btnCancelTrajectory) {
     btnCancelTrajectory.addEventListener('click', () => {
       trajectoryModal.classList.remove('active');
+    });
+  }
+
+  if (btnSettingTheme) {
+    btnSettingTheme.addEventListener('click', () => {
+      syncSettingsUI();
+      if (themeModal) {
+        themeModal.classList.add('active');
+      }
+    });
+  }
+
+  if (themeGrid) {
+    themeGrid.addEventListener('click', (e) => {
+      const chip = e.target.closest('.theme-chip');
+      if (!chip) return;
+      const selectedTheme = chip.dataset.themeId;
+      applyColorTheme(selectedTheme, true);
+      syncSettingsUI();
+      if (themeModal) {
+        themeModal.classList.remove('active');
+      }
+    });
+  }
+
+  if (btnCloseTheme) {
+    btnCloseTheme.addEventListener('click', () => {
+      themeModal.classList.remove('active');
+    });
+  }
+
+  if (btnCancelTheme) {
+    btnCancelTheme.addEventListener('click', () => {
+      themeModal.classList.remove('active');
     });
   }
 
