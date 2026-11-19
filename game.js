@@ -2383,6 +2383,7 @@
 
   let activeLeaderboardTab = 'easy';
   let pendingPostRegistrationCallback = null;
+  let pendingCancelRegistrationCallback = null;
   let pendingScorePayload = null;
 
   function getSavedUser() {
@@ -2615,10 +2616,11 @@
     regErrorMsg.hidden = true;
   }
 
-  function openRegistrationModal({ prefill = true, onComplete = null } = {}) {
+  function openRegistrationModal({ prefill = true, onComplete = null, onCancel = null } = {}) {
     if (!registerModal) return;
     clearRegistrationError();
     pendingPostRegistrationCallback = onComplete;
+    pendingCancelRegistrationCallback = onCancel;
 
     const existing = getSavedUser();
     if (prefill && existing) {
@@ -2716,6 +2718,13 @@
       openRegistrationModal({
         prefill: false,
         onComplete: () => openLeaderboardModal(defaultDiff),
+        onCancel: () => {
+          if (returnToResultsOnClose) {
+            returnToResultsOnClose = false;
+            document.body.classList.add('results-active');
+            resultsModal.classList.add('active');
+          }
+        },
       });
       return;
     }
@@ -2813,6 +2822,7 @@
         // Save verified user to localStorage
         saveUserToLocalStorage(username, email);
         pendingScorePayload = null;
+        pendingCancelRegistrationCallback = null;
         closeRegistrationModal();
 
         if (typeof pendingPostRegistrationCallback === 'function') {
@@ -2838,6 +2848,7 @@
         }
         saveUserToLocalStorage(username, email);
         pendingScorePayload = null;
+        pendingCancelRegistrationCallback = null;
         closeRegistrationModal();
         if (typeof pendingPostRegistrationCallback === 'function') {
           const cb = pendingPostRegistrationCallback;
@@ -2854,9 +2865,14 @@
 
   if (btnCancelRegister) {
     btnCancelRegister.addEventListener('click', () => {
+      const cancelCb = pendingCancelRegistrationCallback;
+      pendingCancelRegistrationCallback = null;
       pendingPostRegistrationCallback = null;
       pendingScorePayload = null;
       closeRegistrationModal();
+      if (typeof cancelCb === 'function') {
+        cancelCb();
+      }
     });
   }
 
@@ -2905,10 +2921,15 @@
 
   if (btnLbChangeUser) {
     btnLbChangeUser.addEventListener('click', () => {
+      const tabToRestore = activeLeaderboardTab;
       leaderboardModal.classList.remove('active');
       openRegistrationModal({
         prefill: true,
-        onComplete: () => openLeaderboardModal(activeLeaderboardTab),
+        onComplete: () => openLeaderboardModal(tabToRestore),
+        onCancel: () => {
+          syncPlayerProfileUI();
+          leaderboardModal.classList.add('active');
+        },
       });
     });
   }
