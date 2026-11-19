@@ -1776,11 +1776,11 @@
   const COLOR_THEMES = {
     amber: {
       id: 'amber',
-      label: 'CRT AMBER',
-      bg: '#000000',
-      primary: '#FF8C00',
-      border: '#FF8C00',
-      accent: '#FFFFFF',
+      label: 'DEFAULT',
+      bg: '#050200',
+      primary: '#FC6200',
+      border: '#FC6200',
+      accent: '#FFA347',
     },
     green: {
       id: 'green',

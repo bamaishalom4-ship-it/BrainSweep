@@ -17,7 +17,7 @@
     // Apply saved color theme immediately before first paint to prevent theme flash
     (function () {
       var THEMES = {
-        amber:   { bg: '#000000', primary: '#FF8C00', border: '#FF8C00', accent: '#FFFFFF' },
+        amber:   { bg: '#050200', primary: '#FC6200', border: '#FC6200', accent: '#FFA347' },
         green:   { bg: '#001100', primary: '#39FF14', border: '#008F11', accent: '#FFFFFF' },
         cyan:    { bg: '#0B0C10', primary: '#00E5FF', border: '#00E5FF', accent: '#FF007F' },
         magenta: { bg: '#1A0B1F', primary: '#FF00CC', border: '#FF00CC', accent: '#FFE600' }
@@ -199,18 +199,9 @@
           </button>
         </div>
 
-        <!-- Header with Inline Dynamic Theme SVG Logo -->
+        <!-- Header -->
         <div class="modal-header home-header">
-          <div class="home-brand-banner">
-            <div class="brand-logo home-brand-logo" aria-hidden="true">
-              <svg class="brainsweep-logo-svg" viewBox="0 0 32 32" width="24" height="24" fill="none" stroke="var(--primary-text)" stroke-width="2.4">
-                <circle cx="16" cy="16" r="12" stroke-dasharray="6 4" />
-                <path d="M16 8a8 8 0 1 0 8 8" stroke-linecap="round" />
-                <circle cx="16" cy="16" r="3" fill="var(--primary-text)" stroke="none" />
-              </svg>
-            </div>
-            <span class="badge-pill" id="setupBadgePill">BRAINSWEEP // COGNITIVE MATRIX</span>
-          </div>
+          <span class="badge-pill" id="setupBadgePill">BRAINSWEEP // COGNITIVE MATRIX</span>
           <p id="setupSubheadline">Scan the moving field, filter out interleaved distractor gaps, and drag targets out in ascending order before the 60s timer expires.</p>
         </div>
 
@@ -567,12 +558,12 @@
 
         <div class="trajectory-options-list" id="themeGrid">
           <button type="button" class="pattern-chip theme-chip active" data-theme-id="amber">
-            <span class="theme-swatch" style="background: #000000; border-color: #FF8C00;">
-              <span class="theme-swatch-dot" style="background: #FF8C00;"></span>
+            <span class="theme-swatch" style="background: #050200; border-color: #FC6200;">
+              <span class="theme-swatch-dot" style="background: #FC6200;"></span>
             </span>
             <div class="pattern-chip-info">
-              <strong>Default (CRT Amber)</strong>
-              <small>BG: #000000 • Primary: #FF8C00 • Accent: #FFFFFF</small>
+              <strong>Default (Retro Orange)</strong>
+              <small>BG: #050200 • Primary: #FC6200 • Accent: #FFA347</small>
             </div>
           </button>
 

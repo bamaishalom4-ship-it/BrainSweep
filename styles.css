@@ -1,9 +1,9 @@
 :root,
 :root[data-theme="amber"] {
-  --bg-color: #000000;
-  --primary-text: #FF8C00;
-  --border-color: #FF8C00;
-  --accent-color: #FFFFFF;
+  --bg-color: #050200;
+  --primary-text: #fc6200;
+  --border-color: #fc6200;
+  --accent-color: #ffa347;
 }
 
 :root[data-theme="green"] {
@@ -29,13 +29,13 @@
 
 :root {
   --bg-deep: var(--bg-color);
-  --bg-panel: color-mix(in srgb, var(--bg-color) 93%, var(--primary-text) 7%);
-  --bg-card: color-mix(in srgb, var(--bg-color) 90%, var(--primary-text) 10%);
-  --border-subtle: color-mix(in srgb, var(--border-color) 42%, transparent);
-  --border-glow: var(--border-color);
+  --bg-panel: color-mix(in srgb, var(--bg-color) 95%, var(--primary-text) 5%);
+  --bg-card: color-mix(in srgb, var(--bg-color) 92%, var(--primary-text) 8%);
+  --border-subtle: color-mix(in srgb, var(--border-color) 38%, transparent);
+  --border-glow: color-mix(in srgb, var(--border-color) 85%, transparent);
   --text-main: var(--primary-text);
   --text-bright: var(--accent-color);
-  --text-muted: color-mix(in srgb, var(--primary-text) 68%, var(--bg-color) 32%);
+  --text-muted: color-mix(in srgb, var(--primary-text) 76%, var(--bg-color) 24%);
   --accent-cyan: var(--primary-text);
   --accent-indigo: var(--border-color);
   --accent-emerald: var(--primary-text);
@@ -43,6 +43,22 @@
   --accent-rose: #ff1e42;
   --font-pixel: 'Press Start 2P', monospace;
   --font-terminal: 'VT323', monospace;
+}
+
+:root[data-theme="amber"] {
+  --bg-deep: #050200;
+  --bg-panel: #080300;
+  --bg-card: rgba(28, 10, 0, 0.92);
+  --border-subtle: rgba(252, 98, 0, 0.38);
+  --border-glow: rgba(252, 98, 0, 0.85);
+  --text-main: #fc6200;
+  --text-bright: #ffa347;
+  --text-muted: #c45100;
+  --accent-cyan: #fc6200;
+  --accent-indigo: #d95300;
+  --accent-emerald: #ff8800;
+  --accent-amber: #ffc400;
+  --accent-rose: #ff1e42;
 }
 
 * {
