@@ -1,4 +1,8 @@
 {
-  "cleanUrls": true,
-  "trailingSlash": false
+  "rewrites": [
+    { "source": "/privacy-policy", "destination": "/privacy-policy/index.html" },
+    { "source": "/terms-of-service", "destination": "/terms-of-service/index.html" },
+    { "source": "/dpa", "destination": "/dpa/index.html" },
+    { "source": "/developers", "destination": "/developers/index.html" }
+  ]
 }

@@ -1,8 +1,9 @@
 /**
  * BrainSweep Service Worker — 100% Offline PWA Cache
+ * Includes clean un-redirected response handling for Android WebAPK / Chrome PWA
  */
 
-const CACHE_NAME = 'brainsweep-pwa-v19';
+const CACHE_NAME = 'brainsweep-pwa-v20';
 const CORE_ASSETS = [
   './',
   './index.html',
@@ -11,6 +12,20 @@ const CORE_ASSETS = [
   './manifest.json',
   './icon.svg',
 ];
+
+function cleanRedirectedResponse(response) {
+  if (!response || !response.redirected) {
+    return Promise.resolve(response);
+  }
+  return response.blob().then(
+    (bodyBlob) =>
+      new Response(bodyBlob, {
+        status: response.status || 200,
+        statusText: response.statusText || 'OK',
+        headers: response.headers,
+      })
+  );
+}
 
 self.addEventListener('install', (event) => {
   event.waitUntil(
@@ -41,31 +56,54 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
+  // For document navigation requests (e.g. Android PWA launch to / or /index.html):
+  // Use redirect: 'follow' and strip any redirected flag so Chrome never throws ERR_FAILED
+  if (request.mode === 'navigate') {
+    event.respondWith(
+      fetch(request.url, { redirect: 'follow' })
+        .then((networkResponse) => cleanRedirectedResponse(networkResponse))
+        .then((cleanResp) => {
+          if (cleanResp && cleanResp.status === 200) {
+            const clone = cleanResp.clone();
+            caches.open(CACHE_NAME).then((cache) => {
+              cache.put('./', clone.clone());
+              cache.put('./index.html', clone);
+            });
+          }
+          return cleanResp;
+        })
+        .catch(() =>
+          caches
+            .match('./')
+            .then((r) => r || caches.match('./index.html'))
+            .then((r) => cleanRedirectedResponse(r))
+        )
+    );
+    return;
+  }
+
   event.respondWith(
     caches.match(request).then((cachedResponse) => {
-      // Return cached response immediately if available, while updating cache in background when online
       const fetchPromise = fetch(request)
-        .then((networkResponse) => {
+        .then((networkResponse) => cleanRedirectedResponse(networkResponse))
+        .then((cleanResp) => {
           if (
-            networkResponse &&
-            (networkResponse.status === 200 || networkResponse.type === 'opaque')
+            cleanResp &&
+            (cleanResp.status === 200 || cleanResp.type === 'opaque')
           ) {
-            const responseClone = networkResponse.clone();
+            const responseClone = cleanResp.clone();
             caches.open(CACHE_NAME).then((cache) => {
               cache.put(request, responseClone);
             });
           }
-          return networkResponse;
+          return cleanResp;
         })
-        .catch(() => {
-          // If offline and navigating to root/page, return cached index.html
-          if (request.mode === 'navigate') {
-            return caches.match('./index.html');
-          }
-          return cachedResponse;
-        });
+        .catch(() => cleanRedirectedResponse(cachedResponse));
 
-      return cachedResponse || fetchPromise;
+      if (cachedResponse) {
+        return cleanRedirectedResponse(cachedResponse);
+      }
+      return fetchPromise;
     })
   );
 });
