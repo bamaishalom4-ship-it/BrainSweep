@@ -2335,33 +2335,8 @@ body.embed-mode .hud-bar {
   background: var(--accent-color);
 }
 
-/* Narrow Iframe (<= 440px) Scaling Without Horizontal Scroll */
-@media (max-width: 440px) {
-  html, body, .app-shell {
-    max-width: 100vw;
-    overflow-x: hidden;
-  }
-  .app-shell {
-    padding: 4px 6px;
-    gap: 4px;
-  }
-  .top-bar {
-    padding: 6px 8px;
-    gap: 5px;
-  }
-  .brand-subtitle {
-    display: none;
-  }
-  .target-card {
-    min-width: 0;
-    width: 100%;
-    padding: 4px 10px;
-  }
-  .extracted-tray {
-    min-height: 44px;
-    padding: 4px 6px;
-  }
-  .tray-hint {
-    font-size: 0.85rem;
-  }
+/* Prevent Horizontal Scroll on Mobile & Iframes */
+html, body, .app-shell {
+  max-width: 100vw;
+  overflow-x: hidden;
 }
