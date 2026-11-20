@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="theme-color" content="#fc6200" />
+  <title>Data Processing Agreement (DPA) — BrainSweep B2B Widget</title>
+  <link rel="icon" href="../icon.svg" type="image/svg+xml" />
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=VT323&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg-color: #050200;
+      --panel-bg: #0b0400;
+      --primary-text: #fc6200;
+      --accent-text: #ffa347;
+      --muted-text: #c45100;
+      --border-color: #fc6200;
+      --border-subtle: rgba(252, 98, 0, 0.38);
+      --font-pixel: 'Press Start 2P', monospace;
+      --font-terminal: 'VT323', monospace;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background: var(--bg-color);
+      color: var(--primary-text);
+      font-family: var(--font-terminal);
+      font-size: 1.25rem;
+      line-height: 1.55;
+      padding: 32px 16px 64px;
+    }
+    .doc-container {
+      max-width: 880px;
+      margin: 0 auto;
+      background: var(--panel-bg);
+      border: 3px solid var(--border-color);
+      padding: 34px 30px;
+      box-shadow: 0 0 28px rgba(252, 98, 0, 0.15);
+    }
+    .doc-header {
+      border-bottom: 2px dashed var(--border-subtle);
+      padding-bottom: 20px;
+      margin-bottom: 24px;
+    }
+    .badge {
+      display: inline-block;
+      font-family: var(--font-pixel);
+      font-size: 0.55rem;
+      background: var(--primary-text);
+      color: var(--bg-color);
+      padding: 6px 10px;
+      letter-spacing: 0.08em;
+      margin-bottom: 14px;
+    }
+    h1 {
+      font-family: var(--font-pixel);
+      font-size: 1.15rem;
+      color: var(--accent-text);
+      line-height: 1.45;
+      margin-bottom: 10px;
+    }
+    .meta {
+      font-family: var(--font-pixel);
+      font-size: 0.55rem;
+      color: var(--muted-text);
+    }
+    h2 {
+      font-family: var(--font-pixel);
+      font-size: 0.76rem;
+      color: var(--accent-text);
+      margin: 26px 0 12px;
+      padding-top: 14px;
+      border-top: 1px dashed var(--border-subtle);
+      line-height: 1.4;
+    }
+    p { margin-bottom: 14px; color: var(--primary-text); }
+    ul {
+      margin: 0 0 16px 22px;
+      color: var(--primary-text);
+    }
+    li { margin-bottom: 8px; }
+    strong { color: var(--accent-text); }
+    .clause-box {
+      background: #050200;
+      border: 2px solid var(--border-subtle);
+      padding: 16px 18px;
+      margin: 18px 0;
+    }
+    .sig-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 20px;
+      margin-top: 24px;
+      padding: 18px;
+      background: #050200;
+      border: 2px solid var(--border-subtle);
+    }
+    .sig-col h3 {
+      font-family: var(--font-pixel);
+      font-size: 0.6rem;
+      color: var(--accent-text);
+      margin-bottom: 10px;
+    }
+    .doc-nav {
+      margin-top: 32px;
+      padding-top: 18px;
+      border-top: 2px dashed var(--border-subtle);
+      display: flex;
+      flex-wrap: wrap;
+      gap: 16px;
+      font-family: var(--font-pixel);
+      font-size: 0.55rem;
+    }
+    .doc-nav a {
+      color: var(--accent-text);
+      text-decoration: none;
+    }
+    .doc-nav a:hover { text-decoration: underline; }
+    @media (max-width: 640px) {
+      .sig-grid { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <main class="doc-container">
+    <header class="doc-header">
+      <span class="badge">B2B PUBLISHER CONTRACT // GDPR ART. 28 &amp; CCPA ADDENDUM</span>
+      <h1>DATA PROCESSING AGREEMENT (DPA)</h1>
+      <p class="meta">STANDARD B2B WIDGET DATA PROCESSING ADDENDUM • REVISION 2026.11</p>
+    </header>
+
+    <p>
+      This Data Processing Agreement ("<strong>DPA</strong>") forms part of the B2B Widget Licensing Agreement between the media entity or website operator embedding the BrainSweep widget ("<strong>Publisher</strong>" or "<strong>Data Controller</strong>") and <strong>MadeByKubo / BrainSweep</strong> ("<strong>Widget Provider</strong>" or "<strong>Data Processor</strong>").
+    </p>
+
+    <div class="clause-box">
+      <strong>CORE COMMITMENT TO PUBLISHERS:</strong> The Widget Provider acts strictly as a <strong>Data Processor</strong> (and "Service Provider" under the CCPA/CPRA) on behalf of the Publisher. We will <strong>never</strong> sell, rent, retarget, profile, or commercially exploit your audience's personal data.
+    </div>
+
+    <h2>1. ROLES &amp; SCOPE OF PROCESSING</h2>
+    <ul>
+      <li><strong>1.1 Controller &amp; Processor:</strong> With respect to end-users visiting the Publisher's digital properties ("Audience Members"), the Publisher acts as the Data Controller determining the context of the embed, and the Widget Provider acts as the Data Processor operating the sandboxed iframe game session.</li>
+      <li><strong>1.2 Nature &amp; Purpose:</strong> Processing is strictly limited to rendering the BrainSweep cognitive game widget (<code>?embed=true</code>), storing local user preferences (theme, sound, consent state), and computing anonymized session scores and aggregate engagement metrics for the Publisher.</li>
+      <li><strong>1.3 Categories of Data Subjects:</strong> Visitors and readers of the Publisher's website who interact with the embedded BrainSweep iframe.</li>
+    </ul>
+
+    <h2>2. PROCESSOR OBLIGATIONS &amp; NO-MISUSE COVENANT</h2>
+    <p>The Widget Provider hereby warrants and covenants that it shall:</p>
+    <ul>
+      <li><strong>2.1 Process Only on Documented Instructions:</strong> Process Audience Member data solely to deliver and maintain the embedded widget functionality requested by the Publisher.</li>
+      <li><strong>2.2 Strict Prohibition on Data Sale or Cross-Site Profiling:</strong> Never sell, lease, or share Audience Member data with advertising networks, data brokers, or third parties, nor combine Audience Member data across unaffiliated publishers for behavioral profiling.</li>
+      <li><strong>2.3 Data Minimization in Embed Mode:</strong> When loaded with <code>?embed=true</code>, the widget operates without mandatory personal registration, keeping gameplay telemetry anonymous by default.</li>
+      <li><strong>2.4 Confidentiality:</strong> Ensure that all personnel authorized to maintain the widget infrastructure are bound by strict confidentiality obligations.</li>
+    </ul>
+
+    <h2>3. TECHNICAL &amp; ORGANIZATIONAL SECURITY MEASURES</h2>
+    <p>Pursuant to GDPR Article 32, the Widget Provider maintains industry-standard security controls, including:</p>
+    <ul>
+      <li><strong>Sandboxed Iframe Isolation:</strong> The widget runs inside an isolated origin boundary and does not read or access first-party cookies, DOM inputs, or session tokens belonging to the Publisher's parent page.</li>
+      <li><strong>Encryption in Transit:</strong> All widget assets and API telemetry endpoints are served exclusively over HTTPS / TLS 1.3.</li>
+      <li><strong>Zero Third-Party Ad Trackers:</strong> The embedded widget contains zero third-party ad-tech pixels or invasive fingerprinting scripts.</li>
+    </ul>
+
+    <h2>4. SUB-PROCESSORS &amp; INTERNATIONAL TRANSFERS</h2>
+    <p>
+      The Publisher authorizes the Widget Provider to utilize vetted cloud infrastructure sub-processors (such as Vercel Inc. for edge CDN hosting and Google Cloud / Workspace infrastructure for encrypted score storage) bound by Standard Contractual Clauses (SCCs) and equivalent data protection safeguards.
+    </p>
+
+    <h2>5. AUDIT RIGHTS, INCIDENT NOTIFICATION &amp; DELETION</h2>
+    <ul>
+      <li><strong>5.1 Security Incident Notification:</strong> In the event of a confirmed personal data breach affecting Publisher Audience Members, the Widget Provider shall notify the Publisher without undue delay (and within 48 hours of discovery).</li>
+      <li><strong>5.2 Deletion Upon Termination:</strong> Upon termination of the Publisher's embed deployment, the Widget Provider shall delete or irreversibly anonymize any Publisher-specific telemetry logs within thirty (30) days.</li>
+    </ul>
+
+    <div class="sig-grid">
+      <div class="sig-col">
+        <h3>FOR WIDGET PROVIDER (PROCESSOR)</h3>
+        <p><strong>Entity:</strong> MadeByKubo // BrainSweep</p>
+        <p><strong>Role:</strong> Authorized Signatory</p>
+        <p><strong>Status:</strong> Pre-Signed Digital Template</p>
+      </div>
+      <div class="sig-col">
+        <h3>FOR PUBLISHER (CONTROLLER)</h3>
+        <p><strong>Entity:</strong> ___________________________</p>
+        <p><strong>Domain:</strong> ___________________________</p>
+        <p><strong>Date:</strong> ___________________________</p>
+      </div>
+    </div>
+
+    <nav class="doc-nav" aria-label="Legal &amp; Developer Links">
+      <a href="../privacy-policy/">[ PRIVACY POLICY ]</a>
+      <a href="../terms-of-service/">[ TERMS OF SERVICE ]</a>
+      <a href="../developers/">[ DEVELOPER EMBED KIT ]</a>
+    </nav>
+  </main>
+</body>
+</html>

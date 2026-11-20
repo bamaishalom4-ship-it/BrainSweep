@@ -2213,3 +2213,131 @@ body.results-active .bottom-nav-tray {
     padding: 5px 8px;
   }
 }
+
+/* =====================================================================
+   B2B EMBED MODE (?embed=true) & COOKIE CONSENT BANNER
+   ===================================================================== */
+
+:root[data-embed="true"] #bottomNav,
+:root[data-embed="true"] .bottom-nav-tray,
+:root[data-embed="true"] .site-footer,
+:root[data-embed="true"] .modal-credit,
+:root[data-embed="true"] #iosInstallBanner,
+:root[data-embed="true"] #btnMenu,
+:root[data-embed="true"] #btnInfo,
+:root[data-embed="true"] #btnChangeConfig,
+:root[data-embed="true"] #resultsModal .top-nav-strip,
+:root[data-embed="true"] #setupModal,
+:root[data-embed="true"] #levelSelectModal,
+:root[data-embed="true"] #settingsModal,
+:root[data-embed="true"] #leaderboardModal,
+:root[data-embed="true"] #registerModal,
+:root[data-embed="true"] #paceHudCard,
+body.embed-mode #bottomNav,
+body.embed-mode .bottom-nav-tray,
+body.embed-mode .site-footer,
+body.embed-mode .modal-credit,
+body.embed-mode #iosInstallBanner,
+body.embed-mode #btnMenu,
+body.embed-mode #btnInfo,
+body.embed-mode #btnChangeConfig,
+body.embed-mode #resultsModal .top-nav-strip,
+body.embed-mode #setupModal,
+body.embed-mode #levelSelectModal,
+body.embed-mode #settingsModal,
+body.embed-mode #leaderboardModal,
+body.embed-mode #registerModal,
+body.embed-mode #paceHudCard {
+  display: none !important;
+}
+
+:root[data-embed="true"] .results-actions,
+body.embed-mode .results-actions {
+  grid-template-columns: 1fr;
+}
+
+:root[data-embed="true"] .hud-bar,
+body.embed-mode .hud-bar {
+  grid-template-columns: repeat(2, 1fr);
+}
+
+/* Non-Intrusive Cookie Consent Banner */
+.cookie-consent-banner {
+  position: fixed;
+  bottom: 6px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: calc(100% - 16px);
+  max-width: 580px;
+  background: var(--bg-panel);
+  border: 1.5px solid var(--border-color);
+  box-shadow: 0 4px 18px rgba(0, 0, 0, 0.85);
+  padding: 6px 10px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  z-index: 165;
+}
+
+:root:not([data-embed="true"]) body:not(.playing-active):not(.results-active) .cookie-consent-banner {
+  bottom: 68px;
+}
+
+.cookie-consent-banner[hidden] {
+  display: none !important;
+}
+
+.cookie-consent-text {
+  font-family: var(--font-terminal);
+  font-size: 0.92rem;
+  line-height: 1.2;
+  color: var(--primary-text);
+}
+
+.cookie-accept-btn {
+  background: var(--primary-text);
+  color: var(--bg-color);
+  border: 1.5px solid var(--accent-color);
+  padding: 5px 10px;
+  font-family: var(--font-pixel);
+  font-size: 0.45rem;
+  cursor: pointer;
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+
+.cookie-accept-btn:hover {
+  background: var(--accent-color);
+}
+
+/* Narrow Iframe (<= 440px) Scaling Without Horizontal Scroll */
+@media (max-width: 440px) {
+  html, body, .app-shell {
+    max-width: 100vw;
+    overflow-x: hidden;
+  }
+  .app-shell {
+    padding: 4px 6px;
+    gap: 4px;
+  }
+  .top-bar {
+    padding: 6px 8px;
+    gap: 5px;
+  }
+  .brand-subtitle {
+    display: none;
+  }
+  .target-card {
+    min-width: 0;
+    width: 100%;
+    padding: 4px 10px;
+  }
+  .extracted-tray {
+    min-height: 44px;
+    padding: 4px 6px;
+  }
+  .tray-hint {
+    font-size: 0.85rem;
+  }
+}

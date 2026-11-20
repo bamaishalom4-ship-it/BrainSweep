@@ -14,7 +14,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=VT323&display=swap" rel="stylesheet">
   <script>
-    // Apply saved color theme immediately before first paint to prevent theme flash
+    // Apply saved or URL-specified color theme & embed mode immediately before first paint
     (function () {
       var THEMES = {
         amber:   { bg: '#050200', primary: '#FC6200', border: '#FC6200', accent: '#FFA347' },
@@ -23,9 +23,15 @@
         magenta: { bg: '#1A0B1F', primary: '#FF00CC', border: '#FF00CC', accent: '#FFE600' }
       };
       try {
-        var saved = localStorage.getItem('brainsweep_theme') || 'amber';
-        var t = THEMES[saved] || THEMES.amber;
         var root = document.documentElement;
+        var params = new URLSearchParams(window.location.search || '');
+        var isEmbed = params.get('embed') === 'true' || params.get('embed') === '1';
+        if (isEmbed) {
+          root.setAttribute('data-embed', 'true');
+        }
+        var urlTheme = params.get('theme');
+        var saved = (urlTheme && THEMES[urlTheme]) ? urlTheme : (localStorage.getItem('brainsweep_theme') || 'amber');
+        var t = THEMES[saved] || THEMES.amber;
         root.setAttribute('data-theme', saved in THEMES ? saved : 'amber');
         root.style.setProperty('--bg-color', t.bg);
         root.style.setProperty('--primary-text', t.primary);
@@ -838,6 +844,14 @@
       <button type="button" class="ios-install-close" id="btnCloseIosBanner" title="Dismiss install prompt" aria-label="Dismiss install prompt">
         ✕
       </button>
+    </div>
+
+    <!-- Non-Intrusive Cookie & LocalStorage Consent Banner -->
+    <div class="cookie-consent-banner" id="cookieConsentBanner" role="region" aria-label="Cookie Consent" hidden>
+      <span class="cookie-consent-text">
+        This game uses cookies &amp; local storage for preferences and anonymized gameplay analytics.
+      </span>
+      <button type="button" class="cookie-accept-btn" id="btnAcceptCookies">ACCEPT</button>
     </div>
   </div>
 

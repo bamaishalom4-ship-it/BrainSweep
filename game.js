@@ -258,6 +258,8 @@
   const state = {
     status: 'menu', // 'menu' | 'playing' | 'paused' | 'ended'
     isOfflineMode: !navigator.onLine,
+    isEmbedMode: false,
+    publisherDomain: '',
     difficulty: 'easy',
     pattern: 'spiral',
     theme: 'amber',
@@ -1745,7 +1747,36 @@
     resultsModal.classList.add('active');
   }
 
+  // --- Viewport & Tab Visibility Observer (Saves CPU when embedded iframe is offscreen) ---
+  let isArenaInViewport = true;
+  if ('IntersectionObserver' in window && arenaContainer) {
+    const arenaObserver = new IntersectionObserver(
+      (entries) => {
+        for (const entry of entries) {
+          isArenaInViewport = entry.isIntersecting;
+          if (isArenaInViewport) {
+            state.lastFrameTime = performance.now();
+          }
+        }
+      },
+      { threshold: 0.05 }
+    );
+    arenaObserver.observe(arenaContainer);
+  }
+
+  document.addEventListener('visibilitychange', () => {
+    if (!document.hidden) {
+      state.lastFrameTime = performance.now();
+    }
+  });
+
   function tick(now) {
+    if (!isArenaInViewport || document.hidden) {
+      state.lastFrameTime = now;
+      requestAnimationFrame(tick);
+      return;
+    }
+
     const dt = Math.min(0.033, Math.max(0.001, (now - state.lastFrameTime) / 1000));
     state.lastFrameTime = now;
 
@@ -2752,8 +2783,8 @@
         .catch(() => {
           // Local cumulative fallback already displayed
         });
-    } else {
-      // No saved user in localStorage: prompt Registration Modal to record their sessionScore
+    } else if (!state.isEmbedMode) {
+      // No saved user in localStorage (Direct Mode only): prompt Registration Modal to record their sessionScore
       pendingScorePayload = { difficulty, sessionScore };
       openRegistrationModal({
         prefill: false,
@@ -2961,10 +2992,76 @@
     });
   }
 
+  // --- B2B Embed Mode (?embed=true) & Cookie Consent Banner ---
+  const COOKIE_CONSENT_STORAGE_KEY = 'brainsweep_cookie_consent_v1';
+
+  function applyEmbedUrlParams() {
+    try {
+      const params = new URLSearchParams(window.location.search || '');
+      const embedParam = params.get('embed');
+      state.isEmbedMode = embedParam === 'true' || embedParam === '1';
+
+      const domainParam = params.get('domain');
+      if (domainParam) {
+        state.publisherDomain = domainParam.trim();
+      }
+
+      const diffParam = (params.get('difficulty') || '').toLowerCase();
+      if (diffParam && DIFFICULTIES[diffParam]) {
+        state.difficulty = diffParam;
+      }
+
+      const patParam = (params.get('pattern') || '').toLowerCase();
+      if (patParam && PATTERN_LABELS[patParam]) {
+        state.pattern = patParam;
+      }
+
+      const themeParam = (params.get('theme') || '').toLowerCase();
+      if (themeParam && COLOR_THEMES[themeParam]) {
+        applyColorTheme(themeParam, false);
+      }
+
+      if (state.isEmbedMode) {
+        document.documentElement.setAttribute('data-embed', 'true');
+        document.body.classList.add('embed-mode');
+      }
+    } catch {
+      // ignore URL parsing errors
+    }
+  }
+
+  function initCookieConsentBanner() {
+    const banner = document.getElementById('cookieConsentBanner');
+    const btnAccept = document.getElementById('btnAcceptCookies');
+    if (!banner || !btnAccept) return;
+
+    let alreadyAccepted = false;
+    try {
+      alreadyAccepted = localStorage.getItem(COOKIE_CONSENT_STORAGE_KEY) === 'accepted';
+    } catch {
+      alreadyAccepted = false;
+    }
+
+    if (!alreadyAccepted) {
+      banner.hidden = false;
+    }
+
+    btnAccept.addEventListener('click', () => {
+      banner.hidden = true;
+      try {
+        localStorage.setItem(COOKIE_CONSENT_STORAGE_KEY, 'accepted');
+      } catch {
+        // ignore storage errors
+      }
+    });
+  }
+
   // --- Initial Boot ---
   loadPersistedSettings();
+  applyEmbedUrlParams();
   syncPlayerProfileUI();
   initIosInstallPrompt();
+  initCookieConsentBanner();
   syncNetworkModeUI();
   syncSettingsUI();
   resizeCanvas();
@@ -2972,8 +3069,8 @@
   updateHUD();
   state.lastFrameTime = performance.now();
 
-  // If app loads while OFFLINE, bypass the difficulty selection screen and launch Survival Sweep immediately
-  if (!navigator.onLine) {
+  // If app loads in B2B Embed Mode (?embed=true) or while OFFLINE, launch directly into the arena
+  if (state.isEmbedMode || !navigator.onLine) {
     startGame();
   }
 

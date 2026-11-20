@@ -1,0 +1,511 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="theme-color" content="#fc6200" />
+  <title>Publisher Developer Kit &amp; Embed Generator — BrainSweep</title>
+  <link rel="icon" href="../icon.svg" type="image/svg+xml" />
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=VT323&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg-color: #050200;
+      --panel-bg: #0b0400;
+      --primary-text: #fc6200;
+      --accent-text: #ffa347;
+      --muted-text: #c45100;
+      --border-color: #fc6200;
+      --border-subtle: rgba(252, 98, 0, 0.38);
+      --font-pixel: 'Press Start 2P', monospace;
+      --font-terminal: 'VT323', monospace;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background: var(--bg-color);
+      color: var(--primary-text);
+      font-family: var(--font-terminal);
+      font-size: 1.25rem;
+      line-height: 1.5;
+      padding: 28px 16px 64px;
+    }
+    .kit-shell {
+      max-width: 1180px;
+      margin: 0 auto;
+      display: flex;
+      flex-direction: column;
+      gap: 28px;
+    }
+    .kit-header {
+      background: var(--panel-bg);
+      border: 3px solid var(--border-color);
+      padding: 28px 26px;
+    }
+    .badge {
+      display: inline-block;
+      font-family: var(--font-pixel);
+      font-size: 0.55rem;
+      background: var(--primary-text);
+      color: var(--bg-color);
+      padding: 6px 10px;
+      letter-spacing: 0.08em;
+      margin-bottom: 14px;
+    }
+    h1 {
+      font-family: var(--font-pixel);
+      font-size: 1.2rem;
+      color: var(--accent-text);
+      line-height: 1.45;
+      margin-bottom: 8px;
+    }
+    .subtitle {
+      font-size: 1.3rem;
+      color: var(--primary-text);
+    }
+    .generator-grid {
+      display: grid;
+      grid-template-columns: 1fr 440px;
+      gap: 24px;
+      align-items: start;
+    }
+    .panel {
+      background: var(--panel-bg);
+      border: 3px solid var(--border-color);
+      padding: 24px;
+      display: flex;
+      flex-direction: column;
+      gap: 18px;
+    }
+    .panel h2 {
+      font-family: var(--font-pixel);
+      font-size: 0.82rem;
+      color: var(--accent-text);
+      line-height: 1.4;
+      padding-bottom: 12px;
+      border-bottom: 2px dashed var(--border-subtle);
+    }
+    .field-group {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    .field-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 14px;
+    }
+    label {
+      font-family: var(--font-pixel);
+      font-size: 0.54rem;
+      color: var(--accent-text);
+      letter-spacing: 0.05em;
+    }
+    .field-hint {
+      font-size: 1.05rem;
+      color: var(--muted-text);
+    }
+    input, select {
+      background: #050200;
+      border: 2px solid var(--border-color);
+      color: var(--accent-text);
+      padding: 12px 14px;
+      font-family: var(--font-pixel);
+      font-size: 0.58rem;
+      outline: none;
+      width: 100%;
+    }
+    input:focus, select:focus {
+      border-color: #ffffff;
+      box-shadow: 0 0 12px rgba(252, 98, 0, 0.4);
+    }
+    .code-box-wrap {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+    pre.code-output {
+      background: #030100;
+      border: 2px solid var(--border-subtle);
+      padding: 16px;
+      font-family: monospace;
+      font-size: 0.9rem;
+      color: #ffa347;
+      white-space: pre-wrap;
+      word-break: break-all;
+      line-height: 1.45;
+      user-select: all;
+    }
+    .btn-row {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+    .primary-btn {
+      flex: 1;
+      background: var(--primary-text);
+      color: var(--bg-color);
+      border: 2px solid var(--accent-text);
+      padding: 14px 20px;
+      font-family: var(--font-pixel);
+      font-size: 0.65rem;
+      cursor: pointer;
+      text-align: center;
+    }
+    .primary-btn:hover {
+      background: var(--accent-text);
+      border-color: #ffffff;
+    }
+    .secondary-btn {
+      background: #050200;
+      color: var(--primary-text);
+      border: 2px solid var(--border-subtle);
+      padding: 12px 16px;
+      font-family: var(--font-pixel);
+      font-size: 0.55rem;
+      cursor: pointer;
+    }
+    .secondary-btn:hover, .secondary-btn.active {
+      border-color: var(--primary-text);
+      background: rgba(252, 98, 0, 0.16);
+      color: var(--accent-text);
+    }
+    .preview-frame-shell {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 12px;
+      background: #040100;
+      border: 2px dashed var(--border-subtle);
+      padding: 12px;
+    }
+    .preview-iframe {
+      width: 400px;
+      max-width: 100%;
+      height: 560px;
+      border: 2px solid var(--border-color);
+      background: #000000;
+      display: block;
+    }
+    /* Documentation Section */
+    .docs-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 20px;
+    }
+    .doc-card {
+      background: #050200;
+      border: 2px solid var(--border-subtle);
+      padding: 18px 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+    .doc-card h3 {
+      font-family: var(--font-pixel);
+      font-size: 0.64rem;
+      color: var(--accent-text);
+      line-height: 1.4;
+    }
+    .doc-card ol, .doc-card ul {
+      margin-left: 20px;
+    }
+    .doc-card li {
+      margin-bottom: 6px;
+    }
+    .param-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 8px;
+      font-size: 1.15rem;
+    }
+    .param-table th, .param-table td {
+      border: 1px solid var(--border-subtle);
+      padding: 10px 12px;
+      text-align: left;
+    }
+    .param-table th {
+      font-family: var(--font-pixel);
+      font-size: 0.54rem;
+      background: #140700;
+      color: var(--accent-text);
+    }
+    .param-code {
+      font-family: monospace;
+      font-size: 0.95rem;
+      color: var(--accent-text);
+      background: #140700;
+      padding: 2px 6px;
+    }
+    .doc-nav {
+      padding-top: 16px;
+      border-top: 2px dashed var(--border-subtle);
+      display: flex;
+      flex-wrap: wrap;
+      gap: 16px;
+      font-family: var(--font-pixel);
+      font-size: 0.55rem;
+    }
+    .doc-nav a {
+      color: var(--accent-text);
+      text-decoration: none;
+    }
+    .doc-nav a:hover { text-decoration: underline; }
+    @media (max-width: 980px) {
+      .generator-grid { grid-template-columns: 1fr; }
+      .docs-grid { grid-template-columns: 1fr; }
+      .field-row { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <div class="kit-shell">
+    <header class="kit-header">
+      <span class="badge">B2B PUBLISHER PORTAL // WHITE-GLOVE WIDGET SDK</span>
+      <h1>BRAINSWEEP DEVELOPER KIT</h1>
+      <p class="subtitle">Configure, preview, and copy your zero-dependency embeddable cognitive game widget in under 60 seconds.</p>
+    </header>
+
+    <div class="generator-grid">
+      <!-- Left Column: Snippet Configuration & Output -->
+      <section class="panel" aria-label="Embed Snippet Configuration">
+        <h2>1. CONFIGURE YOUR EMBED WIDGET</h2>
+
+        <div class="field-group">
+          <label for="inpDomain">PUBLISHER CUSTOM DOMAIN (FOR VERIFICATION)</label>
+          <input type="text" id="inpDomain" placeholder="e.g. puzzles.dailynews.com" value="publisher.example.com" />
+          <span class="field-hint">Used to verify your publisher license and attribute aggregate session analytics.</span>
+        </div>
+
+        <div class="field-row">
+          <div class="field-group">
+            <label for="selDifficulty">DEFAULT DIFFICULTY</label>
+            <select id="selDifficulty">
+              <option value="easy" selected>Easy (12 Targets / Pool of 20)</option>
+              <option value="medium">Medium (20 Targets / Pool of 36)</option>
+              <option value="hard">Hard (25 Targets / Pool of 50)</option>
+            </select>
+          </div>
+
+          <div class="field-group">
+            <label for="selTheme">DEFAULT COLOR THEME</label>
+            <select id="selTheme">
+              <option value="amber" selected>Default (Retro Orange)</option>
+              <option value="green">Phosphor Green</option>
+              <option value="cyan">Cyberpunk Cyan</option>
+              <option value="magenta">Vaporwave Magenta</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="field-row">
+          <div class="field-group">
+            <label for="selPattern">DEFAULT TRAJECTORY PATTERN</label>
+            <select id="selPattern">
+              <option value="spiral" selected>Spiral Vortex</option>
+              <option value="zigzag">Zig-Zag Sweep</option>
+              <option value="random">Random Drift</option>
+              <option value="wave">Harmonic Wave</option>
+              <option value="mixed">Hybrid Chaos</option>
+            </select>
+          </div>
+
+          <div class="field-group">
+            <label for="selWidth">IFRAME WIDTH PRESET</label>
+            <select id="selWidth">
+              <option value="100%" selected>100% (Responsive Fluid Width)</option>
+              <option value="400px">400px (Compact Sidebar / Mobile)</option>
+              <option value="640px">640px (Standard Article Column)</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="code-box-wrap">
+          <label>GENERATED HTML EMBED SNIPPET (LAZY-LOADED)</label>
+          <pre class="code-output" id="codeOutput"></pre>
+          <div class="btn-row">
+            <button type="button" class="primary-btn" id="btnCopyCode">COPY CODE</button>
+            <button type="button" class="secondary-btn" id="btnReloadPreview">REFRESH PREVIEW</button>
+          </div>
+        </div>
+      </section>
+
+      <!-- Right Column: Live 400px Sandboxed Iframe Preview -->
+      <section class="panel" aria-label="Live Iframe Widget Preview">
+        <h2>2. LIVE WIDGET PREVIEW (400px)</h2>
+        <p class="field-hint">This live iframe runs with <code>?embed=true</code> — external navigation, bottom bars, and footers are automatically stripped.</p>
+        <div class="preview-frame-shell">
+          <iframe
+            id="livePreviewIframe"
+            class="preview-iframe"
+            title="BrainSweep Embedded Cognitive Game Preview"
+            loading="lazy"
+            sandbox="allow-scripts allow-same-origin"
+          ></iframe>
+        </div>
+      </section>
+    </div>
+
+    <!-- Documentation Section -->
+    <section class="panel" aria-label="Publisher Integration Guide">
+      <h2>3. QUICK-START INTEGRATION GUIDE (LAYMAN'S TERMS)</h2>
+
+      <div class="docs-grid">
+        <div class="doc-card">
+          <h3>HOW TO PASTE THE CODE INTO YOUR WEBSITE</h3>
+          <ol>
+            <li><strong>Configure &amp; Copy:</strong> Enter your website's domain name above, pick your starting difficulty and color theme, and click the orange <strong>COPY CODE</strong> button.</li>
+            <li><strong>Open Your Website Editor:</strong> Go to the page or article where you want the game to appear and open an <strong>HTML Block</strong> (in WordPress, Webflow, Ghost, Squarespace, or Wix, choose <em>"Custom HTML"</em> or <em>"Embed Code"</em>).</li>
+            <li><strong>Paste Into the HTML Body:</strong> Paste the copied <code>&lt;iframe&gt;...&lt;/iframe&gt;</code> code directly inside your page's HTML <code>&lt;body&gt;</code> section where you want readers to play.</li>
+            <li><strong>Publish:</strong> Save and publish your page. The widget includes <code>loading="lazy"</code>, meaning it will never slow down your article's initial page load!</li>
+          </ol>
+        </div>
+
+        <div class="doc-card">
+          <h3>HOW TO TEST IN A SANDBOX BEFORE GOING LIVE</h3>
+          <ul>
+            <li><strong>Instant Browser Test:</strong> You can test your snippet right now using free HTML sandboxes like <strong>CodePen.io</strong>, <strong>JSFiddle.net</strong>, or a local <code>test.html</code> file on your computer — simply paste the snippet into the HTML panel.</li>
+            <li><strong>Mobile Width Check:</strong> Resize your preview container down to <code>360px–400px</code> wide to verify that the widget scales cleanly with zero horizontal scrollbars.</li>
+            <li><strong>Off-Screen CPU Pause:</strong> Scroll the page so the iframe is out of view — BrainSweep's built-in <code>IntersectionObserver</code> automatically pauses the 60fps canvas loop while offscreen to save your readers' battery.</li>
+          </ul>
+        </div>
+      </div>
+
+      <h2 style="margin-top: 10px;">4. URL QUERY PARAMETER REFERENCE</h2>
+      <table class="param-table">
+        <thead>
+          <tr>
+            <th>PARAMETER</th>
+            <th>VALUES</th>
+            <th>DESCRIPTION</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><span class="param-code">embed=true</span></td>
+            <td><code>true</code> | <code>1</code></td>
+            <td><strong>Required for B2B embeds.</strong> Hides the 5-icon bottom navigation bar, home back buttons, registration popups, and external footer, showing only the core arena, timer, and score.</td>
+          </tr>
+          <tr>
+            <td><span class="param-code">difficulty</span></td>
+            <td><code>easy</code> | <code>medium</code> | <code>hard</code></td>
+            <td>Sets the starting difficulty level when the embedded game launches (defaults to <code>easy</code>).</td>
+          </tr>
+          <tr>
+            <td><span class="param-code">theme</span></td>
+            <td><code>amber</code> | <code>green</code> | <code>cyan</code> | <code>magenta</code></td>
+            <td>Sets the CRT color palette of the widget and SVG logo to match your publication's branding.</td>
+          </tr>
+          <tr>
+            <td><span class="param-code">pattern</span></td>
+            <td><code>spiral</code> | <code>zigzag</code> | <code>random</code> | <code>wave</code> | <code>mixed</code></td>
+            <td>Configures the movement trajectory pattern of the numbers inside the arena.</td>
+          </tr>
+          <tr>
+            <td><span class="param-code">domain</span></td>
+            <td><code>your-site.com</code></td>
+            <td>Identifies your publisher domain for B2B license verification and aggregated telemetry.</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <nav class="doc-nav" aria-label="Legal &amp; Compliance Documents">
+        <a href="../privacy-policy/">[ PRIVACY POLICY ]</a>
+        <a href="../terms-of-service/">[ TERMS OF SERVICE ]</a>
+        <a href="../dpa/">[ DATA PROCESSING AGREEMENT (DPA) ]</a>
+      </nav>
+    </section>
+  </div>
+
+  <script>
+    (function () {
+      const inpDomain = document.getElementById('inpDomain');
+      const selDifficulty = document.getElementById('selDifficulty');
+      const selTheme = document.getElementById('selTheme');
+      const selPattern = document.getElementById('selPattern');
+      const selWidth = document.getElementById('selWidth');
+      const codeOutput = document.getElementById('codeOutput');
+      const btnCopyCode = document.getElementById('btnCopyCode');
+      const btnReloadPreview = document.getElementById('btnReloadPreview');
+      const livePreviewIframe = document.getElementById('livePreviewIframe');
+
+      function getBaseOrigin() {
+        if (window.location.protocol === 'http:' || window.location.protocol === 'https:') {
+          return window.location.origin;
+        }
+        return 'https://brainsweep-tau.vercel.app';
+      }
+
+      function buildQueryString() {
+        const domain = (inpDomain.value || 'publisher.example.com')
+          .trim()
+          .replace(/^https?:\/\//i, '')
+          .replace(/\/.*$/, '');
+        const params = new URLSearchParams();
+        params.set('embed', 'true');
+        params.set('difficulty', selDifficulty.value || 'easy');
+        params.set('theme', selTheme.value || 'amber');
+        params.set('pattern', selPattern.value || 'spiral');
+        if (domain) {
+          params.set('domain', domain);
+        }
+        return { query: params.toString(), domain };
+      }
+
+      function updateSnippetAndPreview(reloadIframe = true) {
+        const { query, domain } = buildQueryString();
+        const baseOrigin = getBaseOrigin();
+        const publicUrl = `${baseOrigin}/?${query}`;
+        const widthVal = selWidth.value || '100%';
+
+        const snippet = [
+          `<iframe`,
+          `  src="${publicUrl}"`,
+          `  width="${widthVal}"`,
+          `  height="560"`,
+          `  style="border: 0; max-width: 100%; overflow: hidden; display: block;"`,
+          `  loading="lazy"`,
+          `  allow="autoplay"`,
+          `  data-publisher-domain="${domain}"`,
+          `  title="BrainSweep Cognitive Number Game"`,
+          `></iframe>`
+        ].join('\n');
+
+        codeOutput.textContent = snippet;
+
+        if (reloadIframe && livePreviewIframe) {
+          livePreviewIframe.src = `../?${query}`;
+        }
+      }
+
+      [inpDomain, selDifficulty, selTheme, selPattern, selWidth].forEach((el) => {
+        el.addEventListener('input', () => updateSnippetAndPreview(el !== inpDomain && el !== selWidth));
+        el.addEventListener('change', () => updateSnippetAndPreview(true));
+      });
+
+      btnReloadPreview.addEventListener('click', () => updateSnippetAndPreview(true));
+
+      btnCopyCode.addEventListener('click', async () => {
+        const text = codeOutput.textContent;
+        try {
+          await navigator.clipboard.writeText(text);
+          btnCopyCode.textContent = '✓ COPIED TO CLIPBOARD!';
+        } catch {
+          const ta = document.createElement('textarea');
+          ta.value = text;
+          document.body.appendChild(ta);
+          ta.select();
+          document.execCommand('copy');
+          document.body.removeChild(ta);
+          btnCopyCode.textContent = '✓ COPIED TO CLIPBOARD!';
+        }
+        setTimeout(() => {
+          btnCopyCode.textContent = 'COPY CODE';
+        }, 2000);
+      });
+
+      updateSnippetAndPreview(true);
+    })();
+  </script>
+</body>
+</html>
