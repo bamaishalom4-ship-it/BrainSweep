@@ -35,8 +35,18 @@
       margin: 0 auto;
       background: var(--panel-bg);
       border: 3px solid var(--border-color);
-      padding: 34px 30px;
+      padding: 34px 24px;
       box-shadow: 0 0 28px rgba(252, 98, 0, 0.15);
+      overflow-wrap: anywhere;
+      word-break: break-word;
+      overflow: hidden;
+    }
+    code {
+      font-family: var(--font-terminal);
+      font-size: 1.2rem;
+      color: var(--accent-text);
+      overflow-wrap: anywhere;
+      word-break: break-all;
     }
     .doc-header {
       border-bottom: 2px dashed var(--border-subtle);
