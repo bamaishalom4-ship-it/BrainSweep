@@ -53,6 +53,36 @@
       padding-bottom: 20px;
       margin-bottom: 24px;
     }
+    .doc-top-bar {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 14px;
+    }
+    .doc-top-bar .badge {
+      margin-bottom: 0;
+    }
+    .close-doc-btn {
+      width: 36px;
+      height: 36px;
+      background: #080300;
+      color: var(--primary-text);
+      border: 2px solid var(--border-subtle);
+      font-family: var(--font-pixel);
+      font-size: 0.65rem;
+      text-decoration: none;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      cursor: pointer;
+    }
+    .close-doc-btn:hover {
+      border-color: var(--border-color);
+      background: var(--primary-text);
+      color: var(--bg-color);
+    }
     .badge {
       display: inline-block;
       font-family: var(--font-pixel);
@@ -111,7 +141,10 @@
 <body>
   <main class="doc-container">
     <header class="doc-header">
-      <span class="badge">LEGAL COMPLIANCE // ACCEPTABLE USE &amp; LICENSING</span>
+      <div class="doc-top-bar">
+        <span class="badge">LEGAL COMPLIANCE // ACCEPTABLE USE &amp; LICENSING</span>
+        <a href="../?screen=help" class="close-doc-btn" title="Close and return to Game Help" aria-label="Close and return to Game Help">✕</a>
+      </div>
       <h1>TERMS OF SERVICE</h1>
       <p class="meta">EFFECTIVE DATE: NOVEMBER 20, 2026 • VERSION 2.0</p>
     </header>

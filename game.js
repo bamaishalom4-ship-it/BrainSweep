@@ -3085,6 +3085,18 @@
   // If app loads in B2B Embed Mode (?embed=true) or while OFFLINE, launch directly into the arena
   if (state.isEmbedMode || !navigator.onLine) {
     startGame();
+  } else {
+    try {
+      const bootParams = new URLSearchParams(window.location.search || '');
+      if (bootParams.get('screen') === 'help' || window.location.hash === '#help') {
+        navigateToScreen('help');
+        if (window.history && window.history.replaceState) {
+          window.history.replaceState({}, '', window.location.pathname);
+        }
+      }
+    } catch {
+      // ignore URL parsing errors
+    }
   }
 
   requestAnimationFrame(tick);
