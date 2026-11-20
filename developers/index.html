@@ -76,6 +76,8 @@
       display: flex;
       flex-direction: column;
       gap: 18px;
+      min-width: 0;
+      overflow: hidden;
     }
     .panel h2 {
       font-family: var(--font-pixel);
@@ -213,22 +215,36 @@
     .doc-card li {
       margin-bottom: 6px;
     }
+    .table-scroll-wrap {
+      width: 100%;
+      overflow-x: auto;
+      -webkit-overflow-scrolling: touch;
+      border: 2px solid var(--border-subtle);
+      background: #050200;
+      scrollbar-width: thin;
+    }
     .param-table {
       width: 100%;
+      min-width: 600px;
       border-collapse: collapse;
-      margin-top: 8px;
       font-size: 1.15rem;
     }
     .param-table th, .param-table td {
       border: 1px solid var(--border-subtle);
-      padding: 10px 12px;
+      padding: 12px 14px;
       text-align: left;
+      vertical-align: top;
+    }
+    .param-table td:nth-child(1),
+    .param-table td:nth-child(2) {
+      white-space: nowrap;
     }
     .param-table th {
       font-family: var(--font-pixel);
       font-size: 0.54rem;
       background: #140700;
       color: var(--accent-text);
+      white-space: nowrap;
     }
     .param-code {
       font-family: monospace;
@@ -236,6 +252,7 @@
       color: var(--accent-text);
       background: #140700;
       padding: 2px 6px;
+      white-space: nowrap;
     }
     .doc-nav {
       padding-top: 16px;
@@ -372,42 +389,45 @@
       </div>
 
       <h2 style="margin-top: 10px;">4. URL QUERY PARAMETER REFERENCE</h2>
-      <table class="param-table">
-        <thead>
-          <tr>
-            <th>PARAMETER</th>
-            <th>VALUES</th>
-            <th>DESCRIPTION</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr>
-            <td><span class="param-code">embed=true</span></td>
-            <td><code>true</code> | <code>1</code></td>
-            <td><strong>Required for B2B embeds.</strong> Hides the 5-icon bottom navigation bar, home back buttons, registration popups, and external footer, showing only the core arena, timer, and score.</td>
-          </tr>
-          <tr>
-            <td><span class="param-code">difficulty</span></td>
-            <td><code>easy</code> | <code>medium</code> | <code>hard</code></td>
-            <td>Sets the starting difficulty level when the embedded game launches (defaults to <code>easy</code>).</td>
-          </tr>
-          <tr>
-            <td><span class="param-code">theme</span></td>
-            <td><code>amber</code> | <code>green</code> | <code>cyan</code> | <code>magenta</code></td>
-            <td>Sets the CRT color palette of the widget and SVG logo to match your publication's branding.</td>
-          </tr>
-          <tr>
-            <td><span class="param-code">pattern</span></td>
-            <td><code>spiral</code> | <code>zigzag</code> | <code>random</code> | <code>wave</code> | <code>mixed</code></td>
-            <td>Configures the movement trajectory pattern of the numbers inside the arena.</td>
-          </tr>
-          <tr>
-            <td><span class="param-code">domain</span></td>
-            <td><code>your-site.com</code></td>
-            <td>Identifies your publisher domain for B2B license verification and aggregated telemetry.</td>
-          </tr>
-        </tbody>
-      </table>
+      <p class="field-hint">Swipe or scroll horizontally on mobile to inspect all columns.</p>
+      <div class="table-scroll-wrap">
+        <table class="param-table">
+          <thead>
+            <tr>
+              <th>PARAMETER</th>
+              <th>VALUES</th>
+              <th>DESCRIPTION</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><span class="param-code">embed=true</span></td>
+              <td><code>true</code> | <code>1</code></td>
+              <td><strong>Required for B2B embeds.</strong> Hides the 5-icon bottom navigation bar, home back buttons, registration popups, and external footer, showing only the core arena, timer, and score.</td>
+            </tr>
+            <tr>
+              <td><span class="param-code">difficulty</span></td>
+              <td><code>easy</code> | <code>medium</code> | <code>hard</code></td>
+              <td>Sets the starting difficulty level when the embedded game launches (defaults to <code>easy</code>).</td>
+            </tr>
+            <tr>
+              <td><span class="param-code">theme</span></td>
+              <td><code>amber</code> | <code>green</code> | <code>cyan</code> | <code>magenta</code></td>
+              <td>Sets the CRT color palette of the widget and SVG logo to match your publication's branding.</td>
+            </tr>
+            <tr>
+              <td><span class="param-code">pattern</span></td>
+              <td><code>spiral</code> | <code>zigzag</code> | <code>random</code> | <code>wave</code> | <code>mixed</code></td>
+              <td>Configures the movement trajectory pattern of the numbers inside the arena.</td>
+            </tr>
+            <tr>
+              <td><span class="param-code">domain</span></td>
+              <td><code>your-site.com</code></td>
+              <td>Identifies your publisher domain for B2B license verification and aggregated telemetry.</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
 
       <nav class="doc-nav" aria-label="Legal &amp; Compliance Documents">
         <a href="../privacy-policy/">[ PRIVACY POLICY ]</a>

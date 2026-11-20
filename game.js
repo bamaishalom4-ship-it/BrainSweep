@@ -1048,7 +1048,7 @@
 
   // --- Extraction Logic ---
   function isOutsideExtractionBoundary(x, y, radius) {
-    const borderZone = Math.max(22, radius * 1.25);
+    const borderZone = Math.max(28, radius * 1.5);
     return (
       x <= borderZone ||
       x >= canvasWidth - borderZone ||
@@ -1178,25 +1178,29 @@
   }
 
   function findNodeAt(x, y) {
+    // 1. High-sensitivity target priority: generous touch magnetic radius (+20px) for the active nextTarget
+    for (let i = state.nodes.length - 1; i >= 0; i--) {
+      const n = state.nodes[i];
+      if (n.extracted || n.value !== state.nextTarget) continue;
+      const dist = Math.hypot(x - n.x, y - n.y);
+      if (dist <= n.radius + 20) {
+        return n;
+      }
+    }
+
+    // 2. Fallback: find closest non-target node within standard touch radius (+10px)
     let bestCandidate = null;
     let bestDist = Infinity;
 
     for (let i = state.nodes.length - 1; i >= 0; i--) {
       const n = state.nodes[i];
       if (n.extracted) continue;
-      const dx = x - n.x;
-      const dy = y - n.y;
-      const dist = Math.sqrt(dx * dx + dy * dy);
-      const hitRadius = n.radius + 9;
+      const dist = Math.hypot(x - n.x, y - n.y);
+      const hitRadius = n.radius + 10;
 
-      if (dist <= hitRadius) {
-        if (n.value === state.nextTarget) {
-          return n;
-        }
-        if (dist < bestDist) {
-          bestDist = dist;
-          bestCandidate = n;
-        }
+      if (dist <= hitRadius && dist < bestDist) {
+        bestDist = dist;
+        bestCandidate = n;
       }
     }
     return bestCandidate;
@@ -1219,6 +1223,7 @@
       state.dragStartY = pos.y;
       state.dragVelX = 0;
       state.dragVelY = 0;
+      state.peakFlickSpeed = 0;
 
       hitNode.x = pos.x;
       hitNode.y = pos.y;
@@ -1287,6 +1292,8 @@
     const pos = getCanvasCoords(e);
     state.dragVelX = pos.x - state.pointerX;
     state.dragVelY = pos.y - state.pointerY;
+    const stepSpeed = Math.hypot(state.dragVelX, state.dragVelY);
+    state.peakFlickSpeed = Math.max(state.peakFlickSpeed || 0, stepSpeed);
     state.pointerX = pos.x;
     state.pointerY = pos.y;
 
@@ -1298,7 +1305,10 @@
 
     const dragDist = Math.hypot(pos.x - state.dragStartX, pos.y - state.dragStartY);
 
-    if (dragDist >= 16 && isOutsideExtractionBoundary(node.x, node.y, node.radius)) {
+    if (
+      (dragDist >= 8 && isOutsideExtractionBoundary(node.x, node.y, node.radius)) ||
+      (state.quickFlick && dragDist >= 34)
+    ) {
       completeNodeExtraction(node);
     }
   });
@@ -1310,18 +1320,21 @@
     const node = state.draggingNode;
     const pos = getCanvasCoords(e);
     const dragDist = Math.hypot(pos.x - state.dragStartX, pos.y - state.dragStartY);
-    const flickSpeed = Math.hypot(state.dragVelX, state.dragVelY);
+    const flickSpeed = Math.max(
+      state.peakFlickSpeed || 0,
+      Math.hypot(state.dragVelX, state.dragVelY)
+    );
 
     if (
       isOutsideExtractionBoundary(node.x, node.y, node.radius) ||
-      (state.quickFlick && (dragDist >= 52 || (dragDist >= 24 && flickSpeed >= 8)))
+      (state.quickFlick && (dragDist >= 18 || (dragDist >= 9 && flickSpeed >= 3.2)))
     ) {
       completeNodeExtraction(node);
     } else {
       node.trail = [];
       state.draggingNode = null;
       extractionFrame.classList.remove('dragging-active');
-      showArenaToast('Drag across the border or flick outward!', '#1c0a00');
+      showArenaToast('Flick or drag slightly to extract!', '#1c0a00');
     }
     state.pointerId = null;
   }
@@ -1423,13 +1436,13 @@
 
       if (state.quickFlick) {
         const dragDist = Math.hypot(dn.x - state.dragStartX, dn.y - state.dragStartY);
-        const progress = Math.min(1, dragDist / 52);
+        const progress = Math.min(1, dragDist / 34);
         ctx.setLineDash([]);
         ctx.strokeStyle =
           progress >= 1 ? t.accent : hexToRgba(t.primary, 0.45);
         ctx.lineWidth = 2;
         ctx.beginPath();
-        ctx.arc(state.dragStartX, state.dragStartY, 52, 0, Math.PI * 2 * progress);
+        ctx.arc(state.dragStartX, state.dragStartY, 34, 0, Math.PI * 2 * progress);
         ctx.stroke();
       }
       ctx.restore();
