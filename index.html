@@ -224,6 +224,16 @@
                 </svg>
                 <span>Statistics</span>
               </button>
+              <button type="button" class="hamburger-dropdown-item" id="btnOpenAchievements" role="menuitem">
+                <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.2" aria-hidden="true">
+                  <path d="M6 4h12v5a6 6 0 0 1-12 0V4z" />
+                  <path d="M6 6H3v2a3 3 0 0 0 3 3" />
+                  <path d="M18 6h3v2a3 3 0 0 1-3 3" />
+                  <line x1="12" y1="15" x2="12" y2="19" />
+                  <line x1="8" y1="19" x2="16" y2="19" />
+                </svg>
+                <span>Achievements</span>
+              </button>
             </div>
           </div>
         </div>
@@ -890,6 +900,40 @@
           </div>
         </section>
       </div>
+    </div>
+
+    <!-- =====================================================================
+         8C. ACHIEVEMENTS MODAL (#achievementsModal)
+         ===================================================================== -->
+    <div class="modal-backdrop" id="achievementsModal">
+      <div class="modal-card achievements-card">
+        <div class="leaderboard-top-bar">
+          <div class="leaderboard-title-wrap">
+            <span class="badge-pill" id="achievementsCountBadge">UNLOCKED: 0 / 15</span>
+            <h2 class="achievements-header-title">
+              <svg class="achievements-trophy-svg" viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2.2" aria-hidden="true">
+                <path d="M6 4h12v5a6 6 0 0 1-12 0V4z" />
+                <path d="M6 6H3v2a3 3 0 0 0 3 3" />
+                <path d="M18 6h3v2a3 3 0 0 1-3 3" />
+                <line x1="12" y1="15" x2="12" y2="19" />
+                <line x1="8" y1="19" x2="16" y2="19" />
+              </svg>
+              <span>ACHIEVEMENTS</span>
+            </h2>
+          </div>
+          <button type="button" class="icon-btn icon-only" id="btnCloseAchievements" title="Close Achievements" aria-label="Close Achievements">
+            ✕
+          </button>
+        </div>
+
+        <div class="achievements-list" id="achievementsList" role="list"></div>
+      </div>
+    </div>
+
+    <!-- Achievement Unlocked Floating Notification Toast -->
+    <div class="achievement-unlock-toast" id="achievementToast" role="status" aria-live="polite" hidden>
+      <span class="achievement-toast-icon" aria-hidden="true">🏆</span>
+      <span class="achievement-toast-text" id="achievementToastText">Achievement Unlocked!</span>
     </div>
 
     <!-- =====================================================================

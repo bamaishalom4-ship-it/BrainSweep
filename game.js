@@ -1707,6 +1707,15 @@
         state.timeRemaining,
         completedAll
       );
+      checkAchievements({
+        sessionScore,
+        difficulty: state.difficulty,
+        completedAll,
+        timeRemaining: state.timeRemaining,
+        memoryMode: state.memoryMode,
+        pattern: state.pattern,
+        notify: true,
+      });
       const cfg = DIFFICULTIES[state.difficulty];
 
       if (completedAll) {
@@ -2064,6 +2073,8 @@
     if (leaderboardModal) leaderboardModal.classList.remove('active');
     const statsModalEl = document.getElementById('statisticsModal');
     if (statsModalEl) statsModalEl.classList.remove('active');
+    const achModalEl = document.getElementById('achievementsModal');
+    if (achModalEl) achModalEl.classList.remove('active');
     if (resultsModal) resultsModal.classList.remove('active');
   }
 
@@ -3430,6 +3441,454 @@
     );
   }
 
+  // --- Achievements System (15 Achievements + Progress Bars + Unlock Toasts) ---
+  const ACHIEVEMENTS_STORAGE_KEY = 'brainsweep_achievements_v1';
+
+  const btnOpenAchievements = document.getElementById('btnOpenAchievements');
+  const achievementsModal = document.getElementById('achievementsModal');
+  const btnCloseAchievements = document.getElementById('btnCloseAchievements');
+  const achievementsList = document.getElementById('achievementsList');
+  const achievementsCountBadge = document.getElementById('achievementsCountBadge');
+  const achievementToast = document.getElementById('achievementToast');
+  const achievementToastText = document.getElementById('achievementToastText');
+
+  const ACHIEVEMENTS_LIST = [
+    // Milestones (Games Played)
+    {
+      id: 'initiate',
+      title: 'INITIATE',
+      description: 'Complete your first game.',
+      icon: '⚡',
+      unlocked: false,
+      target: 1,
+      showProgress: true,
+      getCurrent: (ctx) => ctx.totalGames,
+    },
+    {
+      id: 'warming_up',
+      title: 'WARMING UP',
+      description: 'Play 10 games.',
+      icon: '🔥',
+      unlocked: false,
+      target: 10,
+      showProgress: true,
+      getCurrent: (ctx) => ctx.totalGames,
+    },
+    {
+      id: 'dedicated',
+      title: 'DEDICATED',
+      description: 'Play 50 games.',
+      icon: '🎖️',
+      unlocked: false,
+      target: 50,
+      showProgress: true,
+      getCurrent: (ctx) => ctx.totalGames,
+    },
+    {
+      id: 'brainiac',
+      title: 'BRAINIAC',
+      description: 'Play 100 games.',
+      icon: '🧠',
+      unlocked: false,
+      target: 100,
+      showProgress: true,
+      getCurrent: (ctx) => ctx.totalGames,
+    },
+    {
+      id: 'cognitive_athlete',
+      title: 'COGNITIVE ATHLETE',
+      description: 'Play 500 games.',
+      icon: '👑',
+      unlocked: false,
+      target: 500,
+      showProgress: true,
+      getCurrent: (ctx) => ctx.totalGames,
+    },
+
+    // Extraction & Score
+    {
+      id: 'first_blood',
+      title: 'FIRST BLOOD',
+      description: 'Extract your first number.',
+      icon: '🎯',
+      unlocked: false,
+      target: 1,
+      showProgress: true,
+      getCurrent: (ctx) => ctx.totalExtracted,
+    },
+    {
+      id: 'digit_destroyer',
+      title: 'DIGIT DESTROYER',
+      description: 'Extract 1,000 numbers in total.',
+      icon: '💥',
+      unlocked: false,
+      target: 1000,
+      showProgress: true,
+      getCurrent: (ctx) => ctx.totalExtracted,
+    },
+    {
+      id: 'the_cleaner',
+      title: 'THE CLEANER',
+      description: 'Extract 20 numbers in a single round.',
+      icon: '🧹',
+      unlocked: false,
+      target: 20,
+      showProgress: true,
+      getCurrent: (ctx) => ctx.maxSingleRoundExtracted,
+    },
+    {
+      id: 'max_capacity',
+      title: 'MAX CAPACITY',
+      description: 'Extract 25 numbers in a single round (Requires Hard mode).',
+      icon: '🚀',
+      unlocked: false,
+      target: 25,
+      showProgress: true,
+      getCurrent: (ctx) => ctx.maxHardRoundExtracted,
+    },
+
+    // Speed & Precision
+    {
+      id: 'quick_draw',
+      title: 'QUICK DRAW',
+      description: 'Finish a game with more than 15 seconds remaining.',
+      icon: '⏱️',
+      unlocked: false,
+      target: 1,
+      showProgress: false,
+      getCurrent: (ctx) => (ctx.bestTimeRemaining > 15 ? 1 : 0),
+    },
+    {
+      id: 'speed_demon',
+      title: 'SPEED DEMON',
+      description: 'Finish a game with more than 30 seconds remaining.',
+      icon: '☄️',
+      unlocked: false,
+      target: 1,
+      showProgress: false,
+      getCurrent: (ctx) => (ctx.bestTimeRemaining > 30 ? 1 : 0),
+    },
+    {
+      id: 'flawless',
+      title: 'FLAWLESS',
+      description: 'Achieve a Perfect Run (extract all targets) on Easy mode.',
+      icon: '💎',
+      unlocked: false,
+      target: 1,
+      showProgress: false,
+      getCurrent: (ctx) => (ctx.easyPerfectRuns >= 1 ? 1 : 0),
+    },
+    {
+      id: 'unstoppable',
+      title: 'UNSTOPPABLE',
+      description: 'Achieve a Perfect Run on Hard mode.',
+      icon: '🛡️',
+      unlocked: false,
+      target: 1,
+      showProgress: false,
+      getCurrent: (ctx) => (ctx.hardPerfectRuns >= 1 ? 1 : 0),
+    },
+
+    // Special Modes
+    {
+      id: 'memory_master',
+      title: 'MEMORY MASTER',
+      description: 'Score at least 10 points with "Working Memory Mode" enabled.',
+      icon: '👁️',
+      unlocked: false,
+      target: 10,
+      showProgress: true,
+      getCurrent: (ctx) => ctx.bestMemoryModeScore,
+    },
+    {
+      id: 'chaos_agent',
+      title: 'CHAOS AGENT',
+      description: 'Play a game using the "Hybrid Chaos" trajectory pattern.',
+      icon: '🔀',
+      unlocked: false,
+      target: 1,
+      showProgress: false,
+      getCurrent: (ctx) => (ctx.playedHybridChaos ? 1 : 0),
+    },
+  ];
+
+  function loadAchievementsStorage() {
+    try {
+      const raw = localStorage.getItem(ACHIEVEMENTS_STORAGE_KEY);
+      if (!raw) {
+        return {
+          unlockedIds: {},
+          maxSingleRoundExtracted: 0,
+          maxHardRoundExtracted: 0,
+          bestMemoryModeScore: 0,
+          playedHybridChaos: false,
+        };
+      }
+      const parsed = JSON.parse(raw);
+      return {
+        unlockedIds: (parsed && parsed.unlockedIds) || {},
+        maxSingleRoundExtracted: Number(parsed && parsed.maxSingleRoundExtracted) || 0,
+        maxHardRoundExtracted: Number(parsed && parsed.maxHardRoundExtracted) || 0,
+        bestMemoryModeScore: Number(parsed && parsed.bestMemoryModeScore) || 0,
+        playedHybridChaos: Boolean(parsed && parsed.playedHybridChaos),
+      };
+    } catch {
+      return {
+        unlockedIds: {},
+        maxSingleRoundExtracted: 0,
+        maxHardRoundExtracted: 0,
+        bestMemoryModeScore: 0,
+        playedHybridChaos: false,
+      };
+    }
+  }
+
+  function saveAchievementsStorage(data) {
+    try {
+      localStorage.setItem(ACHIEVEMENTS_STORAGE_KEY, JSON.stringify(data));
+    } catch {
+      // ignore storage errors
+    }
+  }
+
+  function buildAchievementContext(storedMeta) {
+    const easyStats = loadDifficultyStats('easy');
+    const medStats = loadDifficultyStats('medium');
+    const hardStats = loadDifficultyStats('hard');
+    const legacyScores = loadHighScores();
+
+    const totalGames =
+      (Number(easyStats.gamesPlayed) || 0) +
+      (Number(medStats.gamesPlayed) || 0) +
+      (Number(hardStats.gamesPlayed) || 0);
+
+    const totalExtracted =
+      (Number(easyStats.totalNumbersExtracted) || 0) +
+      (Number(medStats.totalNumbersExtracted) || 0) +
+      (Number(hardStats.totalNumbersExtracted) || 0);
+
+    const easyBestSingle = Math.max(
+      Number(easyStats.lastSessionScore) || 0,
+      Number(legacyScores.easy && legacyScores.easy.extracted) || 0
+    );
+    const medBestSingle = Math.max(
+      Number(medStats.lastSessionScore) || 0,
+      Number(legacyScores.medium && legacyScores.medium.extracted) || 0
+    );
+    const hardBestSingle = Math.max(
+      Number(hardStats.lastSessionScore) || 0,
+      Number(legacyScores.hard && legacyScores.hard.extracted) || 0
+    );
+
+    const maxSingleRoundExtracted = Math.max(
+      Number(storedMeta.maxSingleRoundExtracted) || 0,
+      easyBestSingle,
+      medBestSingle,
+      hardBestSingle
+    );
+
+    const maxHardRoundExtracted = Math.max(
+      Number(storedMeta.maxHardRoundExtracted) || 0,
+      hardBestSingle
+    );
+
+    const bestTimeRemaining = Math.max(
+      Number(easyStats.fastestPerfectTimeRemainingSec) || 0,
+      Number(medStats.fastestPerfectTimeRemainingSec) || 0,
+      Number(hardStats.fastestPerfectTimeRemainingSec) || 0
+    );
+
+    return {
+      totalGames,
+      totalExtracted,
+      maxSingleRoundExtracted,
+      maxHardRoundExtracted,
+      bestTimeRemaining,
+      easyPerfectRuns: Number(easyStats.perfectRuns) || 0,
+      hardPerfectRuns: Number(hardStats.perfectRuns) || 0,
+      bestMemoryModeScore: Number(storedMeta.bestMemoryModeScore) || 0,
+      playedHybridChaos: Boolean(storedMeta.playedHybridChaos),
+    };
+  }
+
+  let achievementToastTimer = null;
+  function showAchievementUnlockToast(newlyUnlockedTitles) {
+    if (!achievementToast || !achievementToastText || !newlyUnlockedTitles.length) return;
+    const label =
+      newlyUnlockedTitles.length === 1
+        ? `Achievement Unlocked: ${newlyUnlockedTitles[0]}`
+        : `${newlyUnlockedTitles.length} Achievements Unlocked! (${newlyUnlockedTitles[0]})`;
+
+    achievementToastText.textContent = label;
+    achievementToast.hidden = false;
+
+    if (achievementToastTimer) {
+      clearTimeout(achievementToastTimer);
+    }
+    achievementToastTimer = setTimeout(() => {
+      achievementToast.hidden = true;
+    }, 3400);
+  }
+
+  function checkAchievements(sessionContext = null) {
+    const stored = loadAchievementsStorage();
+
+    if (sessionContext && typeof sessionContext === 'object') {
+      const score = Math.max(0, parseInt(sessionContext.sessionScore, 10) || 0);
+      if (score > stored.maxSingleRoundExtracted) {
+        stored.maxSingleRoundExtracted = score;
+      }
+      if (sessionContext.difficulty === 'hard' && score > stored.maxHardRoundExtracted) {
+        stored.maxHardRoundExtracted = score;
+      }
+      if (sessionContext.memoryMode && score > stored.bestMemoryModeScore) {
+        stored.bestMemoryModeScore = score;
+      }
+      if (sessionContext.pattern === 'mixed') {
+        stored.playedHybridChaos = true;
+      }
+    }
+
+    const ctx = buildAchievementContext(stored);
+    const newlyUnlocked = [];
+
+    ACHIEVEMENTS_LIST.forEach((ach) => {
+      const currentVal = ach.getCurrent(ctx);
+      const isNowUnlocked = Boolean(stored.unlockedIds[ach.id]) || currentVal >= ach.target;
+      if (isNowUnlocked && !stored.unlockedIds[ach.id]) {
+        stored.unlockedIds[ach.id] = true;
+        newlyUnlocked.push(ach.title);
+      }
+      ach.unlocked = isNowUnlocked;
+    });
+
+    saveAchievementsStorage(stored);
+
+    if (sessionContext && sessionContext.notify && newlyUnlocked.length > 0) {
+      showAchievementUnlockToast(newlyUnlocked);
+    }
+
+    renderAchievementsList();
+    return newlyUnlocked;
+  }
+
+  function renderAchievementsList() {
+    if (!achievementsList) return;
+    const stored = loadAchievementsStorage();
+    const ctx = buildAchievementContext(stored);
+
+    let unlockedCount = 0;
+    achievementsList.innerHTML = '';
+
+    ACHIEVEMENTS_LIST.forEach((ach) => {
+      const currentVal = ach.getCurrent(ctx);
+      const isUnlocked = Boolean(stored.unlockedIds[ach.id]) || currentVal >= ach.target;
+      ach.unlocked = isUnlocked;
+      if (isUnlocked) unlockedCount += 1;
+
+      const row = document.createElement('div');
+      row.className = `achievement-row${isUnlocked ? '' : ' locked'}`;
+      row.setAttribute('role', 'listitem');
+
+      // Left Circular Icon + Padlock Overlay if Locked
+      const iconCircle = document.createElement('div');
+      iconCircle.className = 'achievement-icon-circle';
+
+      const glyph = document.createElement('span');
+      glyph.className = 'achievement-glyph';
+      glyph.textContent = ach.icon;
+      iconCircle.appendChild(glyph);
+
+      if (!isUnlocked) {
+        const lockOverlay = document.createElement('span');
+        lockOverlay.className = 'achievement-lock-overlay';
+        lockOverlay.setAttribute('aria-label', 'Locked');
+        lockOverlay.innerHTML =
+          '<svg viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="currentColor" stroke-width="2.4"><rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>';
+        iconCircle.appendChild(lockOverlay);
+      }
+
+      // Right Content: Title, Status Pill, Description & Progress Bar
+      const content = document.createElement('div');
+      content.className = 'achievement-content';
+
+      const titleRow = document.createElement('div');
+      titleRow.className = 'achievement-title-row';
+
+      const titleEl = document.createElement('strong');
+      titleEl.className = 'achievement-title';
+      titleEl.textContent = ach.title;
+
+      const statusTag = document.createElement('span');
+      statusTag.className = 'achievement-status-tag';
+      statusTag.textContent = isUnlocked ? 'UNLOCKED' : 'LOCKED';
+
+      titleRow.appendChild(titleEl);
+      titleRow.appendChild(statusTag);
+
+      const descEl = document.createElement('p');
+      descEl.className = 'achievement-desc';
+      descEl.textContent = ach.description;
+
+      content.appendChild(titleRow);
+      content.appendChild(descEl);
+
+      // Show progress bar inside locked achievements when applicable
+      if (!isUnlocked && ach.showProgress && ach.target > 1) {
+        const clampedCurrent = Math.max(0, Math.min(ach.target, Math.floor(currentVal)));
+        const pct = Math.max(0, Math.min(100, Math.round((clampedCurrent / ach.target) * 100)));
+
+        const progWrap = document.createElement('div');
+        progWrap.className = 'achievement-progress-wrap';
+
+        const progTrack = document.createElement('div');
+        progTrack.className = 'achievement-progress-track';
+
+        const progFill = document.createElement('div');
+        progFill.className = 'achievement-progress-fill';
+        progFill.style.width = `${pct}%`;
+        progTrack.appendChild(progFill);
+
+        const progText = document.createElement('span');
+        progText.className = 'achievement-progress-text';
+        progText.textContent = `${clampedCurrent} / ${ach.target}`;
+
+        progWrap.appendChild(progTrack);
+        progWrap.appendChild(progText);
+        content.appendChild(progWrap);
+      }
+
+      row.appendChild(iconCircle);
+      row.appendChild(content);
+      achievementsList.appendChild(row);
+    });
+
+    if (achievementsCountBadge) {
+      achievementsCountBadge.textContent = `UNLOCKED: ${unlockedCount} / ${ACHIEVEMENTS_LIST.length}`;
+    }
+  }
+
+  function openAchievementsModal() {
+    closeHamburgerDropdown();
+    checkAchievements({ notify: false });
+    closeAllOverlayModals();
+    if (achievementsModal) {
+      achievementsModal.classList.add('active');
+    }
+  }
+
+  if (btnOpenAchievements) {
+    btnOpenAchievements.addEventListener('click', () => {
+      openAchievementsModal();
+    });
+  }
+
+  if (btnCloseAchievements) {
+    btnCloseAchievements.addEventListener('click', () => {
+      navigateToScreen('home');
+    });
+  }
+
   // --- Initial Boot ---
   loadPersistedSettings();
   applyEmbedUrlParams();
@@ -3438,6 +3897,7 @@
   initCookieConsentBanner();
   syncNetworkModeUI();
   syncSettingsUI();
+  checkAchievements({ notify: false });
   resizeCanvas();
   createNodes();
   updateHUD();
