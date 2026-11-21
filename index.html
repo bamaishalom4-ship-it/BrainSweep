@@ -197,12 +197,35 @@
          ===================================================================== -->
     <div class="modal-backdrop home-screen-backdrop active" id="setupModal">
       <div class="modal-card home-screen-card">
-        <!-- Player Callsign Strip -->
+        <!-- Top Right Hamburger Menu Strip -->
         <div class="home-player-strip">
-          <span class="home-player-label">OPERATOR:</span>
-          <button type="button" class="home-player-btn" id="btnChangeUser" title="Click to set or change Player Name">
-            <span id="currentPlayerName">GUEST</span>
-          </button>
+          <span class="home-player-label">SYS://MENU</span>
+          <div class="hamburger-menu-wrap" id="hamburgerMenuWrap">
+            <button
+              type="button"
+              class="hamburger-icon-btn"
+              id="btnHamburgerMenu"
+              title="Open Menu"
+              aria-label="Open Menu"
+              aria-expanded="false"
+            >
+              <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="square" aria-hidden="true">
+                <line x1="3" y1="6" x2="21" y2="6" />
+                <line x1="3" y1="12" x2="21" y2="12" />
+                <line x1="3" y1="18" x2="21" y2="18" />
+              </svg>
+            </button>
+            <div class="hamburger-dropdown" id="hamburgerDropdown" role="menu" hidden>
+              <button type="button" class="hamburger-dropdown-item" id="btnOpenStatistics" role="menuitem">
+                <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.2" aria-hidden="true">
+                  <rect x="3" y="13" width="4" height="8" />
+                  <rect x="10" y="8" width="4" height="13" />
+                  <rect x="17" y="3" width="4" height="18" />
+                </svg>
+                <span>Statistics</span>
+              </button>
+            </div>
+          </div>
         </div>
 
         <!-- Header -->
@@ -780,6 +803,92 @@
             <button type="button" class="mini-action-btn" id="btnLbChangeUser">Change User</button>
           </div>
         </div>
+      </div>
+    </div>
+
+    <!-- =====================================================================
+         8B. SINGLE-PAGE STATISTICS MODAL (#statisticsModal)
+         ===================================================================== -->
+    <div class="modal-backdrop" id="statisticsModal">
+      <div class="modal-card statistics-card" id="statisticsCard">
+        <div class="leaderboard-top-bar">
+          <div class="leaderboard-title-wrap">
+            <span class="badge-pill">COGNITIVE TELEMETRY // ARCHIVE</span>
+            <h2>STATISTICS</h2>
+          </div>
+          <button type="button" class="icon-btn icon-only" id="btnCloseStatistics" title="Close Statistics" aria-label="Close Statistics">
+            ✕
+          </button>
+        </div>
+
+        <!-- Difficulty Selector Bar: < EASY | MEDIUM | HARD > -->
+        <div class="stats-diff-switcher" aria-label="Difficulty Statistics Selector">
+          <button type="button" class="stats-arrow-btn" id="btnStatsPrevDiff" title="Previous Difficulty" aria-label="Previous Difficulty">
+            &lt;
+          </button>
+          <span class="stats-diff-title" id="statsDifficultyTitle">EASY</span>
+          <button type="button" class="stats-arrow-btn" id="btnStatsNextDiff" title="Next Difficulty" aria-label="Next Difficulty">
+            &gt;
+          </button>
+        </div>
+
+        <!-- Card 1: LAST GAME -->
+        <section class="stats-panel-card" aria-label="Last Game Statistics">
+          <h3 class="stats-card-heading">LAST GAME</h3>
+          <div class="stats-rows-list">
+            <div class="stats-metric-row">
+              <span class="stats-metric-label">Session Score</span>
+              <span class="stats-metric-value" id="statLastSessionScore">0 points</span>
+            </div>
+            <div class="stats-metric-row">
+              <span class="stats-metric-label">Extraction Rate</span>
+              <span class="stats-metric-value" id="statLastExtractionRate">0 / 12 targets</span>
+            </div>
+            <div class="stats-metric-row">
+              <span class="stats-metric-label">Pace</span>
+              <span class="stats-metric-value" id="statLastPace">—</span>
+            </div>
+          </div>
+        </section>
+
+        <!-- Card 2: YOUR STATS -->
+        <section class="stats-panel-card" aria-label="Your Lifetime Statistics">
+          <h3 class="stats-card-heading">YOUR STATS</h3>
+          <div class="stats-rows-list">
+            <div class="stats-metric-row">
+              <span class="stats-metric-label">Total Score</span>
+              <span class="stats-metric-value highlight" id="statTotalScore">0</span>
+            </div>
+            <div class="stats-metric-row">
+              <span class="stats-metric-label">Games Played</span>
+              <span class="stats-metric-value" id="statGamesPlayed">0</span>
+            </div>
+            <div class="stats-metric-row">
+              <span class="stats-metric-label">Perfect Runs</span>
+              <span class="stats-metric-value" id="statPerfectRuns">0</span>
+            </div>
+            <div class="stats-metric-row">
+              <span class="stats-metric-label">Extraction Rate</span>
+              <span class="stats-metric-value" id="statOverallExtractionRate">0%</span>
+            </div>
+            <div class="stats-metric-row">
+              <span class="stats-metric-label">Total Numbers Extracted</span>
+              <span class="stats-metric-value" id="statTotalExtracted">0</span>
+            </div>
+            <div class="stats-metric-row">
+              <span class="stats-metric-label">Fastest Perfect Run</span>
+              <span class="stats-metric-value" id="statFastestPerfectRun">—</span>
+            </div>
+            <div class="stats-metric-row">
+              <span class="stats-metric-label">Average Pace</span>
+              <span class="stats-metric-value" id="statAveragePace">—</span>
+            </div>
+            <div class="stats-metric-row">
+              <span class="stats-metric-label">Total Time Played</span>
+              <span class="stats-metric-value" id="statTotalTimePlayed">0m 0s</span>
+            </div>
+          </div>
+        </section>
       </div>
     </div>
 

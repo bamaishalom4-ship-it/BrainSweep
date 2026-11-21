@@ -1699,6 +1699,14 @@
         state.targetCount,
         timeTaken
       );
+      recordGameStatistics(
+        state.difficulty,
+        sessionScore,
+        state.targetCount,
+        timeTaken,
+        state.timeRemaining,
+        completedAll
+      );
       const cfg = DIFFICULTIES[state.difficulty];
 
       if (completedAll) {
@@ -2054,6 +2062,8 @@
     if (themeModal) themeModal.classList.remove('active');
     if (infoModal) infoModal.classList.remove('active');
     if (leaderboardModal) leaderboardModal.classList.remove('active');
+    const statsModalEl = document.getElementById('statisticsModal');
+    if (statsModalEl) statsModalEl.classList.remove('active');
     if (resultsModal) resultsModal.classList.remove('active');
   }
 
@@ -2574,6 +2584,11 @@
         localStorage.setItem(STORAGE_KEY, JSON.stringify(scores));
         updateHighScoreBadges();
       }
+      const diffStats = loadDifficultyStats(diff);
+      if (diffStats && newTotal > (Number(diffStats.totalScore) || 0)) {
+        diffStats.totalScore = newTotal;
+        saveDifficultyStats(diff, diffStats);
+      }
     } catch {
       // ignore
     }
@@ -3067,6 +3082,352 @@
         // ignore storage errors
       }
     });
+  }
+
+  // --- Hamburger Menu & Single-Page Statistics Architecture (stats_easy, stats_medium, stats_hard) ---
+  const STATS_DIFF_ORDER = ['easy', 'medium', 'hard'];
+  let viewDifficulty = 'easy';
+
+  const btnHamburgerMenu = document.getElementById('btnHamburgerMenu');
+  const hamburgerDropdown = document.getElementById('hamburgerDropdown');
+  const hamburgerMenuWrap = document.getElementById('hamburgerMenuWrap');
+  const btnOpenStatistics = document.getElementById('btnOpenStatistics');
+
+  const statisticsModal = document.getElementById('statisticsModal');
+  const statisticsCard = document.getElementById('statisticsCard');
+  const btnCloseStatistics = document.getElementById('btnCloseStatistics');
+  const btnStatsPrevDiff = document.getElementById('btnStatsPrevDiff');
+  const btnStatsNextDiff = document.getElementById('btnStatsNextDiff');
+  const statsDifficultyTitle = document.getElementById('statsDifficultyTitle');
+
+  function getStatsStorageKey(diff) {
+    const cleanDiff = DIFFICULTIES[diff] ? diff : 'easy';
+    return `stats_${cleanDiff}`;
+  }
+
+  function createDefaultDifficultyStats(diff) {
+    const cfg = DIFFICULTIES[diff] || DIFFICULTIES.easy;
+    // Seed from existing high score record if player has prior games before stats tracking
+    const legacyScores = loadHighScores();
+    const legacy = legacyScores[diff];
+    const seedTotal = legacy ? parseInt(legacy.total, 10) || legacy.extracted || 0 : 0;
+    const seedLast = legacy ? parseInt(legacy.extracted, 10) || 0 : 0;
+
+    return {
+      hasPlayed: seedTotal > 0,
+      lastSessionScore: seedLast,
+      lastTargetTotal: cfg.targetCount,
+      lastPaceSec:
+        legacy && seedLast > 0 && legacy.time > 0
+          ? Number((Number(legacy.time) / seedLast).toFixed(2))
+          : null,
+      totalScore: seedTotal,
+      gamesPlayed: seedTotal > 0 ? Math.max(1, Math.ceil(seedTotal / cfg.targetCount)) : 0,
+      perfectRuns: seedLast >= cfg.targetCount ? 1 : 0,
+      totalNumbersExtracted: seedTotal,
+      totalTargetsAvailable:
+        seedTotal > 0
+          ? Math.max(cfg.targetCount, Math.ceil(seedTotal / cfg.targetCount) * cfg.targetCount)
+          : 0,
+      fastestPerfectTimeRemainingSec:
+        seedLast >= cfg.targetCount && legacy && legacy.time < cfg.durationSec
+          ? Number(Math.max(0, cfg.durationSec - Number(legacy.time)).toFixed(1))
+          : null,
+      totalTimePlayedSec:
+        seedTotal > 0 && legacy && legacy.time
+          ? Number(
+              (
+                Math.max(1, Math.ceil(seedTotal / cfg.targetCount)) * Number(legacy.time)
+              ).toFixed(1)
+            )
+          : 0,
+    };
+  }
+
+  function loadDifficultyStats(diff) {
+    const cleanDiff = DIFFICULTIES[diff] ? diff : 'easy';
+    const key = getStatsStorageKey(cleanDiff);
+    try {
+      const raw = localStorage.getItem(key);
+      if (!raw) {
+        return createDefaultDifficultyStats(cleanDiff);
+      }
+      const parsed = JSON.parse(raw);
+      if (!parsed || typeof parsed !== 'object') {
+        return createDefaultDifficultyStats(cleanDiff);
+      }
+      return {
+        ...createDefaultDifficultyStats(cleanDiff),
+        ...parsed,
+      };
+    } catch {
+      return createDefaultDifficultyStats(cleanDiff);
+    }
+  }
+
+  function saveDifficultyStats(diff, statsObj) {
+    const cleanDiff = DIFFICULTIES[diff] ? diff : 'easy';
+    const key = getStatsStorageKey(cleanDiff);
+    try {
+      localStorage.setItem(key, JSON.stringify(statsObj));
+    } catch {
+      // ignore storage errors
+    }
+  }
+
+  function recordGameStatistics(
+    diff,
+    sessionScore,
+    targetTotal,
+    timeTaken,
+    timeRemaining,
+    completedAll
+  ) {
+    const cleanDiff = DIFFICULTIES[diff] ? diff : 'easy';
+    const stats = loadDifficultyStats(cleanDiff);
+    const cleanScore = Math.max(0, parseInt(sessionScore, 10) || 0);
+    const cleanTargetTotal = Math.max(1, parseInt(targetTotal, 10) || DIFFICULTIES[cleanDiff].targetCount);
+    const cleanTimeTaken = Math.max(0.1, Number(timeTaken) || 60);
+    const cleanTimeRem = Math.max(0, Number(timeRemaining) || 0);
+
+    stats.hasPlayed = true;
+    stats.lastSessionScore = cleanScore;
+    stats.lastTargetTotal = cleanTargetTotal;
+    stats.lastPaceSec =
+      cleanScore > 0 ? Number((cleanTimeTaken / cleanScore).toFixed(2)) : null;
+
+    stats.totalScore = (Number(stats.totalScore) || 0) + cleanScore;
+    stats.gamesPlayed = (Number(stats.gamesPlayed) || 0) + 1;
+    if (completedAll) {
+      stats.perfectRuns = (Number(stats.perfectRuns) || 0) + 1;
+      const remRounded = Number(cleanTimeRem.toFixed(1));
+      stats.fastestPerfectTimeRemainingSec =
+        stats.fastestPerfectTimeRemainingSec === null ||
+        stats.fastestPerfectTimeRemainingSec === undefined
+          ? remRounded
+          : Math.max(Number(stats.fastestPerfectTimeRemainingSec), remRounded);
+    }
+
+    stats.totalNumbersExtracted = (Number(stats.totalNumbersExtracted) || 0) + cleanScore;
+    stats.totalTargetsAvailable = (Number(stats.totalTargetsAvailable) || 0) + cleanTargetTotal;
+    stats.totalTimePlayedSec = Number(
+      ((Number(stats.totalTimePlayedSec) || 0) + cleanTimeTaken).toFixed(1)
+    );
+
+    saveDifficultyStats(cleanDiff, stats);
+  }
+
+  function formatPlayDuration(totalSeconds) {
+    const secNum = Math.max(0, Math.round(Number(totalSeconds) || 0));
+    const hours = Math.floor(secNum / 3600);
+    const minutes = Math.floor((secNum % 3600) / 60);
+    const seconds = secNum % 60;
+
+    if (hours > 0) {
+      return seconds > 0 ? `${hours}h ${minutes}m ${seconds}s` : `${hours}h ${minutes}m`;
+    }
+    if (minutes > 0) {
+      return `${minutes}m ${seconds}s`;
+    }
+    return `0m ${seconds}s`;
+  }
+
+  function renderStatisticsView(diff = viewDifficulty) {
+    const cleanDiff = DIFFICULTIES[diff] ? diff : state.difficulty || 'easy';
+    viewDifficulty = cleanDiff;
+    const cfg = DIFFICULTIES[cleanDiff];
+    const stats = loadDifficultyStats(cleanDiff);
+    const diffIdx = STATS_DIFF_ORDER.indexOf(cleanDiff);
+
+    if (statsDifficultyTitle) {
+      statsDifficultyTitle.textContent = cfg.label.toUpperCase();
+    }
+    if (btnStatsPrevDiff) {
+      btnStatsPrevDiff.disabled = diffIdx <= 0;
+    }
+    if (btnStatsNextDiff) {
+      btnStatsNextDiff.disabled = diffIdx >= STATS_DIFF_ORDER.length - 1;
+    }
+
+    // Card 1: LAST GAME
+    const elLastScore = document.getElementById('statLastSessionScore');
+    const elLastRate = document.getElementById('statLastExtractionRate');
+    const elLastPace = document.getElementById('statLastPace');
+
+    const lastScore = Number(stats.lastSessionScore) || 0;
+    const lastTargets = Number(stats.lastTargetTotal) || cfg.targetCount;
+    if (elLastScore) {
+      elLastScore.textContent = `${lastScore} ${lastScore === 1 ? 'point' : 'points'}`;
+    }
+    if (elLastRate) {
+      elLastRate.textContent = `${lastScore} / ${lastTargets} targets`;
+    }
+    if (elLastPace) {
+      elLastPace.textContent =
+        stats.lastPaceSec !== null &&
+        stats.lastPaceSec !== undefined &&
+        Number(stats.lastPaceSec) > 0
+          ? `${Number(stats.lastPaceSec).toFixed(1)}s`
+          : '—';
+    }
+
+    // Card 2: YOUR STATS
+    const elTotalScore = document.getElementById('statTotalScore');
+    const elGamesPlayed = document.getElementById('statGamesPlayed');
+    const elPerfectRuns = document.getElementById('statPerfectRuns');
+    const elOverallRate = document.getElementById('statOverallExtractionRate');
+    const elTotalExtracted = document.getElementById('statTotalExtracted');
+    const elFastestPerfect = document.getElementById('statFastestPerfectRun');
+    const elAvgPace = document.getElementById('statAveragePace');
+    const elTotalTime = document.getElementById('statTotalTimePlayed');
+
+    const totalScore = Number(stats.totalScore) || 0;
+    const gamesPlayed = Number(stats.gamesPlayed) || 0;
+    const perfectRuns = Number(stats.perfectRuns) || 0;
+    const totalExtracted = Number(stats.totalNumbersExtracted) || 0;
+    const totalAvailable = Number(stats.totalTargetsAvailable) || 0;
+    const totalTimeSec = Number(stats.totalTimePlayedSec) || 0;
+
+    const overallRatePct =
+      totalAvailable > 0
+        ? Math.min(100, Math.round((totalExtracted / totalAvailable) * 100))
+        : 0;
+
+    if (elTotalScore) elTotalScore.textContent = String(totalScore);
+    if (elGamesPlayed) elGamesPlayed.textContent = String(gamesPlayed);
+    if (elPerfectRuns) elPerfectRuns.textContent = String(perfectRuns);
+    if (elOverallRate) elOverallRate.textContent = `${overallRatePct}%`;
+    if (elTotalExtracted) elTotalExtracted.textContent = String(totalExtracted);
+
+    if (elFastestPerfect) {
+      elFastestPerfect.textContent =
+        stats.fastestPerfectTimeRemainingSec !== null &&
+        stats.fastestPerfectTimeRemainingSec !== undefined
+          ? `Cleared with ${Number(stats.fastestPerfectTimeRemainingSec).toFixed(1)}s remaining`
+          : '—';
+    }
+
+    if (elAvgPace) {
+      elAvgPace.textContent =
+        totalExtracted > 0 && totalTimeSec > 0
+          ? `${(totalTimeSec / totalExtracted).toFixed(1)}s`
+          : '—';
+    }
+
+    if (elTotalTime) {
+      elTotalTime.textContent = formatPlayDuration(totalTimeSec);
+    }
+  }
+
+  function closeHamburgerDropdown() {
+    if (!hamburgerDropdown || !btnHamburgerMenu) return;
+    hamburgerDropdown.hidden = true;
+    btnHamburgerMenu.setAttribute('aria-expanded', 'false');
+  }
+
+  function toggleHamburgerDropdown() {
+    if (!hamburgerDropdown || !btnHamburgerMenu) return;
+    const willOpen = hamburgerDropdown.hidden;
+    hamburgerDropdown.hidden = !willOpen;
+    btnHamburgerMenu.setAttribute('aria-expanded', willOpen ? 'true' : 'false');
+  }
+
+  function openStatisticsModal() {
+    closeHamburgerDropdown();
+    // Default State: open Statistics on the difficulty the user is currently set to
+    viewDifficulty = DIFFICULTIES[state.difficulty] ? state.difficulty : 'easy';
+    renderStatisticsView(viewDifficulty);
+    closeAllOverlayModals();
+    if (statisticsModal) {
+      statisticsModal.classList.add('active');
+    }
+  }
+
+  if (btnHamburgerMenu) {
+    btnHamburgerMenu.addEventListener('click', (e) => {
+      e.stopPropagation();
+      toggleHamburgerDropdown();
+    });
+  }
+
+  if (btnOpenStatistics) {
+    btnOpenStatistics.addEventListener('click', () => {
+      openStatisticsModal();
+    });
+  }
+
+  document.addEventListener('click', (e) => {
+    if (
+      hamburgerDropdown &&
+      !hamburgerDropdown.hidden &&
+      hamburgerMenuWrap &&
+      !hamburgerMenuWrap.contains(e.target)
+    ) {
+      closeHamburgerDropdown();
+    }
+  });
+
+  if (btnCloseStatistics) {
+    btnCloseStatistics.addEventListener('click', () => {
+      navigateToScreen('home');
+    });
+  }
+
+  if (btnStatsPrevDiff) {
+    btnStatsPrevDiff.addEventListener('click', () => {
+      const idx = STATS_DIFF_ORDER.indexOf(viewDifficulty);
+      if (idx > 0) {
+        viewDifficulty = STATS_DIFF_ORDER[idx - 1];
+        renderStatisticsView(viewDifficulty);
+      }
+    });
+  }
+
+  if (btnStatsNextDiff) {
+    btnStatsNextDiff.addEventListener('click', () => {
+      const idx = STATS_DIFF_ORDER.indexOf(viewDifficulty);
+      if (idx !== -1 && idx < STATS_DIFF_ORDER.length - 1) {
+        viewDifficulty = STATS_DIFF_ORDER[idx + 1];
+        renderStatisticsView(viewDifficulty);
+      }
+    });
+  }
+
+  // Horizontal swipe gesture on Statistics card to switch between Easy, Medium, and Hard
+  if (statisticsCard) {
+    let touchStartX = null;
+    let touchStartY = null;
+    statisticsCard.addEventListener(
+      'touchstart',
+      (e) => {
+        if (e.touches && e.touches.length === 1) {
+          touchStartX = e.touches[0].clientX;
+          touchStartY = e.touches[0].clientY;
+        }
+      },
+      { passive: true }
+    );
+    statisticsCard.addEventListener(
+      'touchend',
+      (e) => {
+        if (touchStartX === null || !e.changedTouches || e.changedTouches.length === 0) return;
+        const dx = e.changedTouches[0].clientX - touchStartX;
+        const dy = e.changedTouches[0].clientY - touchStartY;
+        touchStartX = null;
+        touchStartY = null;
+        if (Math.abs(dx) > 48 && Math.abs(dx) > Math.abs(dy) * 1.4) {
+          const idx = STATS_DIFF_ORDER.indexOf(viewDifficulty);
+          if (dx < 0 && idx < STATS_DIFF_ORDER.length - 1) {
+            viewDifficulty = STATS_DIFF_ORDER[idx + 1];
+            renderStatisticsView(viewDifficulty);
+          } else if (dx > 0 && idx > 0) {
+            viewDifficulty = STATS_DIFF_ORDER[idx - 1];
+            renderStatisticsView(viewDifficulty);
+          }
+        }
+      },
+      { passive: true }
+    );
   }
 
   // --- Initial Boot ---
