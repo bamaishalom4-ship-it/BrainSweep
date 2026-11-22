@@ -90,6 +90,32 @@ function getLagosDateString(dateObj) {
   return Utilities.formatDate(d, 'Africa/Lagos', 'yyyy-MM-dd');
 }
 
+function normalizeSheetDateLagos(val) {
+  if (!val) return '';
+  if (val instanceof Date && !isNaN(val.getTime())) {
+    return Utilities.formatDate(val, 'Africa/Lagos', 'yyyy-MM-dd');
+  }
+  const str = String(val).trim();
+  if (/^\d{4}-\d{2}-\d{2}/.test(str)) {
+    return str.slice(0, 10);
+  }
+  const parsed = new Date(str);
+  if (!isNaN(parsed.getTime())) {
+    return Utilities.formatDate(parsed, 'Africa/Lagos', 'yyyy-MM-dd');
+  }
+  return str;
+}
+
+function normalizeSheetTimestampMs(val) {
+  if (!val) return NaN;
+  if (val instanceof Date) return val.getTime();
+  return Date.parse(String(val));
+}
+
+function normalizeSheetBool(val) {
+  return val === true || String(val || '').trim().toLowerCase() === 'true';
+}
+
 function jsonResponse(payload) {
   return ContentService.createTextOutput(JSON.stringify(payload)).setMimeType(
     ContentService.MimeType.JSON
@@ -172,11 +198,11 @@ function doGet(e) {
 
       const bestByUser = {};
       for (let i = 0; i < rows.length; i++) {
-        const tsIso = String(rows[i][0] || '');
-        const dateLagos = String(rows[i][1] || '');
+        const tsMs = normalizeSheetTimestampMs(rows[i][0]);
+        const dateLagos = normalizeSheetDateLagos(rows[i][1]);
         const uname = String(rows[i][3] || '').trim();
         const rowDiff = String(rows[i][4] || '').trim().toLowerCase();
-        const isDaily = String(rows[i][5]) === 'true' || rows[i][5] === true;
+        const isDaily = normalizeSheetBool(rows[i][5]);
         const score = parseSafeInt(rows[i][6], 0);
         const timeMs = parseSafeInt(rows[i][7], 60000);
 
@@ -185,7 +211,6 @@ function doGet(e) {
         if (board === 'today') {
           if (!isDaily || dateLagos !== todayLagos) continue;
         } else if (board === 'week') {
-          const tsMs = Date.parse(tsIso);
           if (Number.isFinite(tsMs) && tsMs < sevenDaysAgoMs) continue;
         }
 
@@ -446,11 +471,11 @@ function doPost(e) {
           .getRange(2, 1, rLast - 1, ROUNDS_HEADERS.length)
           .getValues();
         for (let i = rData.length - 1; i >= 0; i--) {
-          const rDate = String(rData[i][1] || '');
+          const rDate = normalizeSheetDateLagos(rData[i][1]);
           const rId = String(rData[i][2] || '');
           const rUser = String(rData[i][3] || '').trim().toLowerCase();
           const rDiff = String(rData[i][4] || '').trim().toLowerCase();
-          const rDaily = String(rData[i][5]) === 'true' || rData[i][5] === true;
+          const rDaily = normalizeSheetBool(rData[i][5]);
 
           if (roundId && rId === roundId) {
             return jsonResponse({
@@ -523,7 +548,7 @@ function doPost(e) {
     if (sessionScore > 0) {
       roundsSheet.appendRow([
         nowIso,
-        todayLagos,
+        "'" + todayLagos,
         roundId || Utilities.getUuid(),
         username,
         baseDiff,

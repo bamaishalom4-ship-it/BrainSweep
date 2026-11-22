@@ -3668,7 +3668,7 @@
     if (!entries || entries.length === 0) {
       const emptyMsg =
         activeLeaderboardBoard === 'today'
-          ? 'No Daily Sweep scores for today yet. Be #1!'
+          ? 'No Daily Sweep scores today yet. Play ⚡ DAILY SWEEP from Home to be #1!'
           : 'No scores recorded for this difficulty yet. Be #1!';
       leaderboardTableBody.innerHTML = `<tr><td colspan="4" class="lb-status-cell">${emptyMsg}</td></tr>`;
       return;
@@ -3716,6 +3716,8 @@
     });
   }
 
+  let pendingSubmissionPromise = null;
+
   async function loadLeaderboardTab(difficulty = activeLeaderboardTab, board = activeLeaderboardBoard) {
     activeLeaderboardTab = difficulty;
     activeLeaderboardBoard = board;
@@ -3737,6 +3739,18 @@
     }
 
     renderLeaderboardSkeleton();
+
+    // Wait briefly if a just-finished round score submission is still in flight
+    if (pendingSubmissionPromise) {
+      try {
+        await Promise.race([
+          pendingSubmissionPromise,
+          new Promise((resolve) => setTimeout(resolve, 3500)),
+        ]);
+      } catch {
+        // ignore submission wait error
+      }
+    }
 
     try {
       const entries = await fetchLeaderboardEntries(board, difficulty);
@@ -3770,7 +3784,7 @@
 
     const user = getSavedUser();
     if (user) {
-      postScoreToBackend({
+      const subPromise = postScoreToBackend({
         username: user.username,
         email: user.email,
         difficulty,
@@ -3787,8 +3801,22 @@
           }
         })
         .catch(() => {
-          // Local fallback already displayed
+          // Ensure local mirror still captures the round if offline/timeout
+          upsertLocalLeaderboardMirror({
+            username: user.username,
+            email: user.email,
+            difficulty,
+            sessionScore,
+            timeTakenMs,
+            isDaily,
+          });
+        })
+        .finally(() => {
+          if (pendingSubmissionPromise === subPromise) {
+            pendingSubmissionPromise = null;
+          }
         });
+      pendingSubmissionPromise = subPromise;
     } else if (!state.isEmbedMode) {
       // Phase 6.7 Smart Registration Timing:
       // Never prompt on 0 score. Only prompt when >= 50% targets cleared OR new personal best.
