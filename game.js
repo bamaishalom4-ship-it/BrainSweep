@@ -1,24 +1,32 @@
 /**
- * BrainSweep — Cognitive Number Extraction Game
- * Visual Scanning, Inhibitory Control & Selective Attention Trainer
- * Includes 100% Offline PWA Support & "Survival Sweep" Endless Offline Mode
+ * BrainSweep — 60-Second Number Rush
+ * Fast-paced moving-number puzzle & B2B engagement widget
+ * Includes 100% Offline PWA Support, Daily Sweep, Streaks & Survival Sweep Mode
  */
 
 (() => {
-  // --- Global Leaderboard Google Apps Script Web App Endpoint ---
+  // --- Central Config (Phase 0) ---
+  function getAppConfig() {
+    return window.BRAINSWEEP_CONFIG || {};
+  }
+
   const DEFAULT_LEADERBOARD_API_URL =
     'https://script.google.com/macros/s/AKfycbziXn-4cNUEga8XpnoPAF22gOtCH9cIFaj2HojI1A4Aap_yNzCWkss37ne3U3kEic-A/exec';
   const USER_STORAGE_KEY = 'brainsweep_user';
   const LOCAL_LB_FALLBACK_KEY = 'brainsweep_local_lb_mirror_v1';
+  const LOCAL_ROUNDS_FALLBACK_KEY = 'brainsweep_local_rounds_v1';
+  const DAILY_HISTORY_KEY = 'brainsweep_daily_history_v1';
+  const STREAK_STORAGE_KEY = 'brainsweep_streak_v1';
+  const TUTORIAL_SEEN_KEY = 'brainsweep_tutorial_seen_v1';
+  const FIRST_PLAY_KEY = 'brainsweep_first_play_v1';
 
   function getLeaderboardApiUrl() {
-    try {
-      const custom = localStorage.getItem('brainsweep_api_url');
-      if (custom && custom.startsWith('https://script.google.com/')) {
-        return custom.trim();
-      }
-    } catch {
-      // ignore storage errors
+    const cfg = getAppConfig();
+    if (
+      cfg.leaderboardApiUrl &&
+      String(cfg.leaderboardApiUrl).startsWith('https://script.google.com/')
+    ) {
+      return String(cfg.leaderboardApiUrl).trim();
     }
     return DEFAULT_LEADERBOARD_API_URL;
   }
@@ -32,7 +40,85 @@
     );
   }
 
-  // --- 1. Difficulty Progression & Cognitive Ratios Configuration (Online Mode) ---
+  function trackEvent(name, props = {}) {
+    if (window.BrainSweepAnalytics && typeof window.BrainSweepAnalytics.track === 'function') {
+      window.BrainSweepAnalytics.track(name, props);
+    }
+  }
+
+  function postEmbedEvent(type, payload = {}) {
+    if (
+      window.BrainSweepAnalytics &&
+      typeof window.BrainSweepAnalytics.postEmbedMessage === 'function'
+    ) {
+      window.BrainSweepAnalytics.postEmbedMessage(type, payload);
+    }
+  }
+
+  // --- Deterministic PRNG (mulberry32) & Africa/Lagos Date Helpers for Daily Sweep ---
+  function getLagosDateString(dateObj = new Date()) {
+    try {
+      const parts = new Intl.DateTimeFormat('en-CA', {
+        timeZone: 'Africa/Lagos',
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+      }).formatToParts(dateObj);
+      const y = parts.find((p) => p.type === 'year')?.value || '2026';
+      const m = parts.find((p) => p.type === 'month')?.value || '01';
+      const d = parts.find((p) => p.type === 'day')?.value || '01';
+      return `${y}-${m}-${d}`;
+    } catch {
+      const d = new Date(dateObj.getTime() + 60 * 60 * 1000);
+      return d.toISOString().slice(0, 10);
+    }
+  }
+
+  function getPreviousLagosDateString(dateKey) {
+    const [y, m, d] = String(dateKey || getLagosDateString())
+      .split('-')
+      .map((n) => parseInt(n, 10));
+    const utc = Date.UTC(y || 2026, (m || 1) - 1, (d || 1) - 1, 12, 0, 0);
+    return getLagosDateString(new Date(utc));
+  }
+
+  function getDailyPuzzleNumber(dateKey = getLagosDateString()) {
+    const launchStr = (getAppConfig().dailyLaunchDate || '2026-11-01').trim();
+    const parseUtcDay = (str) => {
+      const [y, m, d] = str.split('-').map((n) => parseInt(n, 10));
+      return Date.UTC(y || 2026, (m || 1) - 1, d || 1);
+    };
+    const diffDays = Math.floor((parseUtcDay(dateKey) - parseUtcDay(launchStr)) / 86400000);
+    return Math.max(1, diffDays + 1);
+  }
+
+  function hashStringToSeed(str) {
+    let h = 2166136261 >>> 0;
+    for (let i = 0; i < str.length; i++) {
+      h ^= str.charCodeAt(i);
+      h = Math.imul(h, 16777619);
+    }
+    return h >>> 0;
+  }
+
+  function mulberry32(seed) {
+    let a = seed >>> 0;
+    return function () {
+      a = (a + 0x6d2b79f5) >>> 0;
+      let t = Math.imul(a ^ (a >>> 15), 1 | a);
+      t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+      return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+    };
+  }
+
+  function createRoundId() {
+    if (window.crypto && typeof window.crypto.randomUUID === 'function') {
+      return window.crypto.randomUUID();
+    }
+    return `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+  }
+
+  // --- 1. Difficulty Progression & Pool Ratios Configuration (Online Mode) ---
   const DIFFICULTIES = {
     easy: {
       id: 'easy',
@@ -44,6 +130,7 @@
       durationSec: 60,
       baseSpeed: 42,
       maxRadius: 23,
+      decoyPenaltySec: 1.0,
     },
     medium: {
       id: 'medium',
@@ -55,6 +142,7 @@
       durationSec: 60,
       baseSpeed: 58,
       maxRadius: 19,
+      decoyPenaltySec: 1.5,
     },
     hard: {
       id: 'hard',
@@ -64,8 +152,9 @@
       distractorCount: 25,
       targetRatio: 0.5, // 50% (~2.4s per target)
       durationSec: 60,
-      baseSpeed: 98, // High-velocity trajectories to compensate for mobile-friendly 50-node pool
+      baseSpeed: 98, // High-velocity trajectories for 50-node pool
       maxRadius: 17,
+      decoyPenaltySec: 2.0,
     },
   };
 
@@ -73,7 +162,7 @@
   const OFFLINE_SURVIVAL_CONFIG = {
     id: 'offline_survival',
     label: 'Survival Sweep (Offline)',
-    activePoolSize: 17, // 1 active sequential target + 16 moving distractors on screen at any time
+    activePoolSize: 17, // 1 active sequential target + 16 moving decoys on screen at any time
     distractorCount: 16,
     durationSec: 60,
     baseSpeed: 56,
@@ -243,8 +332,34 @@
   const chkMemoryMode = document.getElementById('chkMemoryMode');
 
   const btnStartGame = document.getElementById('btnStartGame');
+  const btnStartDailySweep = document.getElementById('btnStartDailySweep');
+  const dailySweepBtnLabel = document.getElementById('dailySweepBtnLabel');
+  const dailySweepStatusSub = document.getElementById('dailySweepStatusSub');
+  const homeStreakBadge = document.getElementById('homeStreakBadge');
+  const resStreakBadge = document.getElementById('resStreakBadge');
   const btnPlayAgain = document.getElementById('btnPlayAgain');
   const btnChangeConfig = document.getElementById('btnChangeConfig');
+  const btnShareResult = document.getElementById('btnShareResult');
+  const btnEmbedSponsorCta = document.getElementById('btnEmbedSponsorCta');
+  const embedSponsorCtaText = document.getElementById('embedSponsorCtaText');
+  const embedSponsorBar = document.getElementById('embedSponsorBar');
+  const embedBrandLogoImg = document.getElementById('embedBrandLogoImg');
+  const embedSponsorTextEl = document.getElementById('embedSponsorTextEl');
+  const zeroScoreHelpWrap = document.getElementById('zeroScoreHelpWrap');
+  const btnZeroScoreHowToPlay = document.getElementById('btnZeroScoreHowToPlay');
+  const resSecondStatLabel = document.getElementById('resSecondStatLabel');
+  const tapToPlayOverlay = document.getElementById('tapToPlayOverlay');
+  const tapOverlayBadge = document.getElementById('tapOverlayBadge');
+  const tapOverlayTitle = document.getElementById('tapOverlayTitle');
+  const tapOverlaySub = document.getElementById('tapOverlaySub');
+  const btnTapToPlayAction = document.getElementById('btnTapToPlayAction');
+  const tutorialOverlay = document.getElementById('tutorialOverlay');
+  const tutorialDemoNode = document.getElementById('tutorialDemoNode');
+  const btnSkipTutorial = document.getElementById('btnSkipTutorial');
+  const btnStartFromTutorial = document.getElementById('btnStartFromTutorial');
+  const unlicensedEmbedOverlay = document.getElementById('unlicensedEmbedOverlay');
+  const unlicensedSiteLink = document.getElementById('unlicensedSiteLink');
+
   const btnHint = document.getElementById('btnHint');
   const btnSound = document.getElementById('btnSound');
   const btnMenu = document.getElementById('btnMenu');
@@ -256,15 +371,27 @@
   const sound = new SoundEngine();
 
   const state = {
-    status: 'menu', // 'menu' | 'playing' | 'paused' | 'ended'
+    status: 'menu', // 'menu' | 'ready' | 'tutorial' | 'playing' | 'paused' | 'ended'
     isOfflineMode: !navigator.onLine,
     isEmbedMode: false,
+    embedLicensed: true,
     publisherDomain: '',
+    isDailyMode: false,
+    isDailyPractice: false,
+    dailyDateKey: getLagosDateString(),
+    roundId: '',
     difficulty: 'easy',
     pattern: 'spiral',
     theme: 'amber',
+    brandColor: '',
+    sponsorText: '',
+    ctaText: '',
+    ctaUrl: '',
     quickFlick: true,
     memoryMode: false,
+    largeNumbers: false,
+    reducedMotion: false,
+    lastResultSummary: null,
 
     totalNumbers: 20,
     targetCount: 12,
@@ -304,6 +431,121 @@
     dragVelY: 0,
   };
 
+  // --- Daily Sweep History & Consecutive Daily Streak Persistence ---
+  function loadDailyHistory() {
+    try {
+      const raw = localStorage.getItem(DAILY_HISTORY_KEY);
+      return raw ? JSON.parse(raw) : {};
+    } catch {
+      return {};
+    }
+  }
+
+  function hasCompletedDailyToday(diff = state.difficulty) {
+    const today = getLagosDateString();
+    const history = loadDailyHistory();
+    return Boolean(history[today] && history[today][diff]);
+  }
+
+  function recordDailyCompletion(diff, score, timeTaken, rank) {
+    const today = getLagosDateString();
+    try {
+      const history = loadDailyHistory();
+      if (!history[today]) history[today] = {};
+      if (!history[today][diff]) {
+        history[today][diff] = {
+          score,
+          timeTaken: Number(timeTaken.toFixed(2)),
+          rank,
+          completedAt: new Date().toISOString(),
+        };
+        localStorage.setItem(DAILY_HISTORY_KEY, JSON.stringify(history));
+      }
+    } catch {
+      // ignore storage errors
+    }
+    return updateDailyStreakOnCompletion(today);
+  }
+
+  function loadDailyStreak() {
+    try {
+      const raw = localStorage.getItem(STREAK_STORAGE_KEY);
+      if (!raw) return { current: 0, longest: 0, lastDate: '' };
+      const parsed = JSON.parse(raw);
+      return {
+        current: Math.max(0, parseInt(parsed.current, 10) || 0),
+        longest: Math.max(0, parseInt(parsed.longest, 10) || 0),
+        lastDate: String(parsed.lastDate || ''),
+      };
+    } catch {
+      return { current: 0, longest: 0, lastDate: '' };
+    }
+  }
+
+  function getActiveStreakCount() {
+    const s = loadDailyStreak();
+    if (!s.lastDate) return 0;
+    const today = getLagosDateString();
+    const yesterday = getPreviousLagosDateString(today);
+    if (s.lastDate === today || s.lastDate === yesterday) {
+      return s.current;
+    }
+    return 0;
+  }
+
+  function updateDailyStreakOnCompletion(todayKey = getLagosDateString()) {
+    const s = loadDailyStreak();
+    if (s.lastDate !== todayKey) {
+      const yesterday = getPreviousLagosDateString(todayKey);
+      if (s.lastDate === yesterday) {
+        s.current = (s.current || 0) + 1;
+      } else {
+        s.current = 1;
+      }
+      s.longest = Math.max(s.longest || 0, s.current);
+      s.lastDate = todayKey;
+      try {
+        localStorage.setItem(STREAK_STORAGE_KEY, JSON.stringify(s));
+      } catch {
+        // ignore storage errors
+      }
+    }
+    syncDailyAndStreakUI();
+    return s;
+  }
+
+  function syncDailyAndStreakUI() {
+    const activeStreak = getActiveStreakCount();
+    const streakText = `🔥 ${activeStreak}`;
+    if (homeStreakBadge) {
+      homeStreakBadge.textContent = streakText;
+      homeStreakBadge.title = `Daily Sweep Streak: ${activeStreak} day${activeStreak === 1 ? '' : 's'}`;
+    }
+    if (resStreakBadge) {
+      resStreakBadge.textContent = streakText;
+    }
+
+    const today = getLagosDateString();
+    const puzzleNum = getDailyPuzzleNumber(today);
+    const diffLabel = DIFFICULTIES[state.difficulty].label.toUpperCase();
+    const history = loadDailyHistory();
+    const todayRecord = history[today] && history[today][state.difficulty];
+
+    if (dailySweepBtnLabel) {
+      dailySweepBtnLabel.textContent = `⚡ DAILY SWEEP #${puzzleNum} (${diffLabel})`;
+    }
+    if (dailySweepStatusSub) {
+      if (todayRecord) {
+        dailySweepStatusSub.textContent = `Completed (${todayRecord.score}/${DIFFICULTIES[state.difficulty].targetCount} · ${todayRecord.rank}) • Tap for Practice`;
+      } else {
+        dailySweepStatusSub.textContent = 'Seeded Daily Board • 1 Scored Attempt';
+      }
+    }
+    if (btnStartDailySweep) {
+      btnStartDailySweep.hidden = state.isOfflineMode;
+    }
+  }
+
   // --- High Scores in LocalStorage (Online & Offline Survival Sweep) ---
   const STORAGE_KEY = 'brainsweep_best_v2';
   const OFFLINE_STORAGE_KEY = 'brainsweep_offline_best_v1';
@@ -322,8 +564,9 @@
       const scores = loadHighScores();
       const prev = scores[diff] || { extracted: 0, max: targetTotal, time: 60, total: 0 };
       const isBetter =
-        extractedCount > (prev.extracted || 0) ||
-        (extractedCount === prev.extracted && timeTaken < (prev.time || 60));
+        extractedCount > 0 &&
+        (extractedCount > (prev.extracted || 0) ||
+          (extractedCount === prev.extracted && timeTaken < (prev.time || 60)));
 
       const cumulativeTotal =
         (parseInt(prev.total, 10) || 0) + (parseInt(extractedCount, 10) || 0);
@@ -336,9 +579,17 @@
       };
       localStorage.setItem(STORAGE_KEY, JSON.stringify(scores));
       updateHighScoreBadges();
-      return cumulativeTotal;
+      return {
+        cumulativeTotal,
+        isBetter,
+        bestSingle: scores[diff].extracted,
+      };
     } catch {
-      return extractedCount;
+      return {
+        cumulativeTotal: extractedCount,
+        isBetter: extractedCount > 0,
+        bestSingle: extractedCount,
+      };
     }
   }
 
@@ -386,7 +637,7 @@
     homeBestScoreValue.textContent = String(diffScore);
     homeBestScoreSub.textContent = `${DIFFICULTIES[diffKey].label.toUpperCase()} MODE`;
 
-    if (animate) {
+    if (animate && !state.reducedMotion) {
       if (homeBestScoreBlock) {
         homeBestScoreBlock.classList.remove('score-cycle-anim');
         void homeBestScoreBlock.offsetWidth;
@@ -416,9 +667,9 @@
       const tot = rec ? parseInt(rec.total, 10) || rec.extracted || 0 : 0;
       if (!el) return;
       if (!rec) {
-        el.textContent = `Total: 0 pts (Best: —/${cfg.targetCount})`;
+        el.textContent = `Best: —/${cfg.targetCount} (Total: 0 pts)`;
       } else {
-        el.textContent = `Total: ${tot} pts (Best: ${rec.extracted}/${cfg.targetCount})`;
+        el.textContent = `Best: ${rec.extracted}/${cfg.targetCount} (Total: ${tot} pts)`;
       }
     });
 
@@ -431,6 +682,7 @@
     }
 
     renderHomeScoreCarouselStep(false);
+    syncDailyAndStreakUI();
   }
 
   // --- Network Status Listener (Online vs Offline "Survival Sweep") ---
@@ -463,8 +715,7 @@
   window.addEventListener('offline', () => {
     syncNetworkModeUI();
     if (state.status === 'menu') {
-      // Bypass normal difficulty selection and launch Survival Sweep when going offline
-      startGame();
+      prepareArenaWithTapOverlay({ mode: 'offline' });
       showArenaToast('OFFLINE MODE: SURVIVAL SWEEP', '#1c0a00');
     } else {
       showArenaToast('Connection Lost — Offline Mode Active', '#1c0a00');
@@ -476,13 +727,13 @@
     showArenaToast('Back Online — Standard Modes Unlocked', '#1c0a00');
   });
 
-  // --- 2. Randomize Distractor Placement (Online "Gap" Rule) ---
-  function generateTargetAndDistractorLists(poolSize, targetCount) {
+  // --- 2. Randomize Decoy Placement (Online "Gap" Rule, Seeded for Daily Sweep) ---
+  function generateTargetAndDistractorLists(poolSize, targetCount, rng = Math.random) {
     const allNumbers = Array.from({ length: poolSize }, (_, idx) => idx + 1);
 
     const shuffled = [...allNumbers];
     for (let i = shuffled.length - 1; i > 0; i--) {
-      const j = Math.floor(Math.random() * (i + 1));
+      const j = Math.floor(rng() * (i + 1));
       const tmp = shuffled[i];
       shuffled[i] = shuffled[j];
       shuffled[j] = tmp;
@@ -503,9 +754,11 @@
   let canvasHeight = 500;
 
   function computeOptimalRadius(count, maxAllowed) {
+    const boost = state.theme === 'clear' || state.largeNumbers ? 1.15 : 1.0;
+    const effectiveMax = maxAllowed + (state.theme === 'clear' || state.largeNumbers ? 4 : 0);
     const usableArea = Math.max(40000, (canvasWidth - 28) * (canvasHeight - 28));
-    const idealRadius = Math.sqrt((usableArea * 0.155) / (count * Math.PI));
-    return Math.max(11, Math.min(maxAllowed, Math.floor(idealRadius)));
+    const idealRadius = Math.sqrt((usableArea * 0.155) / (count * Math.PI)) * boost;
+    return Math.max(12, Math.min(effectiveMax, Math.floor(idealRadius)));
   }
 
   function resizeCanvas() {
@@ -605,7 +858,8 @@
 
     const pos = findSafeSpawnPosition(radius);
     const angle = indexSeed * 2.399963 + (Math.random() - 0.5) * 0.5;
-    const speed = baseSpeed * (0.9 + (indexSeed % 5) * 0.055);
+    const motionFactor = state.reducedMotion ? 0.6 : 1.0;
+    const speed = baseSpeed * motionFactor * (0.9 + (indexSeed % 5) * 0.055);
 
     return {
       value,
@@ -658,7 +912,7 @@
       buildSingleNodeObject(1, false, 1, cfg.activePoolSize, cfg.baseSpeed, radius, false)
     );
 
-    // 2. Spawn 16 moving distractor numbers alongside the target
+    // 2. Spawn 16 moving decoy numbers alongside the target
     const distractorNums = [];
     for (let d = 0; d < cfg.distractorCount; d++) {
       const dVal = pickUniqueDistractorNumber(1, usedValues);
@@ -684,9 +938,15 @@
     state.targetCount = cfg.targetCount;
     state.distractorCount = cfg.distractorCount;
 
+    // Use deterministic seeded RNG for Daily Sweep (YYYY-MM-DD in Africa/Lagos + difficulty)
+    const rng = state.isDailyMode
+      ? mulberry32(hashStringToSeed(`${state.dailyDateKey}:${state.difficulty}`))
+      : Math.random;
+
     const { targetNumbers, distractorNumbers, distractorSet } = generateTargetAndDistractorLists(
       cfg.poolSize,
-      cfg.targetCount
+      cfg.targetCount,
+      rng
     );
 
     state.targetNumbers = targetNumbers;
@@ -716,7 +976,7 @@
       }
     }
     for (let i = slots.length - 1; i > 0; i--) {
-      const j = Math.floor(Math.random() * (i + 1));
+      const j = Math.floor(rng() * (i + 1));
       const tmp = slots[i];
       slots[i] = slots[j];
       slots[j] = tmp;
@@ -724,19 +984,20 @@
 
     const patternsPool = ['spiral', 'zigzag', 'random', 'wave'];
     const isHard = state.difficulty === 'hard';
+    const motionFactor = state.reducedMotion ? 0.6 : 1.0;
 
     for (let i = 1; i <= count; i++) {
       const assignedPattern =
         state.pattern === 'mixed' ? patternsPool[(i - 1) % patternsPool.length] : state.pattern;
 
       const slot = slots[(i - 1) % slots.length];
-      const jitterX = (Math.random() - 0.5) * cellW * 0.45;
-      const jitterY = (Math.random() - 0.5) * cellH * 0.45;
+      const jitterX = (rng() - 0.5) * cellW * 0.45;
+      const jitterY = (rng() - 0.5) * cellH * 0.45;
       const x = Math.min(canvasWidth - pad, Math.max(pad, pad + (slot.c + 0.5) * cellW + jitterX));
       const y = Math.min(canvasHeight - pad, Math.max(pad, pad + (slot.r + 0.5) * cellH + jitterY));
 
-      const angle = i * 2.399963 + (Math.random() - 0.5) * 0.5;
-      const speed = cfg.baseSpeed * (0.9 + (i % 5) * 0.055);
+      const angle = i * 2.399963 + (rng() - 0.5) * 0.5;
+      const speed = cfg.baseSpeed * motionFactor * (0.9 + (i % 5) * 0.055);
       const isDistractor = distractorSet.has(i);
 
       nodes.push({
@@ -946,6 +1207,7 @@
 
   // --- Particle & Floating Text Effects ---
   function spawnExtractParticles(x, y, color) {
+    if (state.reducedMotion) return;
     for (let i = 0; i < 14; i++) {
       const angle = Math.random() * Math.PI * 2;
       const speed = 60 + Math.random() * 160;
@@ -962,6 +1224,7 @@
   }
 
   function spawnFloatingText(x, y, text, color) {
+    if (state.reducedMotion) return;
     state.floatingTexts.push({
       x: Math.min(canvasWidth - 65, Math.max(65, x)),
       y: Math.min(canvasHeight - 30, Math.max(30, y)),
@@ -1002,7 +1265,7 @@
 
   // --- Ghost Trail Spawn & Centered HUD Peripheral Pulse ---
   function spawnGhostTarget(dropX, dropY, nextTargetNumber) {
-    if (!ghostLayer) return;
+    if (!ghostLayer || state.reducedMotion) return;
 
     const clampedX = Math.min(canvasWidth - 48, Math.max(48, dropX));
     const clampedY = Math.min(canvasHeight - 38, Math.max(38, dropY));
@@ -1025,25 +1288,21 @@
   }
 
   function triggerTargetHudPulse() {
-    if (!targetHudCard) return;
+    if (!targetHudCard || state.reducedMotion) return;
     targetHudCard.classList.remove('target-pulse');
     void targetHudCard.offsetWidth;
     targetHudCard.classList.add('target-pulse');
   }
 
-  // --- Helper: Format Upcoming Target Sequence Preview ---
+  // --- Helper: Dynamic Tray Hint (Phase 6.1) ---
   function formatUpcomingQueueText() {
     if (state.isOfflineMode) {
-      return `SURVIVAL SWEEP: Find & extract #${state.nextTarget} (Avoid distractors: -2s)`;
+      return `Find #${state.nextTarget} — skip the decoys (−2.0s)!`;
     }
     if (state.memoryMode) {
       return `Memory Mode: Target ${state.currentStepIndex + 1} of ${state.targetCount}`;
     }
-    const upcoming = state.targetNumbers
-      .slice(state.currentStepIndex, state.currentStepIndex + 4)
-      .map((num) => `#${num}`)
-      .join(' → ');
-    return `TARGETS: ${upcoming}`;
+    return `Find #${state.nextTarget} — skip the decoys!`;
   }
 
   // --- Extraction Logic ---
@@ -1064,8 +1323,10 @@
     state.draggingNode = null;
     extractionFrame.classList.remove('dragging-active');
 
-    extractionFrame.classList.add('extraction-flash');
-    setTimeout(() => extractionFrame.classList.remove('extraction-flash'), 180);
+    if (!state.reducedMotion) {
+      extractionFrame.classList.add('extraction-flash');
+      setTimeout(() => extractionFrame.classList.remove('extraction-flash'), 180);
+    }
 
     const nowSec = performance.now() / 1000;
     const splitSec = Math.max(0.05, nowSec - state.lastExtractTimestamp);
@@ -1243,18 +1504,20 @@
       hitNode.errorFlash = 1.0;
       sound.playError();
 
-      extractionFrame.classList.add('error-flash');
-      setTimeout(() => extractionFrame.classList.remove('error-flash'), 220);
+      if (!state.reducedMotion) {
+        extractionFrame.classList.add('error-flash');
+        setTimeout(() => extractionFrame.classList.remove('error-flash'), 220);
+      }
 
       if (state.isOfflineMode) {
-        // Apply -2s distractor timer penalty in Offline Survival Sweep
+        // Apply -2s decoy timer penalty in Offline Survival Sweep
         state.timeRemaining = Math.max(
           0,
           state.timeRemaining - OFFLINE_SURVIVAL_CONFIG.distractorPenaltySec
         );
         updateTimerDisplay();
         showArenaToast(
-          `Distractor! -2.0s Penalty (Find #${state.nextTarget})`,
+          `Decoy! -2.0s Penalty (Find #${state.nextTarget})`,
           '#3b0712'
         );
         spawnFloatingText(hitNode.x, hitNode.y, '-2.0s!', '#ff4d6d');
@@ -1266,21 +1529,29 @@
       }
 
       const isGapDistractor = state.distractorSet.has(hitNode.value);
+      if (isGapDistractor) {
+        // Phase 6.2: Online decoy penalty (-1.0s Easy, -1.5s Medium, -2.0s Hard)
+        const penaltySec = DIFFICULTIES[state.difficulty].decoyPenaltySec || 1.0;
+        state.timeRemaining = Math.max(0, state.timeRemaining - penaltySec);
+        updateTimerDisplay();
+        const msg = state.memoryMode
+          ? `#${hitNode.value} is a Decoy! -${penaltySec.toFixed(1)}s`
+          : `Decoy! -${penaltySec.toFixed(1)}s (Find #${state.nextTarget})`;
+        showArenaToast(msg, '#3b0712');
+        spawnFloatingText(hitNode.x, hitNode.y, `-${penaltySec.toFixed(1)}s!`, '#ff4d6d');
+        updateHUD();
+        if (state.timeRemaining <= 0) {
+          finishGame(false);
+        }
+        return;
+      }
+
       const msg = state.memoryMode
-        ? isGapDistractor
-          ? `#${hitNode.value} is a Distractor Gap!`
-          : `Out of order! Not #${hitNode.value}`
-        : isGapDistractor
-          ? `Distractor Gap! Target is #${state.nextTarget}`
-          : `Find #${state.nextTarget} first!`;
+        ? `Out of order! Not #${hitNode.value}`
+        : `Find #${state.nextTarget} first!`;
 
       showArenaToast(msg, '#3b0712');
-      spawnFloatingText(
-        hitNode.x,
-        hitNode.y,
-        isGapDistractor ? 'DISTRACTOR!' : `Need #${state.nextTarget}`,
-        '#ff4d6d'
-      );
+      spawnFloatingText(hitNode.x, hitNode.y, `Need #${state.nextTarget}`, '#ff4d6d');
       updateHUD();
     }
   });
@@ -1499,11 +1770,16 @@
         ctx.stroke();
 
         ctx.fillStyle = isDragging || isHinting ? t.bg : t.primary;
-        const fontSize = Math.max(8, Math.round(r * 0.56));
-        ctx.font = `${fontSize}px "Press Start 2P", monospace`;
+        const useClearFont = state.theme === 'clear' || state.largeNumbers;
+        const fontSize = useClearFont
+          ? Math.max(12, Math.round(r * 0.92))
+          : Math.max(8, Math.round(r * 0.56));
+        ctx.font = useClearFont
+          ? `800 ${fontSize}px system-ui, -apple-system, "Segoe UI", sans-serif`
+          : `${fontSize}px "Press Start 2P", monospace`;
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
-        ctx.fillText(String(n.value), n.x, n.y + 1);
+        ctx.fillText(String(n.value), n.x, n.y + (useClearFont ? 0.5 : 1));
 
         ctx.restore();
       }
@@ -1533,7 +1809,7 @@
     const extractedCount = state.currentStepIndex;
 
     if (state.isOfflineMode) {
-      // Offline Survival Sweep: prominent Extracted count + streak
+      // Offline Survival Sweep: prominent Extracted count + next target
       hudExtracted.textContent = String(extractedCount);
       hudStreakBadge.textContent = `Next: #${state.nextTarget}`;
       return;
@@ -1575,14 +1851,38 @@
     }
   }
 
-  function startGame() {
+  function hideArenaOverlays() {
+    if (tapToPlayOverlay) tapToPlayOverlay.hidden = true;
+    if (tutorialOverlay) tutorialOverlay.hidden = true;
+  }
+
+  function hasSeenTutorial() {
+    try {
+      return localStorage.getItem(TUTORIAL_SEEN_KEY) === '1';
+    } catch {
+      return true;
+    }
+  }
+
+  function markTutorialSeen() {
+    try {
+      localStorage.setItem(TUTORIAL_SEEN_KEY, '1');
+    } catch {
+      // ignore storage errors
+    }
+  }
+
+  function prepareRoundBoard({ daily = false } = {}) {
     syncNetworkModeUI();
+    state.isDailyMode = Boolean(daily) && !state.isOfflineMode;
+    state.dailyDateKey = getLagosDateString();
+    state.isDailyPractice = state.isDailyMode && hasCompletedDailyToday(state.difficulty);
+    state.roundId = createRoundId();
 
     const durationSec = state.isOfflineMode
       ? OFFLINE_SURVIVAL_CONFIG.durationSec
       : DIFFICULTIES[state.difficulty].durationSec;
 
-    state.status = 'playing';
     state.totalDuration = durationSec;
     state.timeRemaining = durationSec;
     state.streak = 0;
@@ -1593,26 +1893,73 @@
     state.particles = [];
     state.floatingTexts = [];
     state.draggingNode = null;
-    state.quickFlick = chkQuickFlick.checked;
-    state.memoryMode = chkMemoryMode.checked;
+    state.quickFlick = chkQuickFlick ? chkQuickFlick.checked : true;
+    state.memoryMode = chkMemoryMode ? chkMemoryMode.checked : false;
 
     extractedSlots.innerHTML = '';
     if (ghostLayer) ghostLayer.innerHTML = '';
 
-    setupModal.classList.remove('active');
-    resultsModal.classList.remove('active');
-    infoModal.classList.remove('active');
-    const lvlModal = document.getElementById('levelSelectModal');
-    const setModal = document.getElementById('settingsModal');
-    const trajModal = document.getElementById('trajectoryModal');
-    if (lvlModal) lvlModal.classList.remove('active');
-    if (setModal) setModal.classList.remove('active');
-    if (trajModal) trajModal.classList.remove('active');
+    closeAllOverlayModals();
     document.body.classList.remove('results-active');
     document.body.classList.add('playing-active');
 
     resizeCanvas();
     createNodes();
+    trayStatusText.textContent = formatUpcomingQueueText();
+    updateHUD();
+    updateTimerDisplay();
+  }
+
+  function prepareArenaWithTapOverlay({ daily = false, mode = 'embed' } = {}) {
+    if (!state.embedLicensed) return;
+    prepareRoundBoard({ daily });
+    state.status = 'ready';
+    hideArenaOverlays();
+    if (tapToPlayOverlay) {
+      const puzzleNum = getDailyPuzzleNumber(state.dailyDateKey);
+      if (tapOverlayBadge) {
+        tapOverlayBadge.textContent = state.isOfflineMode
+          ? 'OFFLINE MODE // SURVIVAL SWEEP'
+          : state.isDailyMode
+            ? `DAILY SWEEP #${puzzleNum}`
+            : `60-SECOND NUMBER RUSH // ${DIFFICULTIES[state.difficulty].label.toUpperCase()}`;
+      }
+      if (tapOverlayTitle) {
+        tapOverlayTitle.textContent = 'TAP TO PLAY';
+      }
+      if (tapOverlaySub) {
+        tapOverlaySub.textContent = state.isOfflineMode
+          ? 'Offline endless mode! Spot #1, #2, #3... and flick targets out. Skip decoys (−2.0s).'
+          : `Spot the NEXT TARGET (#${state.nextTarget}), skip the decoys, and flick targets out before 60s runs out!`;
+      }
+      if (btnTapToPlayAction) {
+        btnTapToPlayAction.textContent = 'TAP TO PLAY';
+      }
+      tapToPlayOverlay.hidden = false;
+    }
+    state.lastFrameTime = performance.now();
+  }
+
+  function pauseGameWithOverlay() {
+    if (state.status !== 'playing') return;
+    state.status = 'paused';
+    state.draggingNode = null;
+    extractionFrame.classList.remove('dragging-active');
+    if (tapToPlayOverlay) {
+      if (tapOverlayBadge) tapOverlayBadge.textContent = 'GAME PAUSED';
+      if (tapOverlayTitle) tapOverlayTitle.textContent = 'PAUSED — TAP TO RESUME';
+      if (tapOverlaySub) {
+        tapOverlaySub.textContent = `Timer paused at ${hudTimer ? hudTimer.textContent : ''}. Tap below to continue your round.`;
+      }
+      if (btnTapToPlayAction) btnTapToPlayAction.textContent = 'TAP TO RESUME';
+      tapToPlayOverlay.hidden = false;
+    }
+  }
+
+  function beginActivePlay() {
+    if (!state.embedLicensed) return;
+    hideArenaOverlays();
+    state.status = 'playing';
 
     if (!state.isOfflineMode) {
       triggerTargetHudPulse();
@@ -1627,17 +1974,62 @@
       spawnGhostTarget(canvasWidth / 2, canvasHeight / 2, 1);
     }
 
-    trayStatusText.textContent = formatUpcomingQueueText();
-    updateHUD();
-    updateTimerDisplay();
-
     const now = performance.now();
     state.lastFrameTime = now;
     state.lastExtractTimestamp = now / 1000;
+
+    try {
+      if (!localStorage.getItem(FIRST_PLAY_KEY)) {
+        localStorage.setItem(FIRST_PLAY_KEY, '1');
+        trackEvent('first_play', {
+          difficulty: state.difficulty,
+          is_daily: state.isDailyMode,
+          is_offline: state.isOfflineMode,
+        });
+      }
+    } catch {
+      // ignore storage errors
+    }
+
+    trackEvent('game_start', {
+      difficulty: state.difficulty,
+      pattern: state.pattern,
+      theme: state.theme,
+      is_daily: state.isDailyMode,
+      is_offline: state.isOfflineMode,
+    });
+    postEmbedEvent('start', {
+      difficulty: state.difficulty,
+      pattern: state.pattern,
+      isDaily: state.isDailyMode,
+    });
+  }
+
+  function startGame(options = {}) {
+    if (!state.embedLicensed) return;
+    const isDaily = options && typeof options.daily === 'boolean' ? options.daily : state.isDailyMode;
+    const skipTutorialCheck = Boolean(options && options.skipTutorial);
+
+    prepareRoundBoard({ daily: isDaily });
+
+    // One-time skippable 5-second tutorial for first-time players
+    if (!skipTutorialCheck && !hasSeenTutorial() && tutorialOverlay) {
+      state.status = 'tutorial';
+      if (tutorialDemoNode) {
+        tutorialDemoNode.textContent = `#${state.nextTarget}`;
+      }
+      hideArenaOverlays();
+      tutorialOverlay.hidden = false;
+      state.lastFrameTime = performance.now();
+      return;
+    }
+
+    beginActivePlay();
   }
 
   function finishGame(completedAll) {
     state.status = 'ended';
+    hideArenaOverlays();
     document.body.classList.remove('playing-active');
     document.body.classList.add('results-active');
     state.draggingNode = null;
@@ -1649,9 +2041,16 @@
     const resSessionScoreBanner = document.getElementById('resSessionScoreBanner');
     const resTotalScoreBanner = document.getElementById('resTotalScoreBanner');
 
+    let shareScore = 0;
+    let shareTargetTotal = state.targetCount;
+    let shareTimeTaken = 60;
+    let shareRank = '—';
+
     if (state.isOfflineMode) {
       const extractedCount = state.currentStepIndex;
       const bestOffline = saveOfflineBestScore(extractedCount);
+      shareScore = extractedCount;
+      shareTimeTaken = 60;
 
       if (extractedCount > 0) {
         sound.playVictory();
@@ -1660,8 +2059,17 @@
       }
 
       resultBadge.textContent = 'OFFLINE MODE: SURVIVAL SWEEP';
-      resultHeadline.textContent = `Time's up! You extracted ${extractedCount} numbers. Your best is ${bestOffline}.`;
-      resultSubheadline.textContent = `60-second endless sequential pull complete. Best Offline Score: ${bestOffline}.`;
+      resultHeadline.textContent =
+        extractedCount === 0
+          ? "Time's Up! 0 Numbers Cleared"
+          : `Time's up! You extracted ${extractedCount} numbers.`;
+      resultSubheadline.textContent =
+        extractedCount === 0
+          ? 'No numbers cleared this round.'
+          : `60-second endless sweep complete. Best Offline Score: ${bestOffline}.`;
+
+      if (zeroScoreHelpWrap) zeroScoreHelpWrap.hidden = extractedCount > 0;
+      if (resSecondStatLabel) resSecondStatLabel.textContent = 'BEST OFFLINE';
 
       if (resSessionScoreBanner) {
         resSessionScoreBanner.textContent = `Session Score: ${extractedCount}`;
@@ -1676,16 +2084,26 @@
       document.getElementById('resAvgSpeed').textContent = avgSpeed;
 
       const totalAttempts = extractedCount + state.mistakes;
-      const accuracy =
-        totalAttempts > 0 ? Math.round((extractedCount / totalAttempts) * 100) : 100;
-      document.getElementById('resAccuracy').textContent = `${accuracy}%`;
-      document.getElementById('resCognitiveRank').textContent = `Best Offline Score: ${bestOffline}`;
+      const accuracyText =
+        totalAttempts > 0 ? `${Math.round((extractedCount / totalAttempts) * 100)}%` : '—';
+      document.getElementById('resAccuracy').textContent = accuracyText;
+      document.getElementById('resCognitiveRank').textContent = `Best Offline: ${bestOffline}`;
+
+      state.lastResultSummary = {
+        mode: 'offline',
+        score: extractedCount,
+        bestOffline,
+      };
     } else {
       const sessionScore = completedAll ? state.targetCount : state.currentStepIndex;
       const timeTaken = Math.min(
         state.totalDuration,
         Math.max(0.1, state.totalDuration - state.timeRemaining)
       );
+      const timeTakenMs = Math.round(timeTaken * 1000);
+      shareScore = sessionScore;
+      shareTargetTotal = state.targetCount;
+      shareTimeTaken = timeTaken;
 
       if (completedAll) {
         sound.playVictory();
@@ -1693,12 +2111,15 @@
         sound.playError();
       }
 
-      const localCumulativeTotal = saveHighScore(
+      const highScoreRes = saveHighScore(
         state.difficulty,
         sessionScore,
         state.targetCount,
         timeTaken
       );
+      const localCumulativeTotal = highScoreRes.cumulativeTotal;
+      const isNewPersonalBest = highScoreRes.isBetter;
+
       recordGameStatistics(
         state.difficulty,
         sessionScore,
@@ -1707,6 +2128,32 @@
         state.timeRemaining,
         completedAll
       );
+
+      const totalAttempts = sessionScore + state.mistakes;
+      const accuracyNum =
+        totalAttempts > 0 ? Math.round((sessionScore / totalAttempts) * 100) : null;
+      const accuracyText = accuracyNum !== null ? `${accuracyNum}%` : '—';
+
+      const completionRatio = sessionScore / state.targetCount;
+      let rank = 'C';
+      if (sessionScore === 0) rank = '—';
+      else if (completedAll && (accuracyNum === null || accuracyNum >= 95)) rank = 'S+ Elite';
+      else if (completedAll) rank = 'S';
+      else if (completionRatio >= 0.8) rank = 'A';
+      else if (completionRatio >= 0.55) rank = 'B';
+      shareRank = rank;
+
+      if (state.isDailyMode && sessionScore > 0) {
+        recordDailyCompletion(state.difficulty, sessionScore, timeTaken, rank);
+        trackEvent('daily_sweep_complete', {
+          difficulty: state.difficulty,
+          score: sessionScore,
+          time_sec: Number(timeTaken.toFixed(1)),
+          completed_all: completedAll,
+          practice: state.isDailyPractice,
+        });
+      }
+
       checkAchievements({
         sessionScore,
         difficulty: state.difficulty,
@@ -1716,17 +2163,31 @@
         pattern: state.pattern,
         notify: true,
       });
-      const cfg = DIFFICULTIES[state.difficulty];
 
-      if (completedAll) {
-        resultBadge.textContent = 'CHALLENGE CONQUERED';
-        resultHeadline.textContent = `Cleared ${state.targetCount} Targets in ${timeTaken.toFixed(1)}s!`;
-        resultSubheadline.textContent = `Session Score: ${sessionScore} added to your ${cfg.label} Total Score!`;
+      const cfg = DIFFICULTIES[state.difficulty];
+      const puzzleNum = getDailyPuzzleNumber(state.dailyDateKey);
+
+      if (state.isDailyMode) {
+        resultBadge.textContent = state.isDailyPractice
+          ? `DAILY SWEEP #${puzzleNum} // PRACTICE`
+          : `DAILY SWEEP #${puzzleNum}`;
       } else {
-        resultBadge.textContent = 'TIME EXPIRED (60.0s)';
-        resultHeadline.textContent = `Extracted ${sessionScore} of ${state.targetCount} Targets`;
-        resultSubheadline.textContent = `Session Score: ${sessionScore} added to your ${cfg.label} Total Score!`;
+        resultBadge.textContent = completedAll ? 'CHALLENGE CONQUERED' : 'TIME EXPIRED (60.0s)';
       }
+
+      if (sessionScore === 0) {
+        resultHeadline.textContent = `0 of ${state.targetCount} Cleared`;
+        resultSubheadline.textContent = 'Your speed breakdown.';
+      } else if (completedAll) {
+        resultHeadline.textContent = `Cleared ${state.targetCount} Targets in ${timeTaken.toFixed(1)}s!`;
+        resultSubheadline.textContent = `Your speed breakdown (${cfg.label} • Best: ${highScoreRes.bestSingle}/${state.targetCount}).`;
+      } else {
+        resultHeadline.textContent = `Extracted ${sessionScore} of ${state.targetCount} Targets`;
+        resultSubheadline.textContent = `Your speed breakdown (${cfg.label} • Best: ${highScoreRes.bestSingle}/${state.targetCount}).`;
+      }
+
+      if (zeroScoreHelpWrap) zeroScoreHelpWrap.hidden = sessionScore > 0;
+      if (resSecondStatLabel) resSecondStatLabel.textContent = 'TOTAL SCORE';
 
       if (resSessionScoreBanner) {
         resSessionScoreBanner.textContent = `Session Score: ${sessionScore}`;
@@ -1739,22 +2200,57 @@
       document.getElementById('resTime').textContent = `${localCumulativeTotal}`;
       const avgSpeed = sessionScore > 0 ? `${(timeTaken / sessionScore).toFixed(2)}s / #` : '—';
       document.getElementById('resAvgSpeed').textContent = avgSpeed;
+      document.getElementById('resAccuracy').textContent = accuracyText;
+      document.getElementById('resCognitiveRank').textContent = `Sweep Rank: ${rank}`;
 
-      const totalAttempts = sessionScore + state.mistakes;
-      const accuracy =
-        totalAttempts > 0 ? Math.round((sessionScore / totalAttempts) * 100) : 100;
-      document.getElementById('resAccuracy').textContent = `${accuracy}%`;
+      state.lastResultSummary = {
+        mode: state.isDailyMode ? 'daily' : 'standard',
+        dailyNum: puzzleNum,
+        difficulty: state.difficulty,
+        diffLabel: cfg.label,
+        score: sessionScore,
+        targetCount: state.targetCount,
+        timeTaken,
+        rank,
+        streak: getActiveStreakCount(),
+      };
 
-      const completionRatio = sessionScore / state.targetCount;
-      let rank = 'C';
-      if (completedAll && accuracy >= 95) rank = 'S+ Elite';
-      else if (completedAll) rank = 'S';
-      else if (completionRatio >= 0.8) rank = 'A';
-      else if (completionRatio >= 0.55) rank = 'B';
-      document.getElementById('resCognitiveRank').textContent = `Cognitive Rating: ${rank}`;
+      trackEvent('game_end', {
+        difficulty: state.difficulty,
+        score: sessionScore,
+        target_count: state.targetCount,
+        time_sec: Number(timeTaken.toFixed(1)),
+        completed_all: completedAll,
+        rank,
+        is_daily: state.isDailyMode,
+      });
+      postEmbedEvent('end', {
+        difficulty: state.difficulty,
+        score: sessionScore,
+        targetCount: state.targetCount,
+        timeTakenMs,
+        rank,
+        completedAll,
+        isDaily: state.isDailyMode,
+      });
 
-      // Step 3: Submit sessionScore to Google Apps Script & update Total Score with backend response
-      handleGameEndLeaderboardSubmission(state.difficulty, sessionScore);
+      // Submit score (with smart registration timing & daily practice guard)
+      handleGameEndLeaderboardSubmission({
+        difficulty: state.difficulty,
+        sessionScore,
+        targetCount: state.targetCount,
+        timeTakenMs,
+        isDaily: state.isDailyMode,
+        isDailyPractice: state.isDailyPractice,
+        roundId: state.roundId,
+        isNewPersonalBest,
+      });
+    }
+
+    syncDailyAndStreakUI();
+
+    if (btnEmbedSponsorCta) {
+      btnEmbedSponsorCta.hidden = !(state.ctaUrl && state.ctaText);
     }
 
     const splitContainer = document.getElementById('splitBarsContainer');
@@ -1771,20 +2267,22 @@
       });
     } else {
       splitContainer.innerHTML =
-        '<span style="color: var(--text-muted); font-size: 0.78rem;">Extract numbers to record reaction splits.</span>';
+        '<span style="color: var(--text-muted); font-size: 0.78rem;">Extract numbers to record speed splits.</span>';
     }
 
-    resultsModal.classList.add('active');
+    setModalOpen(resultsModal, true);
   }
 
-  // --- Viewport & Tab Visibility Observer (Saves CPU when embedded iframe is offscreen) ---
+  // --- Viewport & Tab Visibility Observer (Pauses timer when scrolled offscreen or backgrounded) ---
   let isArenaInViewport = true;
   if ('IntersectionObserver' in window && arenaContainer) {
     const arenaObserver = new IntersectionObserver(
       (entries) => {
         for (const entry of entries) {
           isArenaInViewport = entry.isIntersecting;
-          if (isArenaInViewport) {
+          if (!isArenaInViewport && state.status === 'playing') {
+            pauseGameWithOverlay();
+          } else if (isArenaInViewport) {
             state.lastFrameTime = performance.now();
           }
         }
@@ -1795,7 +2293,9 @@
   }
 
   document.addEventListener('visibilitychange', () => {
-    if (!document.hidden) {
+    if (document.hidden && state.status === 'playing') {
+      pauseGameWithOverlay();
+    } else if (!document.hidden) {
       state.lastFrameTime = performance.now();
     }
   });
@@ -1821,7 +2321,7 @@
       }
     }
 
-    if (state.status !== 'paused') {
+    if (state.status !== 'paused' && state.status !== 'tutorial') {
       updateNodes(dt);
       updateEffects(dt);
     }
@@ -1830,7 +2330,7 @@
     requestAnimationFrame(tick);
   }
 
-  // --- Persistent Settings, Color Themes, Screen Routing & Bottom Navigation ---
+  // --- Persistent Settings, Color Themes, Accessibility & Focus-Trapped Modals ---
   const SETTINGS_STORAGE_KEY = 'brainsweep_settings_v1';
   const THEME_STORAGE_KEY = 'brainsweep_theme';
 
@@ -1848,7 +2348,7 @@
       label: 'PHOSPHOR GREEN',
       bg: '#001100',
       primary: '#39FF14',
-      border: '#008F11',
+      border: '#00A819',
       accent: '#FFFFFF',
     },
     cyan: {
@@ -1857,15 +2357,23 @@
       bg: '#0B0C10',
       primary: '#00E5FF',
       border: '#00E5FF',
-      accent: '#FF007F',
+      accent: '#FF4D9E',
     },
     magenta: {
       id: 'magenta',
       label: 'VAPORWAVE MAGENTA',
       bg: '#1A0B1F',
-      primary: '#FF00CC',
-      border: '#FF00CC',
+      primary: '#FF33D4',
+      border: '#FF33D4',
       accent: '#FFE600',
+    },
+    clear: {
+      id: 'clear',
+      label: 'CLEAR (HIGH CONTRAST)',
+      bg: '#0A0E14',
+      primary: '#FFFFFF',
+      border: '#38BDF8',
+      accent: '#FACC15',
     },
   };
 
@@ -1879,7 +2387,15 @@
   }
 
   function getActiveThemeColors() {
-    return COLOR_THEMES[state.theme] || COLOR_THEMES.amber;
+    const base = COLOR_THEMES[state.theme] || COLOR_THEMES.amber;
+    if (state.brandColor && /^#[0-9a-fA-F]{6}$/.test(state.brandColor)) {
+      return {
+        ...base,
+        primary: state.brandColor,
+        border: state.brandColor,
+      };
+    }
+    return base;
   }
 
   function applyColorTheme(themeId, persist = true) {
@@ -1890,13 +2406,13 @@
     const root = document.documentElement;
     root.setAttribute('data-theme', validKey);
     root.style.setProperty('--bg-color', theme.bg);
-    root.style.setProperty('--primary-text', theme.primary);
-    root.style.setProperty('--border-color', theme.border);
+    root.style.setProperty('--primary-text', state.brandColor || theme.primary);
+    root.style.setProperty('--border-color', state.brandColor || theme.border);
     root.style.setProperty('--accent-color', theme.accent);
 
     const metaTheme = document.querySelector('meta[name="theme-color"]');
     if (metaTheme) {
-      metaTheme.setAttribute('content', theme.primary);
+      metaTheme.setAttribute('content', state.brandColor || theme.primary);
     }
 
     if (persist) {
@@ -1905,6 +2421,18 @@
       } catch {
         // ignore storage errors
       }
+    }
+    if (state.nodes.length > 0) {
+      resizeCanvas();
+    }
+  }
+
+  function applyAccessibilityFlags() {
+    const root = document.documentElement;
+    root.setAttribute('data-large-numbers', state.largeNumbers ? 'true' : 'false');
+    root.setAttribute('data-reduced-motion', state.reducedMotion ? 'true' : 'false');
+    if (state.nodes.length > 0) {
+      resizeCanvas();
     }
   }
 
@@ -1937,6 +2465,8 @@
   const btnSettingDifficulty = document.getElementById('btnSettingDifficulty');
   const btnSettingTrajectory = document.getElementById('btnSettingTrajectory');
   const btnSettingTheme = document.getElementById('btnSettingTheme');
+  const btnSettingLargeNumbers = document.getElementById('btnSettingLargeNumbers');
+  const btnSettingReducedMotion = document.getElementById('btnSettingReducedMotion');
 
   const settingSoundIconBox = document.getElementById('settingSoundIconBox');
   const settingSoundSvgOn = document.getElementById('settingSoundSvgOn');
@@ -1945,7 +2475,83 @@
   const settingDifficultyValue = document.getElementById('settingDifficultyValue');
   const settingTrajectoryValue = document.getElementById('settingTrajectoryValue');
   const settingThemeValue = document.getElementById('settingThemeValue');
+  const settingLargeNumbersValue = document.getElementById('settingLargeNumbersValue');
+  const settingLargeNumbersIconBox = document.getElementById('settingLargeNumbersIconBox');
+  const settingReducedMotionValue = document.getElementById('settingReducedMotionValue');
+  const settingReducedMotionIconBox = document.getElementById('settingReducedMotionIconBox');
   const homeStartDiffLabel = document.getElementById('homeStartDiffLabel');
+
+  // --- Accessible Modal Management (inert + aria-hidden + focus trap/restore) ---
+  const modalTriggerStack = new WeakMap();
+  const FOCUSABLE_SELECTOR =
+    'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
+
+  function getOpenModals() {
+    return Array.from(document.querySelectorAll('.modal-backdrop.active'));
+  }
+
+  function setModalOpen(modalEl, shouldOpen) {
+    if (!modalEl) return;
+    if (shouldOpen) {
+      if (!modalEl.classList.contains('active') && document.activeElement instanceof HTMLElement) {
+        modalTriggerStack.set(modalEl, document.activeElement);
+      }
+      modalEl.removeAttribute('inert');
+      modalEl.setAttribute('aria-hidden', 'false');
+      modalEl.classList.add('active');
+      const focusable = modalEl.querySelectorAll(FOCUSABLE_SELECTOR);
+      if (focusable.length > 0 && modalEl !== setupModal) {
+        setTimeout(() => {
+          try {
+            focusable[0].focus();
+          } catch {
+            // ignore focus errors
+          }
+        }, 30);
+      }
+    } else {
+      const wasOpen = modalEl.classList.contains('active');
+      modalEl.classList.remove('active');
+      modalEl.setAttribute('aria-hidden', 'true');
+      modalEl.setAttribute('inert', '');
+      if (wasOpen) {
+        const prevEl = modalTriggerStack.get(modalEl);
+        modalTriggerStack.delete(modalEl);
+        if (prevEl && document.contains(prevEl) && typeof prevEl.focus === 'function') {
+          const stillHasModal = getOpenModals().length > 0;
+          if (!stillHasModal || prevEl.closest('.modal-backdrop.active')) {
+            try {
+              prevEl.focus();
+            } catch {
+              // ignore focus errors
+            }
+          }
+        }
+      }
+    }
+  }
+
+  document.addEventListener('keydown', (e) => {
+    if (e.key !== 'Tab') return;
+    const openModals = getOpenModals();
+    if (openModals.length === 0) return;
+    const topModal = openModals[openModals.length - 1];
+    const focusables = Array.from(topModal.querySelectorAll(FOCUSABLE_SELECTOR)).filter(
+      (el) => el.offsetParent !== null && !el.closest('[hidden]')
+    );
+    if (focusables.length === 0) return;
+    const first = focusables[0];
+    const last = focusables[focusables.length - 1];
+    if (e.shiftKey) {
+      if (document.activeElement === first || !topModal.contains(document.activeElement)) {
+        e.preventDefault();
+        last.focus();
+      }
+    } else if (document.activeElement === last || !topModal.contains(document.activeElement)) {
+      e.preventDefault();
+      first.focus();
+    }
+  });
 
   function loadPersistedSettings() {
     try {
@@ -1955,32 +2561,44 @@
       applyColorTheme('amber', false);
     }
 
+    const prefersReduced =
+      window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    state.reducedMotion = Boolean(prefersReduced);
+
     try {
       const raw = localStorage.getItem(SETTINGS_STORAGE_KEY);
-      if (!raw) return;
-      const parsed = JSON.parse(raw);
-      if (parsed && typeof parsed === 'object') {
-        if (typeof parsed.soundEnabled === 'boolean') {
-          sound.enabled = parsed.soundEnabled;
-        }
-        if (parsed.difficulty && DIFFICULTIES[parsed.difficulty]) {
-          state.difficulty = parsed.difficulty;
-        }
-        if (parsed.pattern && PATTERN_LABELS[parsed.pattern]) {
-          state.pattern = parsed.pattern;
-        }
-        if (typeof parsed.quickFlick === 'boolean' && chkQuickFlick) {
-          chkQuickFlick.checked = parsed.quickFlick;
-          state.quickFlick = parsed.quickFlick;
-        }
-        if (typeof parsed.memoryMode === 'boolean' && chkMemoryMode) {
-          chkMemoryMode.checked = parsed.memoryMode;
-          state.memoryMode = parsed.memoryMode;
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (parsed && typeof parsed === 'object') {
+          if (typeof parsed.soundEnabled === 'boolean') {
+            sound.enabled = parsed.soundEnabled;
+          }
+          if (parsed.difficulty && DIFFICULTIES[parsed.difficulty]) {
+            state.difficulty = parsed.difficulty;
+          }
+          if (parsed.pattern && PATTERN_LABELS[parsed.pattern]) {
+            state.pattern = parsed.pattern;
+          }
+          if (typeof parsed.quickFlick === 'boolean' && chkQuickFlick) {
+            chkQuickFlick.checked = parsed.quickFlick;
+            state.quickFlick = parsed.quickFlick;
+          }
+          if (typeof parsed.memoryMode === 'boolean' && chkMemoryMode) {
+            chkMemoryMode.checked = parsed.memoryMode;
+            state.memoryMode = parsed.memoryMode;
+          }
+          if (typeof parsed.largeNumbers === 'boolean') {
+            state.largeNumbers = parsed.largeNumbers;
+          }
+          if (typeof parsed.reducedMotion === 'boolean') {
+            state.reducedMotion = parsed.reducedMotion;
+          }
         }
       }
     } catch {
       // ignore storage errors
     }
+    applyAccessibilityFlags();
   }
 
   function savePersistedSettings() {
@@ -1991,6 +2609,8 @@
         pattern: state.pattern,
         quickFlick: chkQuickFlick ? chkQuickFlick.checked : true,
         memoryMode: chkMemoryMode ? chkMemoryMode.checked : false,
+        largeNumbers: state.largeNumbers,
+        reducedMotion: state.reducedMotion,
       };
       localStorage.setItem(SETTINGS_STORAGE_KEY, JSON.stringify(payload));
     } catch {
@@ -2015,7 +2635,23 @@
       settingSoundSvgOff.hidden = sound.enabled;
     }
 
-    // 2. Sync Difficulty, Trajectory & Theme UI
+    // 2. Sync Accessibility Toggles (Large Numbers & Reduced Motion)
+    if (settingLargeNumbersValue) {
+      settingLargeNumbersValue.textContent = state.largeNumbers ? 'ON' : 'OFF';
+      settingLargeNumbersValue.classList.toggle('off', !state.largeNumbers);
+    }
+    if (settingLargeNumbersIconBox) {
+      settingLargeNumbersIconBox.classList.toggle('muted', !state.largeNumbers);
+    }
+    if (settingReducedMotionValue) {
+      settingReducedMotionValue.textContent = state.reducedMotion ? 'ON' : 'OFF';
+      settingReducedMotionValue.classList.toggle('off', !state.reducedMotion);
+    }
+    if (settingReducedMotionIconBox) {
+      settingReducedMotionIconBox.classList.toggle('muted', !state.reducedMotion);
+    }
+
+    // 3. Sync Difficulty, Trajectory & Theme UI
     const diffUpper = DIFFICULTIES[state.difficulty].label.toUpperCase();
     const patUpper = PATTERN_LABELS[state.pattern] || 'SPIRAL VORTEX';
     const activeTheme = getActiveThemeColors();
@@ -2064,43 +2700,36 @@
   }
 
   function closeAllOverlayModals() {
-    setupModal.classList.remove('active');
-    if (levelSelectModal) levelSelectModal.classList.remove('active');
-    if (settingsModal) settingsModal.classList.remove('active');
-    if (trajectoryModal) trajectoryModal.classList.remove('active');
-    if (themeModal) themeModal.classList.remove('active');
-    if (infoModal) infoModal.classList.remove('active');
-    if (leaderboardModal) leaderboardModal.classList.remove('active');
+    setModalOpen(setupModal, false);
+    if (levelSelectModal) setModalOpen(levelSelectModal, false);
+    if (settingsModal) setModalOpen(settingsModal, false);
+    if (trajectoryModal) setModalOpen(trajectoryModal, false);
+    if (themeModal) setModalOpen(themeModal, false);
+    if (infoModal) setModalOpen(infoModal, false);
+    if (leaderboardModal) setModalOpen(leaderboardModal, false);
     const statsModalEl = document.getElementById('statisticsModal');
-    if (statsModalEl) statsModalEl.classList.remove('active');
+    if (statsModalEl) setModalOpen(statsModalEl, false);
     const achModalEl = document.getElementById('achievementsModal');
-    if (achModalEl) achModalEl.classList.remove('active');
-    if (resultsModal) resultsModal.classList.remove('active');
+    if (achModalEl) setModalOpen(achModalEl, false);
+    if (resultsModal) setModalOpen(resultsModal, false);
   }
 
   function navigateToScreen(tabName) {
+    hideArenaOverlays();
     document.body.classList.remove('playing-active');
     document.body.classList.remove('results-active');
-    if (state.status === 'playing') {
+    if (state.status === 'playing' || state.status === 'paused' || state.status === 'ready' || state.status === 'tutorial') {
       state.status = 'menu';
       state.draggingNode = null;
       extractionFrame.classList.remove('dragging-active');
     }
 
     if (tabName === 'leaderboard') {
-      const user = getSavedUser();
-      if (!user) {
-        openRegistrationModal({
-          prefill: false,
-          onComplete: () => navigateToScreen('leaderboard'),
-        });
-        return;
-      }
       closeAllOverlayModals();
       setBottomNavActiveTab('leaderboard');
       syncPlayerProfileUI();
-      leaderboardModal.classList.add('active');
-      loadLeaderboardTab(state.difficulty || 'easy');
+      setModalOpen(leaderboardModal, true);
+      loadLeaderboardTab(state.difficulty || 'easy', activeLeaderboardBoard);
       return;
     }
 
@@ -2109,18 +2738,18 @@
 
     if (tabName === 'levels' && levelSelectModal) {
       syncSettingsUI();
-      levelSelectModal.classList.add('active');
+      setModalOpen(levelSelectModal, true);
     } else if (tabName === 'help' && infoModal) {
-      infoModal.classList.add('active');
+      setModalOpen(infoModal, true);
     } else if (tabName === 'settings' && settingsModal) {
       syncSettingsUI();
-      settingsModal.classList.add('active');
+      setModalOpen(settingsModal, true);
     } else {
       // Default: 'home'
       setBottomNavActiveTab('home');
       syncNetworkModeUI();
       syncSettingsUI();
-      setupModal.classList.add('active');
+      setModalOpen(setupModal, true);
     }
   }
 
@@ -2140,7 +2769,7 @@
       savePersistedSettings();
       syncSettingsUI();
       sound.init();
-      startGame();
+      startGame({ daily: false });
       return;
     }
 
@@ -2158,7 +2787,7 @@
     savePersistedSettings();
     syncSettingsUI();
     if (trajectoryModal) {
-      trajectoryModal.classList.remove('active');
+      setModalOpen(trajectoryModal, false);
     }
   });
 
@@ -2199,20 +2828,20 @@
     btnSettingTrajectory.addEventListener('click', () => {
       syncSettingsUI();
       if (trajectoryModal) {
-        trajectoryModal.classList.add('active');
+        setModalOpen(trajectoryModal, true);
       }
     });
   }
 
   if (btnCloseTrajectory) {
     btnCloseTrajectory.addEventListener('click', () => {
-      trajectoryModal.classList.remove('active');
+      setModalOpen(trajectoryModal, false);
     });
   }
 
   if (btnCancelTrajectory) {
     btnCancelTrajectory.addEventListener('click', () => {
-      trajectoryModal.classList.remove('active');
+      setModalOpen(trajectoryModal, false);
     });
   }
 
@@ -2220,8 +2849,26 @@
     btnSettingTheme.addEventListener('click', () => {
       syncSettingsUI();
       if (themeModal) {
-        themeModal.classList.add('active');
+        setModalOpen(themeModal, true);
       }
+    });
+  }
+
+  if (btnSettingLargeNumbers) {
+    btnSettingLargeNumbers.addEventListener('click', () => {
+      state.largeNumbers = !state.largeNumbers;
+      applyAccessibilityFlags();
+      savePersistedSettings();
+      syncSettingsUI();
+    });
+  }
+
+  if (btnSettingReducedMotion) {
+    btnSettingReducedMotion.addEventListener('click', () => {
+      state.reducedMotion = !state.reducedMotion;
+      applyAccessibilityFlags();
+      savePersistedSettings();
+      syncSettingsUI();
     });
   }
 
@@ -2233,20 +2880,20 @@
       applyColorTheme(selectedTheme, true);
       syncSettingsUI();
       if (themeModal) {
-        themeModal.classList.remove('active');
+        setModalOpen(themeModal, false);
       }
     });
   }
 
   if (btnCloseTheme) {
     btnCloseTheme.addEventListener('click', () => {
-      themeModal.classList.remove('active');
+      setModalOpen(themeModal, false);
     });
   }
 
   if (btnCancelTheme) {
     btnCancelTheme.addEventListener('click', () => {
-      themeModal.classList.remove('active');
+      setModalOpen(themeModal, false);
     });
   }
 
@@ -2259,9 +2906,9 @@
   function closeSettingsAndReturn() {
     if (returnToResultsOnClose) {
       returnToResultsOnClose = false;
-      if (settingsModal) settingsModal.classList.remove('active');
+      if (settingsModal) setModalOpen(settingsModal, false);
       document.body.classList.add('results-active');
-      resultsModal.classList.add('active');
+      setModalOpen(resultsModal, true);
     } else {
       navigateToScreen('home');
     }
@@ -2277,11 +2924,137 @@
 
   btnStartGame.addEventListener('click', () => {
     sound.init();
-    startGame();
+    startGame({ daily: false });
   });
 
+  if (btnStartDailySweep) {
+    btnStartDailySweep.addEventListener('click', () => {
+      sound.init();
+      startGame({ daily: true });
+    });
+  }
+
+  if (btnTapToPlayAction) {
+    btnTapToPlayAction.addEventListener('click', () => {
+      sound.init();
+      if (state.status === 'paused') {
+        hideArenaOverlays();
+        state.status = 'playing';
+        state.lastFrameTime = performance.now();
+      } else {
+        // From 'ready' state (embed/offline/daily landing), check tutorial once or begin play
+        if (!hasSeenTutorial() && tutorialOverlay && !state.isEmbedMode) {
+          state.status = 'tutorial';
+          if (tutorialDemoNode) tutorialDemoNode.textContent = `#${state.nextTarget}`;
+          hideArenaOverlays();
+          tutorialOverlay.hidden = false;
+        } else {
+          beginActivePlay();
+        }
+      }
+    });
+  }
+
+  if (btnSkipTutorial) {
+    btnSkipTutorial.addEventListener('click', () => {
+      markTutorialSeen();
+      beginActivePlay();
+    });
+  }
+
+  if (btnStartFromTutorial) {
+    btnStartFromTutorial.addEventListener('click', () => {
+      sound.init();
+      markTutorialSeen();
+      beginActivePlay();
+    });
+  }
+
+  if (btnZeroScoreHowToPlay) {
+    btnZeroScoreHowToPlay.addEventListener('click', () => {
+      returnToResultsOnClose = true;
+      setModalOpen(resultsModal, false);
+      setModalOpen(infoModal, true);
+    });
+  }
+
+  function buildShareText() {
+    const siteUrl = (getAppConfig().siteUrl || 'https://brainsweep-tau.vercel.app').replace(/\/+$/, '');
+    const s = state.lastResultSummary;
+    if (!s) {
+      return `Play BrainSweep — 60-Second Number Rush!\n${siteUrl}`;
+    }
+    if (s.mode === 'offline') {
+      return `BrainSweep Survival Sweep ⚡ ${s.score} numbers in 60s (Best: ${s.bestOffline})\n${siteUrl}`;
+    }
+    if (s.mode === 'daily') {
+      return `BrainSweep Daily #${s.dailyNum} ⚡ ${s.score}/${s.targetCount} in ${s.timeTaken.toFixed(1)}s · Rank ${s.rank} · 🔥${s.streak}\n${siteUrl}?daily=1`;
+    }
+    return `BrainSweep (${s.diffLabel}) ⚡ ${s.score}/${s.targetCount} in ${s.timeTaken.toFixed(1)}s · Rank ${s.rank}\n${siteUrl}`;
+  }
+
+  if (btnShareResult) {
+    btnShareResult.addEventListener('click', async () => {
+      const shareText = buildShareText();
+      trackEvent('share_click', {
+        mode: state.lastResultSummary ? state.lastResultSummary.mode : 'standard',
+        difficulty: state.difficulty,
+      });
+
+      const originalLabel = btnShareResult.textContent;
+      if (navigator.share) {
+        try {
+          await navigator.share({
+            title: 'BrainSweep',
+            text: shareText,
+          });
+          return;
+        } catch {
+          // User dismissed or share unavailable — fall through to clipboard copy
+        }
+      }
+
+      try {
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+          await navigator.clipboard.writeText(shareText);
+        } else {
+          const ta = document.createElement('textarea');
+          ta.value = shareText;
+          ta.style.position = 'fixed';
+          ta.style.opacity = '0';
+          document.body.appendChild(ta);
+          ta.select();
+          document.execCommand('copy');
+          document.body.removeChild(ta);
+        }
+        btnShareResult.textContent = 'COPIED TO CLIPBOARD!';
+        setTimeout(() => {
+          btnShareResult.textContent = originalLabel;
+        }, 2000);
+      } catch {
+        btnShareResult.textContent = 'COPY FAILED';
+        setTimeout(() => {
+          btnShareResult.textContent = originalLabel;
+        }, 1800);
+      }
+    });
+  }
+
+  if (btnEmbedSponsorCta) {
+    btnEmbedSponsorCta.addEventListener('click', () => {
+      trackEvent('embed_cta_click', {
+        cta_label: state.ctaText || 'sponsor',
+      });
+      postEmbedEvent('cta_click', {
+        url: state.ctaUrl || '',
+        text: state.ctaText || '',
+      });
+    });
+  }
+
   btnPlayAgain.addEventListener('click', () => {
-    startGame();
+    sound.init();
+    startGame({ daily: state.isDailyMode, skipTutorial: true });
   });
 
   btnChangeConfig.addEventListener('click', () => {
@@ -2294,8 +3067,8 @@
 
   btnReset.addEventListener('click', () => {
     sound.init();
-    infoModal.classList.remove('active');
-    startGame();
+    setModalOpen(infoModal, false);
+    startGame({ daily: state.isDailyMode, skipTutorial: true });
     showArenaToast('Round Reset!', '#1c0a00');
   });
 
@@ -2310,15 +3083,19 @@
       state.status = 'paused';
       state.draggingNode = null;
       extractionFrame.classList.remove('dragging-active');
-      infoModal.classList.add('active');
+      setModalOpen(infoModal, true);
     } else {
       navigateToScreen('help');
     }
   });
 
   btnCloseInfo.addEventListener('click', () => {
-    infoModal.classList.remove('active');
-    if (prevStatusBeforeInfo === 'playing' && state.status === 'paused') {
+    setModalOpen(infoModal, false);
+    if (returnToResultsOnClose) {
+      returnToResultsOnClose = false;
+      document.body.classList.add('results-active');
+      setModalOpen(resultsModal, true);
+    } else if (prevStatusBeforeInfo === 'playing' && state.status === 'paused') {
       state.status = 'playing';
       document.body.classList.add('playing-active');
       state.lastFrameTime = performance.now();
@@ -2361,16 +3138,22 @@
       if (registerModal && registerModal.classList.contains('active')) {
         btnCancelRegister.click();
       } else if (trajectoryModal && trajectoryModal.classList.contains('active')) {
-        trajectoryModal.classList.remove('active');
+        setModalOpen(trajectoryModal, false);
+      } else if (themeModal && themeModal.classList.contains('active')) {
+        setModalOpen(themeModal, false);
       } else if (leaderboardModal && leaderboardModal.classList.contains('active')) {
         btnCloseLeaderboard.click();
       } else if (levelSelectModal && levelSelectModal.classList.contains('active')) {
         btnCloseLevelSelect.click();
       } else if (settingsModal && settingsModal.classList.contains('active')) {
         btnCloseSettings.click();
+      } else if (statisticsModal && statisticsModal.classList.contains('active')) {
+        btnCloseStatistics.click();
+      } else if (achievementsModal && achievementsModal.classList.contains('active')) {
+        btnCloseAchievements.click();
       } else if (infoModal.classList.contains('active')) {
         btnCloseInfo.click();
-      } else {
+      } else if (state.status === 'playing' || state.status === 'paused') {
         btnMenu.click();
       }
     }
@@ -2382,7 +3165,7 @@
   function initIosInstallPrompt() {
     const iosBanner = document.getElementById('iosInstallBanner');
     const btnCloseIos = document.getElementById('btnCloseIosBanner');
-    if (!iosBanner) return;
+    if (!iosBanner || state.isEmbedMode) return;
 
     // 1. Check if user previously dismissed the prompt
     try {
@@ -2420,16 +3203,18 @@
     }
   }
 
-  // --- Global Leaderboard & Player Registration Logic ---
+  // --- Global Leaderboard (Today / Week / All-Time Best) & Smart Player Registration ---
   const registerModal = document.getElementById('registerModal');
   const registerForm = document.getElementById('registerForm');
   const regUsernameInput = document.getElementById('regUsername');
   const regEmailInput = document.getElementById('regEmail');
+  const regMarketingOptIn = document.getElementById('regMarketingOptIn');
   const regErrorMsg = document.getElementById('regErrorMsg');
   const btnCancelRegister = document.getElementById('btnCancelRegister');
   const btnSubmitRegisterText = document.getElementById('btnSubmitRegisterText');
 
   const leaderboardModal = document.getElementById('leaderboardModal');
+  const leaderboardBoardTabs = document.getElementById('leaderboardBoardTabs');
   const leaderboardTabs = document.getElementById('leaderboardTabs');
   const leaderboardTableBody = document.getElementById('leaderboardTableBody');
   const lbUserIndicator = document.getElementById('lbUserIndicator');
@@ -2447,6 +3232,7 @@
   const resultsPlayerNameEl = document.getElementById('resultsPlayerName');
 
   let activeLeaderboardTab = 'easy';
+  let activeLeaderboardBoard = 'alltime'; // 'today' | 'week' | 'alltime'
   let pendingPostRegistrationCallback = null;
   let pendingCancelRegistrationCallback = null;
   let pendingScorePayload = null;
@@ -2460,6 +3246,7 @@
         return {
           username: String(parsed.username).trim(),
           email: String(parsed.email).trim().toLowerCase(),
+          marketingOptIn: Boolean(parsed.marketingOptIn),
         };
       }
       return null;
@@ -2468,10 +3255,11 @@
     }
   }
 
-  function saveUserToLocalStorage(username, email) {
+  function saveUserToLocalStorage(username, email, marketingOptIn = false) {
     const cleanUser = {
       username: String(username).trim(),
       email: String(email).trim().toLowerCase(),
+      marketingOptIn: Boolean(marketingOptIn),
     };
     try {
       localStorage.setItem(USER_STORAGE_KEY, JSON.stringify(cleanUser));
@@ -2496,7 +3284,7 @@
     }
   }
 
-  // Local mirror helper so leaderboard & duplicate username checks also work before Web App URL is pasted
+  // Local mirror helpers for offline/fallback leaderboards
   function loadLocalLeaderboardMirror() {
     try {
       const raw = localStorage.getItem(LOCAL_LB_FALLBACK_KEY);
@@ -2514,19 +3302,71 @@
     }
   }
 
-  function upsertLocalLeaderboardMirror({ username, email, difficulty, sessionScore, exactTotal }) {
+  function loadLocalRoundsMirror() {
+    try {
+      const raw = localStorage.getItem(LOCAL_ROUNDS_FALLBACK_KEY);
+      return raw ? JSON.parse(raw) : [];
+    } catch {
+      return [];
+    }
+  }
+
+  function saveLocalRoundsMirror(rounds) {
+    try {
+      localStorage.setItem(LOCAL_ROUNDS_FALLBACK_KEY, JSON.stringify(rounds.slice(-300)));
+    } catch {
+      // ignore
+    }
+  }
+
+  function upsertLocalLeaderboardMirror({
+    username,
+    email,
+    difficulty,
+    sessionScore,
+    timeTakenMs = 60000,
+    isDaily = false,
+    exactTotal,
+  }) {
     const rows = loadLocalLeaderboardMirror();
     const normUser = username.trim().toLowerCase();
     const normEmail = email.trim().toLowerCase();
     const existing = rows.find((r) => String(r.username).trim().toLowerCase() === normUser);
     const addScore = Math.max(0, parseInt(sessionScore, 10) || 0);
+    const cleanTimeMs = Math.max(100, parseInt(timeTakenMs, 10) || 60000);
 
-    const key =
+    const cumKey =
       difficulty === 'medium'
         ? 'mediumScore'
         : difficulty === 'hard'
           ? 'hardScore'
           : 'easyScore';
+    const bestKey =
+      difficulty === 'medium'
+        ? 'mediumBest'
+        : difficulty === 'hard'
+          ? 'hardBest'
+          : 'easyBest';
+    const timeKey =
+      difficulty === 'medium'
+        ? 'mediumBestTimeMs'
+        : difficulty === 'hard'
+          ? 'hardBestTimeMs'
+          : 'easyBestTimeMs';
+
+    if (addScore > 0) {
+      const rounds = loadLocalRoundsMirror();
+      rounds.push({
+        ts: Date.now(),
+        dateLagos: getLagosDateString(),
+        username: username.trim(),
+        difficulty,
+        isDaily: Boolean(isDaily),
+        score: addScore,
+        timeMs: cleanTimeMs,
+      });
+      saveLocalRoundsMirror(rounds);
+    }
 
     if (existing) {
       if (existing.email && existing.email.toLowerCase() !== normEmail) {
@@ -2536,10 +3376,17 @@
           message: 'Username already taken. Please choose another.',
         };
       }
-      const prevTotal = Math.max(0, parseInt(existing[key], 10) || 0);
+      const prevTotal = Math.max(0, parseInt(existing[cumKey], 10) || 0);
       const newTotal =
         exactTotal !== undefined ? Math.max(0, parseInt(exactTotal, 10) || 0) : prevTotal + addScore;
-      existing[key] = newTotal;
+      existing[cumKey] = newTotal;
+
+      const prevBest = Math.max(0, parseInt(existing[bestKey], 10) || 0);
+      const prevTime = Math.max(100, parseInt(existing[timeKey], 10) || 60000);
+      if (addScore > prevBest || (addScore === prevBest && addScore > 0 && cleanTimeMs < prevTime)) {
+        existing[bestKey] = addScore;
+        existing[timeKey] = cleanTimeMs;
+      }
       saveLocalLeaderboardMirror(rows);
       return { status: 'ok', updated: true, sessionScore: addScore, newTotal };
     }
@@ -2552,28 +3399,85 @@
       easyScore: difficulty === 'easy' ? initialTotal : 0,
       mediumScore: difficulty === 'medium' ? initialTotal : 0,
       hardScore: difficulty === 'hard' ? initialTotal : 0,
+      easyBest: difficulty === 'easy' ? addScore : 0,
+      easyBestTimeMs: difficulty === 'easy' ? cleanTimeMs : 60000,
+      mediumBest: difficulty === 'medium' ? addScore : 0,
+      mediumBestTimeMs: difficulty === 'medium' ? cleanTimeMs : 60000,
+      hardBest: difficulty === 'hard' ? addScore : 0,
+      hardBestTimeMs: difficulty === 'hard' ? cleanTimeMs : 60000,
     });
     saveLocalLeaderboardMirror(rows);
     return { status: 'ok', created: true, sessionScore: addScore, newTotal: initialTotal };
   }
 
-  function getLocalTop50ForDifficulty(difficulty) {
+  function getLocalTop50ForBoard(board, difficulty) {
+    if (board === 'today' || board === 'week') {
+      const rounds = loadLocalRoundsMirror();
+      const todayKey = getLagosDateString();
+      const weekCutoff = Date.now() - 7 * 24 * 60 * 60 * 1000;
+      const bestByUser = {};
+
+      rounds.forEach((r) => {
+        if (!r || !r.username || r.difficulty !== difficulty || (Number(r.score) || 0) <= 0) return;
+        if (board === 'today' && (!r.isDaily || r.dateLagos !== todayKey)) return;
+        if (board === 'week' && Number(r.ts) < weekCutoff) return;
+
+        const key = String(r.username).trim().toLowerCase();
+        const prev = bestByUser[key];
+        const score = Number(r.score) || 0;
+        const timeMs = Number(r.timeMs) || 60000;
+        if (!prev || score > prev.score || (score === prev.score && timeMs < prev.timeMs)) {
+          bestByUser[key] = { username: r.username, score, timeMs };
+        }
+      });
+
+      return Object.values(bestByUser)
+        .sort((a, b) => (b.score !== a.score ? b.score - a.score : a.timeMs - b.timeMs))
+        .slice(0, 50)
+        .map((r, idx) => ({
+          position: idx + 1,
+          username: r.username,
+          score: r.score,
+          timeMs: r.timeMs,
+        }));
+    }
+
     const rows = loadLocalLeaderboardMirror();
-    const key =
+    const maxTargets = (DIFFICULTIES[difficulty] && DIFFICULTIES[difficulty].targetCount) || 12;
+    const cumKey =
       difficulty === 'medium'
         ? 'mediumScore'
         : difficulty === 'hard'
           ? 'hardScore'
           : 'easyScore';
+    const bestKey =
+      difficulty === 'medium'
+        ? 'mediumBest'
+        : difficulty === 'hard'
+          ? 'hardBest'
+          : 'easyBest';
+    const timeKey =
+      difficulty === 'medium'
+        ? 'mediumBestTimeMs'
+        : difficulty === 'hard'
+          ? 'hardBestTimeMs'
+          : 'easyBestTimeMs';
 
     return rows
-      .filter((r) => r.username && (Number(r[key]) || 0) > 0)
-      .sort((a, b) => (Number(b[key]) || 0) - (Number(a[key]) || 0))
+      .map((r) => {
+        const best =
+          Number(r[bestKey]) || Math.min(maxTargets, Number(r[cumKey]) || 0);
+        const timeMs = Number(r[timeKey]) || 60000;
+        return { username: r.username, score: best, timeMs };
+      })
+      .filter((r) => r.username && r.score > 0)
+      .sort((a, b) => (b.score !== a.score ? b.score - a.score : a.timeMs - b.timeMs))
       .slice(0, 50)
       .map((r, idx) => ({
         position: idx + 1,
         username: r.username,
-        score: Number(r[key]) || 0,
+        score: r.score,
+        timeMs: r.timeMs,
       }));
   }
 
@@ -2584,10 +3488,9 @@
     if (resTotalScoreBanner) {
       resTotalScoreBanner.textContent = `Total Score: ${newTotal}`;
     }
-    if (resTimeBox) {
+    if (resTimeBox && !state.isOfflineMode) {
       resTimeBox.textContent = String(newTotal);
     }
-    // Sync local difficulty badge total with authoritative backend cumulative total
     try {
       const scores = loadHighScores();
       if (scores[diff]) {
@@ -2605,34 +3508,66 @@
     }
   }
 
-  // Send POST request to Google Apps Script Web App with sessionScore
-  async function postScoreToBackend({ username, email, difficulty, sessionScore, action = 'submit' }) {
+  // Helper: fetch with 8-second timeout (Phase 7)
+  async function fetchWithTimeout(url, options = {}, timeoutMs = 8000) {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), timeoutMs);
+    try {
+      return await fetch(url, { ...options, signal: controller.signal });
+    } finally {
+      clearTimeout(timer);
+    }
+  }
+
+  // Send POST request to Google Apps Script Web App
+  async function postScoreToBackend({
+    username,
+    email,
+    difficulty,
+    sessionScore,
+    timeTakenMs = 60000,
+    isDaily = false,
+    roundId = '',
+    marketingOptIn = false,
+    action = 'submit',
+  }) {
     const cleanSessionScore = Math.max(0, parseInt(sessionScore, 10) || 0);
+    const cleanTimeMs = Math.max(100, parseInt(timeTakenMs, 10) || 60000);
+
     if (!isApiUrlConfigured()) {
       return upsertLocalLeaderboardMirror({
         username,
         email,
         difficulty,
         sessionScore: cleanSessionScore,
+        timeTakenMs: cleanTimeMs,
+        isDaily,
       });
     }
 
     const apiUrl = getLeaderboardApiUrl();
-    const response = await fetch(apiUrl, {
-      method: 'POST',
-      // Use text/plain to avoid CORS preflight block on Google Apps Script Web Apps
-      headers: {
-        'Content-Type': 'text/plain;charset=utf-8',
+    const response = await fetchWithTimeout(
+      apiUrl,
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'text/plain;charset=utf-8',
+        },
+        body: JSON.stringify({
+          action,
+          username: username.trim(),
+          email: email.trim().toLowerCase(),
+          difficulty: isDaily ? `daily_${difficulty || 'easy'}` : difficulty || 'easy',
+          isDaily: Boolean(isDaily),
+          sessionScore: cleanSessionScore,
+          score: cleanSessionScore,
+          timeTakenMs: cleanTimeMs,
+          roundId: roundId || createRoundId(),
+          marketingOptIn: Boolean(marketingOptIn),
+        }),
       },
-      body: JSON.stringify({
-        action,
-        username: username.trim(),
-        email: email.trim().toLowerCase(),
-        difficulty: difficulty || 'easy',
-        sessionScore: cleanSessionScore,
-        score: cleanSessionScore, // included for backward compatibility
-      }),
-    });
+      8000
+    );
 
     const data = await response.json();
     if (data && data.status === 'ok') {
@@ -2648,6 +3583,8 @@
         email,
         difficulty,
         sessionScore: cleanSessionScore,
+        timeTakenMs: cleanTimeMs,
+        isDaily,
         exactTotal: backendTotal,
       });
       if (data.newTotal === undefined) {
@@ -2657,15 +3594,16 @@
     return data;
   }
 
-  // Fetch Top 50 for a difficulty tab from Google Apps Script Web App
-  async function fetchLeaderboardEntries(difficulty) {
+  // Fetch Top 50 for a board & difficulty tab from Google Apps Script Web App (8s timeout)
+  async function fetchLeaderboardEntries(board, difficulty) {
     if (!isApiUrlConfigured()) {
-      return getLocalTop50ForDifficulty(difficulty);
+      return getLocalTop50ForBoard(board, difficulty);
     }
 
     const apiUrl = getLeaderboardApiUrl();
-    const url = `${apiUrl}${apiUrl.includes('?') ? '&' : '?'}difficulty=${encodeURIComponent(difficulty)}`;
-    const response = await fetch(url, { method: 'GET' });
+    const sep = apiUrl.includes('?') ? '&' : '?';
+    const url = `${apiUrl}${sep}board=${encodeURIComponent(board)}&difficulty=${encodeURIComponent(difficulty)}`;
+    const response = await fetchWithTimeout(url, { method: 'GET' }, 8000);
     const data = await response.json();
 
     if (data && data.status === 'ok' && Array.isArray(data.entries)) {
@@ -2696,19 +3634,31 @@
     if (prefill && existing) {
       regUsernameInput.value = existing.username;
       regEmailInput.value = existing.email;
+      if (regMarketingOptIn) regMarketingOptIn.checked = Boolean(existing.marketingOptIn);
     } else {
       regUsernameInput.value = '';
       regEmailInput.value = '';
+      if (regMarketingOptIn) regMarketingOptIn.checked = false;
     }
 
-    registerModal.classList.add('active');
+    setModalOpen(registerModal, true);
     setTimeout(() => regUsernameInput.focus(), 60);
   }
 
   function closeRegistrationModal() {
     if (!registerModal) return;
-    registerModal.classList.remove('active');
+    setModalOpen(registerModal, false);
     clearRegistrationError();
+  }
+
+  function renderLeaderboardSkeleton() {
+    if (!leaderboardTableBody) return;
+    leaderboardTableBody.innerHTML = Array.from({ length: 5 })
+      .map(
+        () =>
+          '<tr class="lb-skeleton-row"><td colspan="4"><div class="lb-skeleton-bar"></div></td></tr>'
+      )
+      .join('');
   }
 
   function renderLeaderboardRows(entries) {
@@ -2716,8 +3666,11 @@
     leaderboardTableBody.innerHTML = '';
 
     if (!entries || entries.length === 0) {
-      leaderboardTableBody.innerHTML =
-        '<tr><td colspan="3" class="lb-status-cell">No scores recorded for this difficulty yet. Be #1!</td></tr>';
+      const emptyMsg =
+        activeLeaderboardBoard === 'today'
+          ? 'No Daily Sweep scores for today yet. Be #1!'
+          : 'No scores recorded for this difficulty yet. Be #1!';
+      leaderboardTableBody.innerHTML = `<tr><td colspan="4" class="lb-status-cell">${emptyMsg}</td></tr>`;
       return;
     }
 
@@ -2750,15 +3703,31 @@
       tdPts.className = 'col-pts';
       tdPts.textContent = String(item.score ?? 0);
 
+      const tdTime = document.createElement('td');
+      tdTime.className = 'col-time';
+      const timeMs = Number(item.timeMs);
+      tdTime.textContent = Number.isFinite(timeMs) && timeMs > 0 ? `${(timeMs / 1000).toFixed(1)}s` : '—';
+
       tr.appendChild(tdPos);
       tr.appendChild(tdName);
       tr.appendChild(tdPts);
+      tr.appendChild(tdTime);
       leaderboardTableBody.appendChild(tr);
     });
   }
 
-  async function loadLeaderboardTab(difficulty) {
+  async function loadLeaderboardTab(difficulty = activeLeaderboardTab, board = activeLeaderboardBoard) {
     activeLeaderboardTab = difficulty;
+    activeLeaderboardBoard = board;
+
+    if (leaderboardBoardTabs) {
+      leaderboardBoardTabs.querySelectorAll('.lb-board-tab').forEach((btn) => {
+        const isMatch = btn.dataset.lbBoard === board;
+        btn.classList.toggle('active', isMatch);
+        btn.setAttribute('aria-selected', isMatch ? 'true' : 'false');
+      });
+    }
+
     if (leaderboardTabs) {
       leaderboardTabs.querySelectorAll('.lb-tab').forEach((btn) => {
         const isMatch = btn.dataset.lbDiff === difficulty;
@@ -2767,44 +3736,38 @@
       });
     }
 
-    if (leaderboardTableBody) {
-      leaderboardTableBody.innerHTML =
-        '<tr><td colspan="3" class="lb-status-cell">Loading Top 50 rankings...</td></tr>';
-    }
+    renderLeaderboardSkeleton();
 
     try {
-      const entries = await fetchLeaderboardEntries(difficulty);
+      const entries = await fetchLeaderboardEntries(board, difficulty);
       renderLeaderboardRows(entries);
     } catch {
-      const fallbackEntries = getLocalTop50ForDifficulty(difficulty);
+      const fallbackEntries = getLocalTop50ForBoard(board, difficulty);
       renderLeaderboardRows(fallbackEntries);
     }
   }
 
-  function openLeaderboardModal(defaultDiff = state.difficulty) {
-    const user = getSavedUser();
-    if (!user) {
-      // Prompt registration first if no saved brainsweep_user exists
-      openRegistrationModal({
-        prefill: false,
-        onComplete: () => openLeaderboardModal(defaultDiff),
-        onCancel: () => {
-          if (returnToResultsOnClose) {
-            returnToResultsOnClose = false;
-            document.body.classList.add('results-active');
-            resultsModal.classList.add('active');
-          }
-        },
-      });
+  function openLeaderboardModal(defaultDiff = state.difficulty, defaultBoard = activeLeaderboardBoard) {
+    syncPlayerProfileUI();
+    setModalOpen(leaderboardModal, true);
+    loadLeaderboardTab(defaultDiff || 'easy', defaultBoard || 'alltime');
+  }
+
+  function handleGameEndLeaderboardSubmission({
+    difficulty,
+    sessionScore,
+    targetCount,
+    timeTakenMs,
+    isDaily,
+    isDailyPractice,
+    roundId,
+    isNewPersonalBest,
+  }) {
+    // Do not submit 0-score rounds or repeat daily practice attempts
+    if (sessionScore <= 0 || isDailyPractice) {
       return;
     }
 
-    syncPlayerProfileUI();
-    leaderboardModal.classList.add('active');
-    loadLeaderboardTab(defaultDiff || 'easy');
-  }
-
-  function handleGameEndLeaderboardSubmission(difficulty, sessionScore) {
     const user = getSavedUser();
     if (user) {
       postScoreToBackend({
@@ -2812,6 +3775,10 @@
         email: user.email,
         difficulty,
         sessionScore,
+        timeTakenMs,
+        isDaily,
+        roundId,
+        marketingOptIn: user.marketingOptIn,
         action: 'submit_score',
       })
         .then((res) => {
@@ -2820,17 +3787,27 @@
           }
         })
         .catch(() => {
-          // Local cumulative fallback already displayed
+          // Local fallback already displayed
         });
     } else if (!state.isEmbedMode) {
-      // No saved user in localStorage (Direct Mode only): prompt Registration Modal to record their sessionScore
-      pendingScorePayload = { difficulty, sessionScore };
-      openRegistrationModal({
-        prefill: false,
-        onComplete: () => {
-          pendingScorePayload = null;
-        },
-      });
+      // Phase 6.7 Smart Registration Timing:
+      // Never prompt on 0 score. Only prompt when >= 50% targets cleared OR new personal best.
+      const meetsHalfTargets = sessionScore >= Math.ceil((targetCount || 12) * 0.5);
+      if (meetsHalfTargets || isNewPersonalBest) {
+        pendingScorePayload = {
+          difficulty,
+          sessionScore,
+          timeTakenMs,
+          isDaily,
+          roundId,
+        };
+        openRegistrationModal({
+          prefill: false,
+          onComplete: () => {
+            pendingScorePayload = null;
+          },
+        });
+      }
     }
   }
 
@@ -2841,9 +3818,10 @@
 
       const username = (regUsernameInput.value || '').trim();
       const email = (regEmailInput.value || '').trim().toLowerCase();
+      const marketingOptIn = Boolean(regMarketingOptIn && regMarketingOptIn.checked);
 
-      if (!username) {
-        showRegistrationError('Username cannot be empty.');
+      if (!/^[A-Za-z0-9_]{3,16}$/.test(username)) {
+        showRegistrationError('Username must be 3–16 characters (letters, numbers, or underscore).');
         return;
       }
 
@@ -2853,20 +3831,27 @@
         return;
       }
 
-      const prevBtnText = btnSubmitRegisterText ? btnSubmitRegisterText.textContent : 'SAVE & CONTINUE';
+      const prevBtnText = btnSubmitRegisterText ? btnSubmitRegisterText.textContent : 'SAVE SCORE';
       if (btnSubmitRegisterText) {
         btnSubmitRegisterText.textContent = 'VERIFYING...';
       }
 
-      try {
-        const diffToSubmit = pendingScorePayload ? pendingScorePayload.difficulty : state.difficulty;
-        const sessionScoreToSubmit = pendingScorePayload ? pendingScorePayload.sessionScore : 0;
+      const diffToSubmit = pendingScorePayload ? pendingScorePayload.difficulty : state.difficulty;
+      const sessionScoreToSubmit = pendingScorePayload ? pendingScorePayload.sessionScore : 0;
+      const timeTakenMsToSubmit = pendingScorePayload ? pendingScorePayload.timeTakenMs : 60000;
+      const isDailyToSubmit = pendingScorePayload ? pendingScorePayload.isDaily : false;
+      const roundIdToSubmit = pendingScorePayload ? pendingScorePayload.roundId : createRoundId();
 
+      try {
         const result = await postScoreToBackend({
           username,
           email,
           difficulty: diffToSubmit,
           sessionScore: sessionScoreToSubmit,
+          timeTakenMs: timeTakenMsToSubmit,
+          isDaily: isDailyToSubmit,
+          roundId: roundIdToSubmit,
+          marketingOptIn,
           action: 'register',
         });
 
@@ -2889,8 +3874,8 @@
           applyBackendTotalToUI(diffToSubmit, Number(result.newTotal));
         }
 
-        // Save verified user to localStorage
-        saveUserToLocalStorage(username, email);
+        saveUserToLocalStorage(username, email, marketingOptIn);
+        trackEvent('leaderboard_register', { marketing_opt_in: marketingOptIn });
         pendingScorePayload = null;
         pendingCancelRegistrationCallback = null;
         closeRegistrationModal();
@@ -2901,13 +3886,13 @@
           cb();
         }
       } catch {
-        const diffToSubmit = pendingScorePayload ? pendingScorePayload.difficulty : state.difficulty;
-        const sessionScoreToSubmit = pendingScorePayload ? pendingScorePayload.sessionScore : 0;
         const localCheck = upsertLocalLeaderboardMirror({
           username,
           email,
           difficulty: diffToSubmit,
           sessionScore: sessionScoreToSubmit,
+          timeTakenMs: timeTakenMsToSubmit,
+          isDaily: isDailyToSubmit,
         });
         if (localCheck.code === 'USERNAME_TAKEN') {
           showRegistrationError('Username already taken. Please choose another.');
@@ -2916,7 +3901,8 @@
         if (localCheck.newTotal !== undefined) {
           applyBackendTotalToUI(diffToSubmit, Number(localCheck.newTotal));
         }
-        saveUserToLocalStorage(username, email);
+        saveUserToLocalStorage(username, email, marketingOptIn);
+        trackEvent('leaderboard_register', { marketing_opt_in: marketingOptIn });
         pendingScorePayload = null;
         pendingCancelRegistrationCallback = null;
         closeRegistrationModal();
@@ -2955,8 +3941,8 @@
   if (btnLeaderboardResults) {
     btnLeaderboardResults.addEventListener('click', () => {
       returnToResultsOnClose = true;
-      resultsModal.classList.remove('active');
-      openLeaderboardModal(state.difficulty);
+      setModalOpen(resultsModal, false);
+      openLeaderboardModal(state.difficulty, state.isDailyMode ? 'today' : activeLeaderboardBoard);
     });
   }
 
@@ -2981,10 +3967,10 @@
   if (btnResultsMenuIcon) {
     btnResultsMenuIcon.addEventListener('click', () => {
       returnToResultsOnClose = true;
-      resultsModal.classList.remove('active');
+      setModalOpen(resultsModal, false);
       syncSettingsUI();
       if (settingsModal) {
-        settingsModal.classList.add('active');
+        setModalOpen(settingsModal, true);
       }
     });
   }
@@ -2992,13 +3978,14 @@
   if (btnLbChangeUser) {
     btnLbChangeUser.addEventListener('click', () => {
       const tabToRestore = activeLeaderboardTab;
-      leaderboardModal.classList.remove('active');
+      const boardToRestore = activeLeaderboardBoard;
+      setModalOpen(leaderboardModal, false);
       openRegistrationModal({
         prefill: true,
-        onComplete: () => openLeaderboardModal(tabToRestore),
+        onComplete: () => openLeaderboardModal(tabToRestore, boardToRestore),
         onCancel: () => {
           syncPlayerProfileUI();
-          leaderboardModal.classList.add('active');
+          setModalOpen(leaderboardModal, true);
         },
       });
     });
@@ -3008,9 +3995,9 @@
     btnCloseLeaderboard.addEventListener('click', () => {
       if (returnToResultsOnClose) {
         returnToResultsOnClose = false;
-        leaderboardModal.classList.remove('active');
+        setModalOpen(leaderboardModal, false);
         document.body.classList.add('results-active');
-        resultsModal.classList.add('active');
+        setModalOpen(resultsModal, true);
       } else {
         navigateToScreen('home');
       }
@@ -3019,7 +4006,15 @@
 
   if (btnRefreshLeaderboard) {
     btnRefreshLeaderboard.addEventListener('click', () => {
-      loadLeaderboardTab(activeLeaderboardTab);
+      loadLeaderboardTab(activeLeaderboardTab, activeLeaderboardBoard);
+    });
+  }
+
+  if (leaderboardBoardTabs) {
+    leaderboardBoardTabs.addEventListener('click', (e) => {
+      const tab = e.target.closest('.lb-board-tab');
+      if (!tab) return;
+      loadLeaderboardTab(activeLeaderboardTab, tab.dataset.lbBoard);
     });
   }
 
@@ -3027,18 +4022,44 @@
     leaderboardTabs.addEventListener('click', (e) => {
       const tab = e.target.closest('.lb-tab');
       if (!tab) return;
-      loadLeaderboardTab(tab.dataset.lbDiff);
+      loadLeaderboardTab(tab.dataset.lbDiff, activeLeaderboardBoard);
     });
   }
 
-  // --- B2B Embed Mode (?embed=true) & Cookie Consent Banner ---
+  // --- B2B Embed Mode (?embed=true), Sanitized Sponsor Params & Consent Banner ---
   const COOKIE_CONSENT_STORAGE_KEY = 'brainsweep_cookie_consent_v1';
+
+  function sanitizePlainText(input, maxLen) {
+    return String(input || '')
+      .replace(/[\u0000-\u001F\u007F<>]/g, '')
+      .trim()
+      .slice(0, maxLen);
+  }
+
+  function sanitizeHttpsUrl(input) {
+    const raw = String(input || '').trim();
+    if (!raw) return '';
+    try {
+      const parsed = new URL(raw);
+      if (parsed.protocol === 'https:') {
+        return parsed.toString();
+      }
+    } catch {
+      // invalid URL
+    }
+    return '';
+  }
 
   function applyEmbedUrlParams() {
     try {
       const params = new URLSearchParams(window.location.search || '');
       const embedParam = params.get('embed');
       state.isEmbedMode = embedParam === 'true' || embedParam === '1';
+
+      const dailyParam = params.get('daily');
+      if (dailyParam === '1' || dailyParam === 'true') {
+        state.isDailyMode = true;
+      }
 
       const domainParam = params.get('domain');
       if (domainParam) {
@@ -3060,9 +4081,69 @@
         applyColorTheme(themeParam, false);
       }
 
+      // Sanitized Sponsor Parameters (Phase 5.3)
+      const rawBrandColor = (params.get('brand_color') || '').trim();
+      const hexCandidate = rawBrandColor.startsWith('#') ? rawBrandColor : `#${rawBrandColor}`;
+      if (rawBrandColor && /^#[0-9a-fA-F]{6}$/.test(hexCandidate)) {
+        state.brandColor = hexCandidate;
+        applyColorTheme(state.theme, false);
+      }
+
+      const safeLogoUrl = sanitizeHttpsUrl(params.get('brand_logo'));
+      const safeSponsorText = sanitizePlainText(params.get('sponsor_text'), 40);
+      if ((safeLogoUrl || safeSponsorText) && embedSponsorBar) {
+        if (safeLogoUrl && embedBrandLogoImg) {
+          embedBrandLogoImg.src = safeLogoUrl;
+          embedBrandLogoImg.hidden = false;
+        }
+        if (safeSponsorText && embedSponsorTextEl) {
+          state.sponsorText = safeSponsorText;
+          embedSponsorTextEl.textContent = safeSponsorText;
+        }
+        embedSponsorBar.hidden = false;
+      }
+
+      const safeCtaText = sanitizePlainText(params.get('cta_text'), 24);
+      const safeCtaUrl = sanitizeHttpsUrl(params.get('cta_url'));
+      if (safeCtaText && safeCtaUrl && btnEmbedSponsorCta && embedSponsorCtaText) {
+        state.ctaText = safeCtaText;
+        state.ctaUrl = safeCtaUrl;
+        btnEmbedSponsorCta.href = safeCtaUrl;
+        embedSponsorCtaText.textContent = safeCtaText;
+      }
+
       if (state.isEmbedMode) {
         document.documentElement.setAttribute('data-embed', 'true');
         document.body.classList.add('embed-mode');
+
+        // Domain license check (Phase 4)
+        if (
+          window.BrainSweepAnalytics &&
+          typeof window.BrainSweepAnalytics.checkEmbedDomainLicense === 'function'
+        ) {
+          const license = window.BrainSweepAnalytics.checkEmbedDomainLicense();
+          state.embedLicensed = Boolean(license.allowed);
+          if (!state.embedLicensed && unlicensedEmbedOverlay) {
+            if (unlicensedSiteLink && getAppConfig().siteUrl) {
+              unlicensedSiteLink.href = getAppConfig().siteUrl;
+            }
+            closeAllOverlayModals();
+            unlicensedEmbedOverlay.hidden = false;
+          }
+        }
+
+        trackEvent('embed_load', {
+          difficulty: state.difficulty,
+          pattern: state.pattern,
+          theme: state.theme,
+          is_daily: state.isDailyMode,
+        });
+        postEmbedEvent('ready', {
+          difficulty: state.difficulty,
+          pattern: state.pattern,
+          theme: state.theme,
+          isDaily: state.isDailyMode,
+        });
       }
     } catch {
       // ignore URL parsing errors
@@ -3072,16 +4153,30 @@
   function initCookieConsentBanner() {
     const banner = document.getElementById('cookieConsentBanner');
     const btnAccept = document.getElementById('btnAcceptCookies');
+    const btnDecline = document.getElementById('btnDeclineCookies');
     if (!banner || !btnAccept) return;
 
-    let alreadyAccepted = false;
-    try {
-      alreadyAccepted = localStorage.getItem(COOKIE_CONSENT_STORAGE_KEY) === 'accepted';
-    } catch {
-      alreadyAccepted = false;
+    // Never show consent banner in embed mode (Phase 2 & 5.2)
+    if (state.isEmbedMode) {
+      banner.hidden = true;
+      return;
     }
 
-    if (!alreadyAccepted) {
+    let consentVal = '';
+    try {
+      consentVal = localStorage.getItem(COOKIE_CONSENT_STORAGE_KEY) || '';
+    } catch {
+      consentVal = '';
+    }
+
+    if (consentVal === 'accepted') {
+      if (
+        window.BrainSweepAnalytics &&
+        typeof window.BrainSweepAnalytics.enableAfterConsent === 'function'
+      ) {
+        window.BrainSweepAnalytics.enableAfterConsent();
+      }
+    } else if (consentVal !== 'declined') {
       banner.hidden = false;
     }
 
@@ -3092,7 +4187,24 @@
       } catch {
         // ignore storage errors
       }
+      if (
+        window.BrainSweepAnalytics &&
+        typeof window.BrainSweepAnalytics.enableAfterConsent === 'function'
+      ) {
+        window.BrainSweepAnalytics.enableAfterConsent();
+      }
     });
+
+    if (btnDecline) {
+      btnDecline.addEventListener('click', () => {
+        banner.hidden = true;
+        try {
+          localStorage.setItem(COOKIE_CONSENT_STORAGE_KEY, 'declined');
+        } catch {
+          // ignore storage errors
+        }
+      });
+    }
   }
 
   // --- Hamburger Menu & Single-Page Statistics Architecture (stats_easy, stats_medium, stats_hard) ---
@@ -3350,7 +4462,7 @@
     renderStatisticsView(viewDifficulty);
     closeAllOverlayModals();
     if (statisticsModal) {
-      statisticsModal.classList.add('active');
+      setModalOpen(statisticsModal, true);
     }
   }
 
@@ -3496,7 +4608,7 @@
     },
     {
       id: 'cognitive_athlete',
-      title: 'COGNITIVE ATHLETE',
+      title: 'SWEEP LEGEND',
       description: 'Play 500 games.',
       icon: '👑',
       unlocked: false,
@@ -3610,6 +4722,28 @@
       showProgress: false,
       getCurrent: (ctx) => (ctx.playedHybridChaos ? 1 : 0),
     },
+
+    // Daily Streaks (Phase 6.4)
+    {
+      id: 'streak_3',
+      title: '3-DAY STREAK',
+      description: 'Complete Daily Sweep 3 days in a row.',
+      icon: '🔥',
+      unlocked: false,
+      target: 3,
+      showProgress: true,
+      getCurrent: (ctx) => ctx.longestDailyStreak,
+    },
+    {
+      id: 'streak_7',
+      title: '7-DAY STREAK',
+      description: 'Complete Daily Sweep 7 days in a row.',
+      icon: '🌟',
+      unlocked: false,
+      target: 7,
+      showProgress: true,
+      getCurrent: (ctx) => ctx.longestDailyStreak,
+    },
   ];
 
   function loadAchievementsStorage() {
@@ -3698,6 +4832,7 @@
       Number(hardStats.fastestPerfectTimeRemainingSec) || 0
     );
 
+    const streakData = loadDailyStreak();
     return {
       totalGames,
       totalExtracted,
@@ -3708,6 +4843,7 @@
       hardPerfectRuns: Number(hardStats.perfectRuns) || 0,
       bestMemoryModeScore: Number(storedMeta.bestMemoryModeScore) || 0,
       playedHybridChaos: Boolean(storedMeta.playedHybridChaos),
+      longestDailyStreak: Math.max(Number(streakData.longest) || 0, getActiveStreakCount()),
     };
   }
 
@@ -3873,7 +5009,7 @@
     checkAchievements({ notify: false });
     closeAllOverlayModals();
     if (achievementsModal) {
-      achievementsModal.classList.add('active');
+      setModalOpen(achievementsModal, true);
     }
   }
 
@@ -3897,15 +5033,23 @@
   initCookieConsentBanner();
   syncNetworkModeUI();
   syncSettingsUI();
+  syncDailyAndStreakUI();
   checkAchievements({ notify: false });
   resizeCanvas();
   createNodes();
   updateHUD();
   state.lastFrameTime = performance.now();
 
-  // If app loads in B2B Embed Mode (?embed=true) or while OFFLINE, launch directly into the arena
-  if (state.isEmbedMode || !navigator.onLine) {
-    startGame();
+  // Phase 5.1: Never auto-start the timer on load.
+  // In Embed Mode, Offline Mode, or ?daily=1 deep link, show the TAP TO PLAY overlay.
+  if (!state.embedLicensed) {
+    closeAllOverlayModals();
+  } else if (state.isEmbedMode) {
+    prepareArenaWithTapOverlay({ daily: state.isDailyMode, mode: 'embed' });
+  } else if (!navigator.onLine) {
+    prepareArenaWithTapOverlay({ daily: false, mode: 'offline' });
+  } else if (state.isDailyMode) {
+    prepareArenaWithTapOverlay({ daily: true, mode: 'daily' });
   } else {
     try {
       const bootParams = new URLSearchParams(window.location.search || '');
@@ -3914,9 +5058,11 @@
         if (window.history && window.history.replaceState) {
           window.history.replaceState({}, '', window.location.pathname);
         }
+      } else {
+        setModalOpen(setupModal, true);
       }
     } catch {
-      // ignore URL parsing errors
+      setModalOpen(setupModal, true);
     }
   }
 

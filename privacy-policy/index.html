@@ -4,20 +4,32 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <meta name="theme-color" content="#fc6200" />
-  <title>Privacy Policy — BrainSweep Embeddable Game Widget</title>
+  <title>Privacy Policy — BrainSweep 60-Second Number Rush</title>
   <link rel="icon" href="../icon.svg" type="image/svg+xml" />
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=VT323&display=swap" rel="stylesheet">
+  <script src="../config.js"></script>
   <style>
+    @font-face {
+      font-family: 'Press Start 2P';
+      font-style: normal;
+      font-weight: 400;
+      font-display: swap;
+      src: url('../fonts/press-start-2p-latin.woff2') format('woff2');
+    }
+    @font-face {
+      font-family: 'VT323';
+      font-style: normal;
+      font-weight: 400;
+      font-display: swap;
+      src: url('../fonts/vt323-latin.woff2') format('woff2');
+    }
     :root {
       --bg-color: #050200;
       --panel-bg: #0b0400;
       --primary-text: #fc6200;
       --accent-text: #ffa347;
-      --muted-text: #c45100;
+      --muted-text: #ff9e44;
       --border-color: #fc6200;
-      --border-subtle: rgba(252, 98, 0, 0.38);
+      --border-subtle: rgba(252, 98, 0, 0.45);
       --font-pixel: 'Press Start 2P', monospace;
       --font-terminal: 'VT323', monospace;
     }
@@ -60,9 +72,7 @@
       gap: 12px;
       margin-bottom: 14px;
     }
-    .doc-top-bar .badge {
-      margin-bottom: 0;
-    }
+    .doc-top-bar .badge { margin-bottom: 0; }
     .close-doc-btn {
       width: 36px;
       height: 36px;
@@ -115,10 +125,7 @@
       line-height: 1.4;
     }
     p { margin-bottom: 14px; color: var(--primary-text); }
-    ul {
-      margin: 0 0 16px 22px;
-      color: var(--primary-text);
-    }
+    ul { margin: 0 0 16px 22px; color: var(--primary-text); }
     li { margin-bottom: 8px; }
     strong { color: var(--accent-text); }
     .callout {
@@ -137,10 +144,7 @@
       font-family: var(--font-pixel);
       font-size: 0.55rem;
     }
-    .doc-nav a {
-      color: var(--accent-text);
-      text-decoration: none;
-    }
+    .doc-nav a { color: var(--accent-text); text-decoration: none; }
     .doc-nav a:hover { text-decoration: underline; }
   </style>
 </head>
@@ -148,68 +152,64 @@
   <main class="doc-container">
     <header class="doc-header">
       <div class="doc-top-bar">
-        <span class="badge">LEGAL COMPLIANCE // B2B WIDGET EDITION</span>
+        <span class="badge">LEGAL COMPLIANCE // NDPA, GDPR &amp; CCPA</span>
         <a href="../?screen=help" class="close-doc-btn" title="Close and return to Game Help" aria-label="Close and return to Game Help">✕</a>
       </div>
       <h1>PRIVACY POLICY</h1>
-      <p class="meta">EFFECTIVE DATE: NOVEMBER 20, 2026 • VERSION 2.0 (GDPR &amp; CCPA COMPLIANT)</p>
+      <p class="meta">LAST UPDATED: NOVEMBER 22, 2026 • VERSION 3.0</p>
     </header>
 
     <p>
-      This Privacy Policy explains how <strong>BrainSweep</strong> ("MadeByKubo", "we", "us", or "our") collects, processes, and safeguards data when end-users ("Players") interact with the BrainSweep cognitive web game and its B2B embeddable iframe widget deployed across partner publisher websites ("Publishers").
+      This Privacy Policy explains how <strong data-cfg="legalEntity">PLACEHOLDER_REGISTERED_BUSINESS_NAME</strong>, operating in <strong data-cfg="country">Nigeria</strong> ("BrainSweep", "we", "us", or "our"), handles information when you play the BrainSweep web game or interact with the BrainSweep embeddable widget on a partner website ("Publisher").
     </p>
 
     <div class="callout">
-      <strong>SUMMARY FOR PLAYERS &amp; PUBLISHERS:</strong> BrainSweep is built on a privacy-by-design architecture. We use strictly scoped cookies and browser <code>localStorage</code> for user preferences and session analytics, process anonymized gameplay telemetry (reaction splits and cumulative scores), and fully comply with the EU General Data Protection Regulation (GDPR) and the California Consumer Privacy Act (CCPA/CPRA). We never sell personal information to third parties.
+      <strong>PLAIN-ENGLISH SUMMARY:</strong> BrainSweep stores your game settings, scores, streaks, and achievements locally on your device using browser <code>localStorage</code>. We do not set tracking cookies by default. If you choose to save a score to the public leaderboard, we collect your chosen username, email address, and optional marketing preference. If you click "Accept" on the analytics prompt, we count anonymous gameplay events to improve the game. We never sell personal data.
     </div>
 
-    <h2>1. CATEGORIES OF DATA WE COLLECT</h2>
-    <p>When you play BrainSweep directly or via an embedded widget on a Publisher's website, we process the following minimized data categories:</p>
+    <h2>1. INFORMATION WE COLLECT &amp; STORE</h2>
     <ul>
-      <li><strong>Anonymized Gameplay Telemetry:</strong> Session scores, cumulative difficulty scores (Easy, Medium, Hard), extraction accuracy percentages, reaction-time split intervals, and selected trajectory/difficulty configurations.</li>
-      <li><strong>Local Preferences &amp; Consent State:</strong> Browser <code>localStorage</code> keys storing your chosen color theme (<code>brainsweep_theme</code>), audio mute settings, gameplay modifiers, and cookie consent status (<code>brainsweep_cookie_consent_v1</code>).</li>
-      <li><strong>Optional Leaderboard Profile (Direct Mode Only):</strong> If a Player voluntarily registers for the Global Leaderboard, we collect a user-selected callsign (username) and email address solely to deduplicate and attribute cumulative scores. In B2B Embed Mode (<code>?embed=true</code>), registration prompts are disabled by default.</li>
-      <li><strong>Technical &amp; Analytics Metadata:</strong> Anonymized aggregate performance metrics (device viewport dimensions, frame-rate stability, and parent referrer domain for Publisher license verification).</li>
+      <li><strong>On-Device Local Storage (<code>localStorage</code>):</strong> Your theme preference (<code>brainsweep_theme</code>), game settings (<code>brainsweep_settings_v1</code>), personal statistics (<code>stats_easy</code>, <code>stats_medium</code>, <code>stats_hard</code>), unlocked achievements (<code>brainsweep_achievements_v1</code>), Daily Sweep streak record, offline best score, and your analytics consent choice (<code>brainsweep_cookie_consent_v1</code>: <code>accepted</code> or <code>declined</code>). This data stays in your browser until you clear your site data.</li>
+      <li><strong>Optional Leaderboard Registration:</strong> If you choose to submit your score to the global leaderboard, we collect your chosen username (3–16 alphanumeric characters), your email address (used only to protect your username and recover your scores), your game score, completion time in milliseconds, round identifier, and whether you ticked the optional "Send me game updates" box.</li>
+      <li><strong>Consent-Gated Anonymous Analytics:</strong> Only if analytics is enabled in our configuration and you click <strong>Accept</strong> on the consent banner (or if a host Publisher passes <code>consent=1</code> to an embedded widget), we record anonymous events: <code>game_start</code>, <code>game_end</code> (score, difficulty, pattern, duration, mistakes, completion flag), <code>first_play</code>, <code>return_visit</code>, <code>daily_sweep_complete</code>, <code>share_click</code>, <code>leaderboard_register</code>, <code>embed_load</code> (referrer domain), and <code>embed_cta_click</code>. Your email address and username are never sent to analytics.</li>
     </ul>
 
-    <h2>2. COOKIES, LOCAL STORAGE &amp; ANALYTICS</h2>
-    <p>
-      BrainSweep uses lightweight first-party cookies and HTML5 <code>localStorage</code> to deliver a seamless, zero-latency gaming experience inside embedded iframes:
-    </p>
+    <h2>2. HOW WE USE &amp; VALIDATE DATA</h2>
     <ul>
-      <li><strong>Essential Functional Storage:</strong> Retains your active difficulty, trajectory vector, color theme, offline high scores, and cookie banner acknowledgment so you do not have to reconfigure the widget on every visit.</li>
-      <li><strong>Analytics Cookies:</strong> Used to measure aggregate widget engagement (session starts, completion rates, and average play duration) for Publisher reporting. All analytics identifiers are pseudonymized and rotated.</li>
-    </ul>
-    <p>
-      Players can clear local storage or block cookies at any time via their browser settings. Upon first loading the widget, a non-intrusive consent banner allows Players to acknowledge storage usage before preferences are persisted.
-    </p>
-
-    <h2>3. GDPR COMPLIANCE (EUROPEAN ECONOMIC AREA &amp; UK)</h2>
-    <p>For Players located in the EEA, UK, or Switzerland, we process data under the following legal bases pursuant to GDPR Article 6:</p>
-    <ul>
-      <li><strong>Consent (Art. 6(1)(a)):</strong> For optional analytics cookies and voluntary leaderboard profile registration.</li>
-      <li><strong>Legitimate Interests (Art. 6(1)(f)):</strong> For delivering the core interactive game mechanics, preventing automated score tampering, and providing aggregated, non-identifiable engagement telemetry to host Publishers.</li>
-    </ul>
-    <p>
-      <strong>Your GDPR Rights:</strong> You have the right to request access, rectification, erasure ("Right to be Forgotten"), restriction of processing, and data portability. Because gameplay telemetry is anonymized, local data can also be erased immediately by clearing site data in your browser.
-    </p>
-
-    <h2>4. CCPA / CPRA COMPLIANCE (CALIFORNIA RESIDENTS)</h2>
-    <p>Under the California Consumer Privacy Act (CCPA) and California Privacy Rights Act (CPRA):</p>
-    <ul>
-      <li><strong>No Sale or Sharing of Personal Information:</strong> BrainSweep does <strong>not</strong> sell personal information or share personal information for cross-context behavioral advertising.</li>
-      <li><strong>Right to Know &amp; Delete:</strong> California residents may request disclosure or deletion of any linked leaderboard profile record by contacting us at the address below.</li>
-      <li><strong>Non-Discrimination:</strong> Exercising your privacy rights will never degrade gameplay access or widget performance.</li>
+      <li>To run the game, remember your preferences, and calculate your Daily Sweep streaks and achievements on your device.</li>
+      <li>To display top scores (username, score, and completion time only — never email addresses) on the public Today, This Week, and All-Time leaderboards.</li>
+      <li>To apply basic server-side score limits (checking maximum targets per difficulty, minimum plausible completion time, duplicate round IDs, and a 45-second submission rate limit). Please note honestly that client-side browser games cannot be made 100% cheat-proof.</li>
+      <li>If you explicitly ticked the optional marketing updates checkbox during registration, to send occasional game updates (you may unsubscribe at any time).</li>
     </ul>
 
-    <h2>5. DATA RETENTION &amp; SECURITY</h2>
-    <p>
-      All data transmitted between the BrainSweep widget and our cloud endpoints is encrypted in transit via TLS 1.3 (HTTPS). Anonymized gameplay metrics are retained for aggregate benchmarking, while voluntary leaderboard records are retained until the Player requests deletion.
-    </p>
+    <h2>3. SUB-PROCESSORS &amp; INFRASTRUCTURE</h2>
+    <p>We use the following third-party service providers to host and operate BrainSweep:</p>
+    <ul>
+      <li><strong>Vercel Inc.:</strong> Hosts the static web application and delivers game files over HTTPS.</li>
+      <li><strong>Google LLC (Google Apps Script &amp; Google Sheets):</strong> Processes and stores optional leaderboard submissions (username, email, scores, completion times, and marketing opt-in timestamp).</li>
+      <li><strong>Analytics Provider (Optional):</strong> When enabled in configuration (e.g., Plausible, Umami, PostHog, or GA4) and consented to by the user, processes anonymous gameplay event counts.</li>
+    </ul>
 
-    <h2>6. CONTACT &amp; DATA PROTECTION INQUIRIES</h2>
+    <h2>4. NIGERIA DATA PROTECTION ACT 2023 (NDPA)</h2>
+    <p>In accordance with the <strong>Nigeria Data Protection Act 2023 (NDPA)</strong>:</p>
+    <ul>
+      <li><strong>Lawful Basis:</strong> We rely on your <strong>Consent</strong> for optional leaderboard registration, optional game update emails, and optional anonymous analytics. On-device <code>localStorage</code> is used strictly to provide the game settings you request.</li>
+      <li><strong>Your NDPA Data Subject Rights:</strong> You have the right to request access to your personal data, request correction or deletion of your leaderboard record, object to processing, or withdraw your consent at any time.</li>
+      <li><strong>How to Exercise Your Rights:</strong> Email <strong data-cfg="contactEmail">PLACEHOLDER_WORKING_EMAIL</strong> with your leaderboard username and the email address used during registration. We will process deletion or access requests within 30 days.</li>
+      <li><strong>Retention Period:</strong> On-device <code>localStorage</code> remains until you clear your browser data. Leaderboard records are retained while the leaderboard is active or until you request deletion.</li>
+      <li><strong>Regulatory Complaints:</strong> If you believe your data protection rights under Nigerian law have been infringed, you have the right to lodge a complaint with the <strong>Nigeria Data Protection Commission (NDPC)</strong> (<a href="https://ndpc.gov.ng" target="_blank" rel="noopener noreferrer" style="color: var(--accent-text);">ndpc.gov.ng</a>).</li>
+    </ul>
+
+    <h2>5. GDPR (EEA/UK) &amp; CCPA (CALIFORNIA) RIGHTS</h2>
+    <ul>
+      <li><strong>EEA/UK Visitors (GDPR):</strong> You may request access, rectification, erasure, or portability of any leaderboard record associated with your email by contacting <strong data-cfg="contactEmail">PLACEHOLDER_WORKING_EMAIL</strong>. You can withdraw analytics consent at any time by clearing site storage and selecting <strong>Decline</strong>.</li>
+      <li><strong>California Residents (CCPA/CPRA):</strong> We do not sell or share personal information for cross-context behavioral advertising. You may request disclosure or deletion of your leaderboard record via <strong data-cfg="contactEmail">PLACEHOLDER_WORKING_EMAIL</strong>.</li>
+    </ul>
+
+    <h2>6. CONTACT US</h2>
     <p>
-      For privacy inquiries, GDPR/CCPA data subject requests, or B2B compliance questions, please contact the BrainSweep Data Protection Officer at: <strong>privacy@madebykubo.com</strong>.
+      Data Controller / Operator: <strong data-cfg="legalEntity">PLACEHOLDER_REGISTERED_BUSINESS_NAME</strong> (<span data-cfg="country">Nigeria</span>)<br />
+      Contact Email: <strong data-cfg="contactEmail">PLACEHOLDER_WORKING_EMAIL</strong>
     </p>
 
     <nav class="doc-nav" aria-label="Legal &amp; Developer Links">
@@ -218,5 +218,14 @@
       <a href="../developers/">[ DEVELOPER EMBED KIT ]</a>
     </nav>
   </main>
+  <script>
+    (function () {
+      var cfg = window.BRAINSWEEP_CONFIG || {};
+      document.querySelectorAll('[data-cfg]').forEach(function (el) {
+        var key = el.getAttribute('data-cfg');
+        if (cfg[key]) el.textContent = cfg[key];
+      });
+    })();
+  </script>
 </body>
 </html>

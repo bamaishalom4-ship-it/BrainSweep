@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://brainsweep-tau.vercel.app/sitemap.xml

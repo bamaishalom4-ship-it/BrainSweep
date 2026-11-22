@@ -3,14 +3,21 @@
  * Includes clean un-redirected response handling for Android WebAPK / Chrome PWA
  */
 
-const CACHE_NAME = 'brainsweep-pwa-v25';
+const CACHE_NAME = 'brainsweep-pwa-v26';
 const CORE_ASSETS = [
   './',
   './index.html',
   './styles.css',
+  './config.js',
+  './analytics.js',
   './game.js',
   './manifest.json',
   './icon.svg',
+  './icon-192.png',
+  './icon-512.png',
+  './apple-touch-icon.png',
+  './fonts/press-start-2p-latin.woff2',
+  './fonts/vt323-latin.woff2',
 ];
 
 function cleanRedirectedResponse(response) {

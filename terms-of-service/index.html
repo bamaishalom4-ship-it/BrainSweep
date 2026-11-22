@@ -4,20 +4,32 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <meta name="theme-color" content="#fc6200" />
-  <title>Terms of Service — BrainSweep Embeddable Game Widget</title>
+  <title>Terms of Service — BrainSweep 60-Second Number Rush</title>
   <link rel="icon" href="../icon.svg" type="image/svg+xml" />
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=VT323&display=swap" rel="stylesheet">
+  <script src="../config.js"></script>
   <style>
+    @font-face {
+      font-family: 'Press Start 2P';
+      font-style: normal;
+      font-weight: 400;
+      font-display: swap;
+      src: url('../fonts/press-start-2p-latin.woff2') format('woff2');
+    }
+    @font-face {
+      font-family: 'VT323';
+      font-style: normal;
+      font-weight: 400;
+      font-display: swap;
+      src: url('../fonts/vt323-latin.woff2') format('woff2');
+    }
     :root {
       --bg-color: #050200;
       --panel-bg: #0b0400;
       --primary-text: #fc6200;
       --accent-text: #ffa347;
-      --muted-text: #c45100;
+      --muted-text: #ff9e44;
       --border-color: #fc6200;
-      --border-subtle: rgba(252, 98, 0, 0.38);
+      --border-subtle: rgba(252, 98, 0, 0.45);
       --font-pixel: 'Press Start 2P', monospace;
       --font-terminal: 'VT323', monospace;
     }
@@ -60,9 +72,7 @@
       gap: 12px;
       margin-bottom: 14px;
     }
-    .doc-top-bar .badge {
-      margin-bottom: 0;
-    }
+    .doc-top-bar .badge { margin-bottom: 0; }
     .close-doc-btn {
       width: 36px;
       height: 36px;
@@ -115,10 +125,7 @@
       line-height: 1.4;
     }
     p { margin-bottom: 14px; color: var(--primary-text); }
-    ul {
-      margin: 0 0 16px 22px;
-      color: var(--primary-text);
-    }
+    ul { margin: 0 0 16px 22px; color: var(--primary-text); }
     li { margin-bottom: 8px; }
     strong { color: var(--accent-text); }
     .doc-nav {
@@ -131,10 +138,7 @@
       font-family: var(--font-pixel);
       font-size: 0.55rem;
     }
-    .doc-nav a {
-      color: var(--accent-text);
-      text-decoration: none;
-    }
+    .doc-nav a { color: var(--accent-text); text-decoration: none; }
     .doc-nav a:hover { text-decoration: underline; }
   </style>
 </head>
@@ -146,45 +150,45 @@
         <a href="../?screen=help" class="close-doc-btn" title="Close and return to Game Help" aria-label="Close and return to Game Help">✕</a>
       </div>
       <h1>TERMS OF SERVICE</h1>
-      <p class="meta">EFFECTIVE DATE: NOVEMBER 20, 2026 • VERSION 2.0</p>
+      <p class="meta">LAST UPDATED: NOVEMBER 22, 2026 • VERSION 3.0</p>
     </header>
 
     <p>
-      These Terms of Service ("Terms") govern access to and use of the <strong>BrainSweep</strong> cognitive web game and B2B embeddable widget (the "Service"), operated by <strong>MadeByKubo</strong> ("Provider", "we", "us"). By accessing, playing, or embedding BrainSweep on any web property, you ("Player" or "Publisher") agree to be bound by these Terms.
+      These Terms of Service ("Terms") govern access to and use of the <strong>BrainSweep</strong> 60-second number puzzle game and B2B embeddable engagement widget (the "Service"), operated by <strong data-cfg="legalEntity">PLACEHOLDER_REGISTERED_BUSINESS_NAME</strong> (<span data-cfg="country">Nigeria</span>). By playing or embedding BrainSweep, you agree to these Terms.
     </p>
 
-    <h2>1. LICENSE &amp; EMBEDDED WIDGET USAGE</h2>
+    <h2>1. ENTERTAINMENT NATURE OF THE SERVICE</h2>
     <p>
-      Subject to compliance with these Terms (and any applicable B2B Publisher Subscription Agreement), MadeByKubo grants authorized Publishers a non-exclusive, revocable, non-transferable license to embed the BrainSweep widget on approved domains using the official <code>?embed=true</code> iframe snippet generated via our Developer Kit.
+      BrainSweep is a casual arcade and audience-engagement puzzle game. It is <strong>not</strong> a medical, clinical, therapeutic, or cognitive training product, and makes no health claims.
     </p>
 
-    <h2>2. ACCEPTABLE USE POLICY</h2>
-    <p>When interacting with or embedding the Service, you agree <strong>not</strong> to:</p>
+    <h2>2. EMBEDDED WIDGET LICENSE</h2>
+    <p>
+      We grant websites and Publishers permission to embed the BrainSweep widget using the official <code>?embed=true</code> snippet from our Developer Kit, unless domain restrictions (<code>allowedEmbedDomains</code>) are activated for commercial licensing tiers. When domain restrictions are active, unauthorized domains will display a notice directing players to <span data-cfg="siteUrl">https://brainsweep-tau.vercel.app</span>.
+    </p>
+
+    <h2>3. ACCEPTABLE USE &amp; FAIR PLAY</h2>
+    <p>You agree <strong>not</strong> to:</p>
     <ul>
-      <li><strong>Reverse Engineer or Scrape:</strong> Decompile, scrape, clone, or extract the underlying source code, physics engine, or proprietary styling of the BrainSweep widget without prior written consent.</li>
-      <li><strong>Manipulate Telemetry or Leaderboards:</strong> Submit falsified scores, automated bot scripts, or malformed API payloads to the cumulative score backend.</li>
-      <li><strong>Unauthorized Framing or Ad Injection:</strong> Overlay deceptive click-jacking elements, malicious scripts, or unauthorized third-party ad wrappers directly over the playable canvas area.</li>
-      <li><strong>Unlawful Host Content:</strong> Embed the widget on websites promoting illegal activities, hate speech, malware distribution, or regulatory violations.</li>
+      <li><strong>Abuse the Leaderboard API:</strong> Submit automated requests or tampered scores. Our backend enforces server-side score limits (maximum targets per difficulty, minimum plausible completion time, duplicate round ID rejection, and rate limits), though as a client-side browser game it cannot be made 100% cheat-proof.</li>
+      <li><strong>Offensive Callsigns:</strong> Register usernames containing profanity, hate speech, or impersonation. We reserve the right to remove offending leaderboard entries.</li>
+      <li><strong>Malicious Framing:</strong> Embed the widget inside deceptive click-jacking overlays or pages distributing malware or unlawful content.</li>
     </ul>
 
-    <h2>3. INTELLECTUAL PROPERTY</h2>
+    <h2>4. INTELLECTUAL PROPERTY</h2>
     <p>
-      All rights, title, and interest in and to BrainSweep — including its game mechanics, CRT visual theme engine, audiovisual synthesis, trademarks, and documentation — remain the exclusive property of <strong>MadeByKubo</strong>.
+      All code, visual themes, audio synthesis, and branding of BrainSweep remain the property of <strong data-cfg="legalEntity">PLACEHOLDER_REGISTERED_BUSINESS_NAME</strong>. Sponsor logos and CTA links passed via embed URL parameters remain the property of their respective Publishers or sponsors.
     </p>
 
-    <h2>4. DISCLAIMER OF WARRANTIES</h2>
+    <h2>5. DISCLAIMER OF WARRANTIES &amp; LIMITATION OF LIABILITY</h2>
     <p>
-      BrainSweep is a cognitive entertainment and visual-motor training game and is not a medical or clinical diagnostic device. The Service is provided on an "AS IS" and "AS AVAILABLE" basis without warranties of any kind, whether express or implied, including implied warranties of merchantability, fitness for a particular purpose, or uninterrupted uptime.
+      The Service is provided "AS IS" and "AS AVAILABLE" without warranties of any kind. To the fullest extent permitted by law, <strong data-cfg="legalEntity">PLACEHOLDER_REGISTERED_BUSINESS_NAME</strong> shall not be liable for any indirect, incidental, or consequential damages arising from the use or unavailability of the Service.
     </p>
 
-    <h2>5. LIMITATION OF LIABILITY</h2>
+    <h2>6. GOVERNING LAW &amp; CONTACT</h2>
     <p>
-      To the maximum extent permitted by applicable law, MadeByKubo shall not be liable for any indirect, incidental, special, consequential, or punitive damages, or any loss of revenue, data, or goodwill arising out of or related to your use or embedding of the Service.
-    </p>
-
-    <h2>6. MODIFICATIONS &amp; TERMINATION</h2>
-    <p>
-      We reserve the right to update these Terms or suspend widget access for domains that violate our Acceptable Use Policy. Continued use or embedding of the Service after updates constitutes acceptance of the revised Terms.
+      These Terms are governed by and construed in accordance with the laws of the <strong>Federal Republic of Nigeria</strong>. Any disputes shall be subject to the exclusive jurisdiction of the courts located in Abuja, FCT, Nigeria.<br />
+      Contact: <strong data-cfg="contactEmail">PLACEHOLDER_WORKING_EMAIL</strong>
     </p>
 
     <nav class="doc-nav" aria-label="Legal &amp; Developer Links">
@@ -193,5 +197,14 @@
       <a href="../developers/">[ DEVELOPER EMBED KIT ]</a>
     </nav>
   </main>
+  <script>
+    (function () {
+      var cfg = window.BRAINSWEEP_CONFIG || {};
+      document.querySelectorAll('[data-cfg]').forEach(function (el) {
+        var key = el.getAttribute('data-cfg');
+        if (cfg[key]) el.textContent = cfg[key];
+      });
+    })();
+  </script>
 </body>
 </html>

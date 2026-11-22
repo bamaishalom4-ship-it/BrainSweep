@@ -1,7 +1,7 @@
 {
-  "name": "BrainSweep — Cognitive Matrix",
+  "name": "BrainSweep — 60-Second Number Rush",
   "short_name": "BrainSweep",
-  "description": "High-speed visual scanning, peripheral tracking, and selective attention cognitive trainer. Includes Offline Survival Sweep mode.",
+  "description": "A fast 60-second number puzzle. Spot, flick, beat your best. Plays offline.",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",
@@ -13,6 +13,18 @@
       "src": "./icon.svg",
       "sizes": "any",
       "type": "image/svg+xml",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "./icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "./icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
       "purpose": "any maskable"
     }
   ]

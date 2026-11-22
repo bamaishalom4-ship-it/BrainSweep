@@ -6,18 +6,30 @@
   <meta name="theme-color" content="#fc6200" />
   <title>Publisher Developer Kit &amp; Embed Generator — BrainSweep</title>
   <link rel="icon" href="../icon.svg" type="image/svg+xml" />
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=VT323&display=swap" rel="stylesheet">
+  <script src="../config.js"></script>
   <style>
+    @font-face {
+      font-family: 'Press Start 2P';
+      font-style: normal;
+      font-weight: 400;
+      font-display: swap;
+      src: url('../fonts/press-start-2p-latin.woff2') format('woff2');
+    }
+    @font-face {
+      font-family: 'VT323';
+      font-style: normal;
+      font-weight: 400;
+      font-display: swap;
+      src: url('../fonts/vt323-latin.woff2') format('woff2');
+    }
     :root {
       --bg-color: #050200;
       --panel-bg: #0b0400;
       --primary-text: #fc6200;
       --accent-text: #ffa347;
-      --muted-text: #c45100;
+      --muted-text: #ff9e44;
       --border-color: #fc6200;
-      --border-subtle: rgba(252, 98, 0, 0.38);
+      --border-subtle: rgba(252, 98, 0, 0.45);
       --font-pixel: 'Press Start 2P', monospace;
       --font-terminal: 'VT323', monospace;
     }
@@ -31,7 +43,7 @@
       padding: 28px 16px 64px;
     }
     .kit-shell {
-      max-width: 1180px;
+      max-width: 1200px;
       margin: 0 auto;
       display: flex;
       flex-direction: column;
@@ -49,9 +61,7 @@
       gap: 12px;
       margin-bottom: 14px;
     }
-    .doc-top-bar .badge {
-      margin-bottom: 0;
-    }
+    .doc-top-bar .badge { margin-bottom: 0; }
     .close-doc-btn {
       width: 36px;
       height: 36px;
@@ -105,13 +115,13 @@
       padding: 24px;
       display: flex;
       flex-direction: column;
-      gap: 18px;
+      gap: 16px;
       min-width: 0;
       overflow: hidden;
     }
     .panel h2 {
       font-family: var(--font-pixel);
-      font-size: 0.82rem;
+      font-size: 0.8rem;
       color: var(--accent-text);
       line-height: 1.4;
       padding-bottom: 12px;
@@ -120,7 +130,7 @@
     .field-group {
       display: flex;
       flex-direction: column;
-      gap: 8px;
+      gap: 6px;
     }
     .field-row {
       display: grid;
@@ -129,7 +139,7 @@
     }
     label {
       font-family: var(--font-pixel);
-      font-size: 0.54rem;
+      font-size: 0.52rem;
       color: var(--accent-text);
       letter-spacing: 0.05em;
     }
@@ -137,19 +147,33 @@
       font-size: 1.05rem;
       color: var(--muted-text);
     }
-    input, select {
+    input[type="text"], input[type="url"], select {
       background: #050200;
       border: 2px solid var(--border-color);
       color: var(--accent-text);
-      padding: 12px 14px;
+      padding: 11px 12px;
       font-family: var(--font-pixel);
-      font-size: 0.58rem;
+      font-size: 0.55rem;
       outline: none;
       width: 100%;
     }
     input:focus, select:focus {
       border-color: #ffffff;
       box-shadow: 0 0 12px rgba(252, 98, 0, 0.4);
+    }
+    .chk-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      background: #050200;
+      border: 2px solid var(--border-subtle);
+      padding: 10px 12px;
+      cursor: pointer;
+    }
+    .chk-row input[type="checkbox"] {
+      width: 18px;
+      height: 18px;
+      accent-color: var(--primary-text);
     }
     .code-box-wrap {
       display: flex;
@@ -159,9 +183,9 @@
     pre.code-output {
       background: #030100;
       border: 2px solid var(--border-subtle);
-      padding: 16px;
+      padding: 14px;
       font-family: monospace;
-      font-size: 0.9rem;
+      font-size: 0.88rem;
       color: #ffa347;
       white-space: pre-wrap;
       word-break: break-all;
@@ -209,17 +233,16 @@
       gap: 12px;
       background: #040100;
       border: 2px dashed var(--border-subtle);
-      padding: 12px;
+      padding: 10px;
     }
     .preview-iframe {
       width: 400px;
       max-width: 100%;
-      height: 560px;
+      height: 640px;
       border: 2px solid var(--border-color);
       background: #000000;
       display: block;
     }
-    /* Documentation Section */
     .docs-grid {
       display: grid;
       grid-template-columns: 1fr 1fr;
@@ -235,16 +258,12 @@
     }
     .doc-card h3 {
       font-family: var(--font-pixel);
-      font-size: 0.64rem;
+      font-size: 0.62rem;
       color: var(--accent-text);
       line-height: 1.4;
     }
-    .doc-card ol, .doc-card ul {
-      margin-left: 20px;
-    }
-    .doc-card li {
-      margin-bottom: 6px;
-    }
+    .doc-card ol, .doc-card ul { margin-left: 20px; }
+    .doc-card li { margin-bottom: 6px; }
     .table-scroll-wrap {
       width: 100%;
       overflow-x: auto;
@@ -255,7 +274,7 @@
     }
     .param-table {
       width: 100%;
-      min-width: 600px;
+      min-width: 620px;
       border-collapse: collapse;
       font-size: 1.15rem;
     }
@@ -293,10 +312,7 @@
       font-family: var(--font-pixel);
       font-size: 0.55rem;
     }
-    .doc-nav a {
-      color: var(--accent-text);
-      text-decoration: none;
-    }
+    .doc-nav a { color: var(--accent-text); text-decoration: none; }
     .doc-nav a:hover { text-decoration: underline; }
     @media (max-width: 980px) {
       .generator-grid { grid-template-columns: 1fr; }
@@ -313,7 +329,7 @@
         <a href="../?screen=help" class="close-doc-btn" title="Close and return to Game Help" aria-label="Close and return to Game Help">✕</a>
       </div>
       <h1>BRAINSWEEP DEVELOPER KIT</h1>
-      <p class="subtitle">Configure, preview, and copy your zero-dependency embeddable cognitive game widget in under 60 seconds.</p>
+      <p class="subtitle">Configure, preview, and copy your zero-dependency embeddable engagement game widget in under 60 seconds.</p>
     </header>
 
     <div class="generator-grid">
@@ -322,9 +338,9 @@
         <h2>1. CONFIGURE YOUR EMBED WIDGET</h2>
 
         <div class="field-group">
-          <label for="inpDomain">PUBLISHER CUSTOM DOMAIN (FOR VERIFICATION)</label>
+          <label for="inpDomain">PUBLISHER CUSTOM DOMAIN (FOR ATTRIBUTION)</label>
           <input type="text" id="inpDomain" placeholder="e.g. puzzles.dailynews.com" value="publisher.example.com" />
-          <span class="field-hint">Used to verify your publisher license and attribute aggregate session analytics.</span>
+          <span class="field-hint">Identifies your domain for embed session attribution and optional allow-list licensing.</span>
         </div>
 
         <div class="field-row">
@@ -344,6 +360,7 @@
               <option value="green">Phosphor Green</option>
               <option value="cyan">Cyberpunk Cyan</option>
               <option value="magenta">Vaporwave Magenta</option>
+              <option value="clear">Clear (High-Contrast Sans-Serif)</option>
             </select>
           </div>
         </div>
@@ -370,8 +387,42 @@
           </div>
         </div>
 
+        <label class="chk-row" for="chkDaily">
+          <input type="checkbox" id="chkDaily" />
+          <span><strong>Enable Daily Sweep Mode (<code>daily=1</code>)</strong> — Same seeded board for all readers each day (Africa/Lagos time).</span>
+        </label>
+
+        <h2>2. SPONSOR &amp; BRAND CUSTOMIZATION (OPTIONAL)</h2>
+
+        <div class="field-row">
+          <div class="field-group">
+            <label for="inpSponsorText">SPONSOR TEXT (MAX 40 CHARS)</label>
+            <input type="text" id="inpSponsorText" maxlength="40" placeholder="e.g. Powered by XYZ Bank" />
+          </div>
+          <div class="field-group">
+            <label for="inpBrandColor">BRAND ACCENT HEX COLOR</label>
+            <input type="text" id="inpBrandColor" maxlength="7" placeholder="e.g. #FF8C00" />
+          </div>
+        </div>
+
+        <div class="field-group">
+          <label for="inpBrandLogo">SPONSOR LOGO URL (HTTPS ONLY)</label>
+          <input type="url" id="inpBrandLogo" placeholder="https://example.com/logo.png" />
+        </div>
+
+        <div class="field-row">
+          <div class="field-group">
+            <label for="inpCtaText">END-CARD CTA BUTTON TEXT (MAX 24)</label>
+            <input type="text" id="inpCtaText" maxlength="24" placeholder="e.g. Claim Free Reward" />
+          </div>
+          <div class="field-group">
+            <label for="inpCtaUrl">END-CARD CTA URL (HTTPS ONLY)</label>
+            <input type="url" id="inpCtaUrl" placeholder="https://example.com/offer" />
+          </div>
+        </div>
+
         <div class="code-box-wrap">
-          <label>GENERATED HTML EMBED SNIPPET (LAZY-LOADED)</label>
+          <label>GENERATED HTML EMBED SNIPPET (RECOMMENDED HEIGHT: 640px)</label>
           <pre class="code-output" id="codeOutput"></pre>
           <div class="btn-row">
             <button type="button" class="primary-btn" id="btnCopyCode">COPY CODE</button>
@@ -380,17 +431,17 @@
         </div>
       </section>
 
-      <!-- Right Column: Live 400px Sandboxed Iframe Preview -->
+      <!-- Right Column: Live 400px x 640px Sandboxed Iframe Preview -->
       <section class="panel" aria-label="Live Iframe Widget Preview">
-        <h2>2. LIVE WIDGET PREVIEW (400px)</h2>
-        <p class="field-hint">This live iframe runs with <code>?embed=true</code> — external navigation, bottom bars, and footers are automatically stripped.</p>
+        <h2>LIVE WIDGET PREVIEW (400px × 640px)</h2>
+        <p class="field-hint">Shows the "TAP TO PLAY" start overlay (timer never auto-starts until tapped) and full drop zone with zero cutoff.</p>
         <div class="preview-frame-shell">
           <iframe
             id="livePreviewIframe"
             class="preview-iframe"
-            title="BrainSweep Embedded Cognitive Game Preview"
+            title="BrainSweep Number Rush Game"
             loading="lazy"
-            sandbox="allow-scripts allow-same-origin"
+            sandbox="allow-scripts allow-same-origin allow-popups"
           ></iframe>
         </div>
       </section>
@@ -398,26 +449,28 @@
 
     <!-- Documentation Section -->
     <section class="panel" aria-label="Publisher Integration Guide">
-      <h2>3. QUICK-START INTEGRATION GUIDE (LAYMAN'S TERMS)</h2>
+      <h2>3. QUICK-START INTEGRATION &amp; HOST POSTMESSAGE API</h2>
 
       <div class="docs-grid">
         <div class="doc-card">
           <h3>HOW TO PASTE THE CODE INTO YOUR WEBSITE</h3>
           <ol>
-            <li><strong>Configure &amp; Copy:</strong> Enter your website's domain name above, pick your starting difficulty and color theme, and click the orange <strong>COPY CODE</strong> button.</li>
-            <li><strong>Open Your Website Editor:</strong> Go to the page or article where you want the game to appear and open an <strong>HTML Block</strong> (in WordPress, Webflow, Ghost, Squarespace, or Wix, choose <em>"Custom HTML"</em> or <em>"Embed Code"</em>).</li>
-            <li><strong>Paste Into the HTML Body:</strong> Paste the copied <code>&lt;iframe&gt;...&lt;/iframe&gt;</code> code directly inside your page's HTML <code>&lt;body&gt;</code> section where you want readers to play.</li>
-            <li><strong>Publish:</strong> Save and publish your page. The widget includes <code>loading="lazy"</code>, meaning it will never slow down your article's initial page load!</li>
+            <li><strong>Configure &amp; Copy:</strong> Set your domain, difficulty, theme, and optional sponsor CTA above, then click <strong>COPY CODE</strong>.</li>
+            <li><strong>Open Your CMS / HTML Editor:</strong> Add a <strong>Custom HTML / Embed Block</strong> in WordPress, Webflow, Ghost, Substack, or your custom frontend.</li>
+            <li><strong>Paste Into the HTML Body:</strong> Paste the <code>&lt;iframe&gt;...&lt;/iframe&gt;</code> snippet where you want the game to appear. Recommended height is <code>640px</code> so the header, target dock, arena, and drop zone fit at both <code>400px</code> and <code>640px</code> widths without clipping.</li>
+            <li><strong>Tap-to-Start &amp; Auto-Pause:</strong> The embedded game displays a <strong>"TAP TO PLAY"</strong> start card on load and automatically pauses the timer if the reader scrolls the iframe out of view.</li>
           </ol>
         </div>
 
         <div class="doc-card">
-          <h3>HOW TO TEST IN A SANDBOX BEFORE GOING LIVE</h3>
-          <ul>
-            <li><strong>Instant Browser Test:</strong> You can test your snippet right now using free HTML sandboxes like <strong>CodePen.io</strong>, <strong>JSFiddle.net</strong>, or a local <code>test.html</code> file on your computer — simply paste the snippet into the HTML panel.</li>
-            <li><strong>Mobile Width Check:</strong> Resize your preview container down to <code>360px–400px</code> wide to verify that the widget scales cleanly with zero horizontal scrollbars.</li>
-            <li><strong>Off-Screen CPU Pause:</strong> Scroll the page so the iframe is out of view — BrainSweep's built-in <code>IntersectionObserver</code> automatically pauses the 60fps canvas loop while offscreen to save your readers' battery.</li>
-          </ul>
+          <h3>HOST PAGE POSTMESSAGE EVENTS API</h3>
+          <p>In embed mode (<code>?embed=true</code>), BrainSweep emits real-time events to your parent page via <code>window.parent.postMessage</code>:</p>
+          <pre class="code-output" style="font-size: 0.78rem;">window.addEventListener('message', (event) => {
+  if (event.data &amp;&amp; event.data.source === 'brainsweep') {
+    // event.data.type: 'ready' | 'start' | 'end' | 'cta_click'
+    console.log(event.data.type, event.data.payload);
+  }
+});</pre>
         </div>
       </div>
 
@@ -436,17 +489,17 @@
             <tr>
               <td><span class="param-code">embed=true</span></td>
               <td><code>true</code> | <code>1</code></td>
-              <td><strong>Required for B2B embeds.</strong> Hides the 5-icon bottom navigation bar, home back buttons, registration popups, and external footer, showing only the core arena, timer, and score.</td>
+              <td><strong>Required for B2B embeds.</strong> Hides external navigation, bottom bars, registration prompts, and cookie banners. Shows a "TAP TO PLAY" start card and end-of-round sponsor card.</td>
             </tr>
             <tr>
               <td><span class="param-code">difficulty</span></td>
               <td><code>easy</code> | <code>medium</code> | <code>hard</code></td>
-              <td>Sets the starting difficulty level when the embedded game launches (defaults to <code>easy</code>).</td>
+              <td>Sets the starting difficulty level (defaults to <code>easy</code>).</td>
             </tr>
             <tr>
               <td><span class="param-code">theme</span></td>
-              <td><code>amber</code> | <code>green</code> | <code>cyan</code> | <code>magenta</code></td>
-              <td>Sets the CRT color palette of the widget and SVG logo to match your publication's branding.</td>
+              <td><code>amber</code> | <code>green</code> | <code>cyan</code> | <code>magenta</code> | <code>clear</code></td>
+              <td>Sets the visual color palette (including <code>clear</code> for high-contrast plain sans-serif numbers).</td>
             </tr>
             <tr>
               <td><span class="param-code">pattern</span></td>
@@ -454,9 +507,34 @@
               <td>Configures the movement trajectory pattern of the numbers inside the arena.</td>
             </tr>
             <tr>
-              <td><span class="param-code">domain</span></td>
-              <td><code>your-site.com</code></td>
-              <td>Identifies your publisher domain for B2B license verification and aggregated telemetry.</td>
+              <td><span class="param-code">daily=1</span></td>
+              <td><code>1</code> | <code>true</code></td>
+              <td>Launches directly in seeded Daily Sweep mode (identical number layout for all players that day in Africa/Lagos time).</td>
+            </tr>
+            <tr>
+              <td><span class="param-code">brand_logo</span></td>
+              <td><code>https://...</code></td>
+              <td>Optional HTTPS image URL displayed in the sponsor bar inside the embed.</td>
+            </tr>
+            <tr>
+              <td><span class="param-code">brand_color</span></td>
+              <td><code>#RRGGBB</code></td>
+              <td>Optional 6-digit hex accent color applied to sponsor highlights.</td>
+            </tr>
+            <tr>
+              <td><span class="param-code">sponsor_text</span></td>
+              <td>Up to 40 chars</td>
+              <td>Sponsor attribution text (e.g., <code>Powered by XYZ Bank</code>). Plain text only.</td>
+            </tr>
+            <tr>
+              <td><span class="param-code">cta_text</span> &amp; <span class="param-code">cta_url</span></td>
+              <td>24 chars &amp; <code>https://...</code></td>
+              <td>Renders a sponsor call-to-action button on the end-of-round card opening in a new tab with <code>rel="noopener sponsored"</code>.</td>
+            </tr>
+            <tr>
+              <td><span class="param-code">consent=1</span></td>
+              <td><code>1</code> | <code>true</code></td>
+              <td>Signals that the host Publisher has obtained analytics consent from the visitor. Without this, analytics remains off in embed mode.</td>
             </tr>
           </tbody>
         </table>
@@ -477,16 +555,23 @@
       const selTheme = document.getElementById('selTheme');
       const selPattern = document.getElementById('selPattern');
       const selWidth = document.getElementById('selWidth');
+      const chkDaily = document.getElementById('chkDaily');
+      const inpSponsorText = document.getElementById('inpSponsorText');
+      const inpBrandColor = document.getElementById('inpBrandColor');
+      const inpBrandLogo = document.getElementById('inpBrandLogo');
+      const inpCtaText = document.getElementById('inpCtaText');
+      const inpCtaUrl = document.getElementById('inpCtaUrl');
       const codeOutput = document.getElementById('codeOutput');
       const btnCopyCode = document.getElementById('btnCopyCode');
       const btnReloadPreview = document.getElementById('btnReloadPreview');
       const livePreviewIframe = document.getElementById('livePreviewIframe');
 
       function getBaseOrigin() {
+        const cfg = window.BRAINSWEEP_CONFIG || {};
         if (window.location.protocol === 'http:' || window.location.protocol === 'https:') {
           return window.location.origin;
         }
-        return 'https://brainsweep-tau.vercel.app';
+        return cfg.siteUrl || 'https://brainsweep-tau.vercel.app';
       }
 
       function buildQueryString() {
@@ -499,9 +584,32 @@
         params.set('difficulty', selDifficulty.value || 'easy');
         params.set('theme', selTheme.value || 'amber');
         params.set('pattern', selPattern.value || 'spiral');
+        if (chkDaily && chkDaily.checked) {
+          params.set('daily', '1');
+        }
         if (domain) {
           params.set('domain', domain);
         }
+        const sponsorText = (inpSponsorText.value || '').trim().slice(0, 40);
+        if (sponsorText) params.set('sponsor_text', sponsorText);
+
+        const brandColor = (inpBrandColor.value || '').trim();
+        if (/^#[0-9A-Fa-f]{6}$/.test(brandColor)) {
+          params.set('brand_color', brandColor);
+        }
+
+        const brandLogo = (inpBrandLogo.value || '').trim();
+        if (/^https:\/\/.+/i.test(brandLogo)) {
+          params.set('brand_logo', brandLogo);
+        }
+
+        const ctaText = (inpCtaText.value || '').trim().slice(0, 24);
+        const ctaUrl = (inpCtaUrl.value || '').trim();
+        if (ctaText && /^https:\/\/.+/i.test(ctaUrl)) {
+          params.set('cta_text', ctaText);
+          params.set('cta_url', ctaUrl);
+        }
+
         return { query: params.toString(), domain };
       }
 
@@ -515,12 +623,12 @@
           `<iframe`,
           `  src="${publicUrl}"`,
           `  width="${widthVal}"`,
-          `  height="560"`,
+          `  height="640"`,
           `  style="border: 0; max-width: 100%; overflow: hidden; display: block;"`,
           `  loading="lazy"`,
           `  allow="autoplay"`,
           `  data-publisher-domain="${domain}"`,
-          `  title="BrainSweep Cognitive Number Game"`,
+          `  title="BrainSweep Number Rush Game"`,
           `></iframe>`
         ].join('\n');
 
@@ -531,8 +639,21 @@
         }
       }
 
-      [inpDomain, selDifficulty, selTheme, selPattern, selWidth].forEach((el) => {
-        el.addEventListener('input', () => updateSnippetAndPreview(el !== inpDomain && el !== selWidth));
+      [
+        inpDomain,
+        selDifficulty,
+        selTheme,
+        selPattern,
+        selWidth,
+        chkDaily,
+        inpSponsorText,
+        inpBrandColor,
+        inpBrandLogo,
+        inpCtaText,
+        inpCtaUrl,
+      ].forEach((el) => {
+        if (!el) return;
+        el.addEventListener('input', () => updateSnippetAndPreview(false));
         el.addEventListener('change', () => updateSnippetAndPreview(true));
       });
 

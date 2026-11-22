@@ -2,25 +2,48 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <meta name="theme-color" content="#fc6200" />
+  <meta name="description" content="A fast 60-second number puzzle. Spot, flick, beat your best. Plays offline." />
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-  <title>BrainSweep — Cognitive Number Extraction Game</title>
+  <title>BrainSweep — 60-Second Number Rush</title>
+  <link rel="canonical" href="https://brainsweep-tau.vercel.app/" />
+
+  <!-- Open Graph / WhatsApp / Social Sharing -->
+  <meta property="og:type" content="website" />
+  <meta property="og:site_name" content="BrainSweep" />
+  <meta property="og:title" content="BrainSweep — 60-Second Number Rush" />
+  <meta property="og:description" content="Can you clear 12 numbers in 60 seconds? A fast 60-second number puzzle. Spot, flick, beat your best." />
+  <meta property="og:url" content="https://brainsweep-tau.vercel.app/" />
+  <meta property="og:image" content="https://brainsweep-tau.vercel.app/og-image.png" />
+  <meta property="og:image:width" content="1200" />
+  <meta property="og:image:height" content="630" />
+
+  <!-- Twitter Card -->
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:title" content="BrainSweep — 60-Second Number Rush" />
+  <meta name="twitter:description" content="Can you clear 12 numbers in 60 seconds? Spot, flick, beat your best." />
+  <meta name="twitter:image" content="https://brainsweep-tau.vercel.app/og-image.png" />
+
+  <!-- Self-Hosted Font Preloads (Zero Render-Blocking External Requests) -->
+  <link rel="preload" href="fonts/press-start-2p-latin.woff2" as="font" type="font/woff2" crossorigin />
+  <link rel="preload" href="fonts/vt323-latin.woff2" as="font" type="font/woff2" crossorigin />
+
   <link rel="manifest" href="manifest.json" />
   <link rel="icon" href="icon.svg" type="image/svg+xml" />
-  <link rel="apple-touch-icon" href="icon.svg" />
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=VT323&display=swap" rel="stylesheet">
+  <link rel="icon" href="icon-192.png" sizes="192x192" type="image/png" />
+  <link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png" />
+
   <script>
     // Apply saved or URL-specified color theme & embed mode immediately before first paint
     (function () {
       var THEMES = {
         amber:   { bg: '#050200', primary: '#FC6200', border: '#FC6200', accent: '#FFA347' },
-        green:   { bg: '#001100', primary: '#39FF14', border: '#008F11', accent: '#FFFFFF' },
-        cyan:    { bg: '#0B0C10', primary: '#00E5FF', border: '#00E5FF', accent: '#FF007F' },
-        magenta: { bg: '#1A0B1F', primary: '#FF00CC', border: '#FF00CC', accent: '#FFE600' }
+        green:   { bg: '#001100', primary: '#39FF14', border: '#00A819', accent: '#FFFFFF' },
+        cyan:    { bg: '#0B0C10', primary: '#00E5FF', border: '#00E5FF', accent: '#FF4D9E' },
+        magenta: { bg: '#1A0B1F', primary: '#FF33D4', border: '#FF33D4', accent: '#FFE600' },
+        clear:   { bg: '#0A0E14', primary: '#FFFFFF', border: '#38BDF8', accent: '#FACC15' }
       };
       try {
         var root = document.documentElement;
@@ -29,7 +52,7 @@
         if (isEmbed) {
           root.setAttribute('data-embed', 'true');
         }
-        var urlTheme = params.get('theme');
+        var urlTheme = (params.get('theme') || '').toLowerCase();
         var saved = (urlTheme && THEMES[urlTheme]) ? urlTheme : (localStorage.getItem('brainsweep_theme') || 'amber');
         var t = THEMES[saved] || THEMES.amber;
         root.setAttribute('data-theme', saved in THEMES ? saved : 'amber');
@@ -59,7 +82,7 @@
         </div>
         <div>
           <h1 class="brand-title">BrainSweep</h1>
-          <p class="brand-subtitle">SYS://COGNITIVE_MATRIX_V1.0</p>
+          <p class="brand-subtitle" id="brandSubtitle">SYS://BRAINSWEEP_V1.1</p>
         </div>
       </div>
 
@@ -79,7 +102,7 @@
           <span class="hud-label">EXTRACTED</span>
           <div class="hud-value-wrap">
             <span class="hud-value accent-emerald" id="hudExtracted">0</span>
-            <span class="hud-sub" id="hudStreakBadge">0x streak</span>
+            <span class="hud-sub" id="hudStreakBadge">0x</span>
           </div>
         </div>
 
@@ -93,43 +116,49 @@
       </div>
 
       <div class="top-actions">
-        <button class="icon-btn has-label" id="btnHint" title="Pulse Next Number (H)" aria-label="Pulse Next Number">
-          <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2">
+        <button type="button" class="icon-btn has-label" id="btnHint" title="Locate Next Number (H)">
+          <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
             <circle cx="12" cy="12" r="10"/>
             <line x1="12" y1="16" x2="12" y2="12"/>
             <line x1="12" y1="8" x2="12.01" y2="8"/>
           </svg>
           <span class="btn-label">Locate</span>
         </button>
-        <button class="icon-btn icon-only" id="btnSound" title="Toggle Sound Effects (M)" aria-label="Toggle Sound">
-          <svg id="iconSoundOn" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2">
+        <button type="button" class="icon-btn icon-only" id="btnSound" title="Toggle Sound Effects (M)" aria-label="Toggle Sound">
+          <svg id="iconSoundOn" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
             <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/>
             <path d="M15.54 8.46a5 5 0 0 1 0 7.07"/>
             <path d="M19.07 4.93a10 10 0 0 1 0 14.14"/>
           </svg>
         </button>
-        <button class="icon-btn icon-only" id="btnInfo" title="Help &amp; Rules (I)" aria-label="Game Help">
-          <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="square">
+        <button type="button" class="icon-btn icon-only" id="btnInfo" title="How to Play (I)" aria-label="How to Play">
+          <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="square" aria-hidden="true">
             <line x1="12" y1="11" x2="12" y2="17"/>
             <line x1="10" y1="11" x2="12" y2="11"/>
             <line x1="10" y1="17" x2="14" y2="17"/>
             <rect x="11" y="6" width="2" height="2" fill="currentColor" stroke="none"/>
           </svg>
         </button>
-        <button class="icon-btn has-label" id="btnMenu" title="Return to Home Screen (Esc)" aria-label="Open Home Screen">
-          <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2">
+        <button type="button" class="icon-btn has-label" id="btnMenu" title="Return to Home Screen (Esc)">
+          <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
             <path d="M3 10.5L12 3l9 7.5V21a1 1 0 0 1-1 1h-5v-6h-6v6H4a1 1 0 0 1-1-1v-10.5z"/>
           </svg>
           <span class="btn-label">Home</span>
         </button>
-        <button class="icon-btn icon-only" id="btnReset" title="Reset Round (R)" aria-label="Reset Round">
-          <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <button type="button" class="icon-btn icon-only" id="btnReset" title="Reset Round (R)" aria-label="Reset Round">
+          <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
             <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/>
             <polyline points="3 3 3 8 8 8"/>
           </svg>
         </button>
       </div>
     </header>
+
+    <!-- Sponsor Attribution Strip (Shown in B2B Embed Mode when sponsor_text or brand_logo is provided) -->
+    <div class="embed-sponsor-bar" id="embedSponsorBar" hidden>
+      <img id="embedBrandLogoImg" class="embed-brand-logo" alt="Sponsor Logo" hidden />
+      <span id="embedSponsorTextEl" class="embed-sponsor-text"></span>
+    </div>
 
     <!-- Main Game Stage -->
     <main class="stage-wrapper">
@@ -153,10 +182,10 @@
       <!-- Outer Extraction Ring / Drop Zone -->
       <div class="extraction-frame" id="extractionFrame">
         <div class="extraction-ring-label top-label">
-          <span>↑ DRAG OR FLICK NUMBERS OUTSIDE THE ARENA BORDER TO EXTRACT ↑</span>
+          <span>↑ FLICK NUMBERS OUT IN ORDER ↑</span>
         </div>
         <div class="extraction-ring-label bottom-label">
-          <span>↓ EXTRACTION PERIMETER — DROP SEQUENTIAL NUMBERS (1, 2, 3...) HERE ↓</span>
+          <span>↓ DROP ZONE ↓</span>
         </div>
         <div class="extraction-ring-label left-label">
           <span>← EXTRACT</span>
@@ -174,6 +203,45 @@
 
           <!-- Floating Feedback Toast inside Arena -->
           <div class="arena-feedback" id="arenaFeedback"></div>
+
+          <!-- Tap-To-Play / Offscreen Pause Overlay (Phase 5.1) -->
+          <div class="arena-overlay-card" id="tapToPlayOverlay" hidden>
+            <div class="arena-overlay-inner">
+              <span class="badge-pill" id="tapOverlayBadge">60-SECOND NUMBER RUSH</span>
+              <h2 class="arena-overlay-title" id="tapOverlayTitle">TAP TO PLAY</h2>
+              <p class="arena-overlay-sub" id="tapOverlaySub">Spot the NEXT TARGET number, skip decoys, and flick it out of the arena!</p>
+              <button type="button" class="primary-btn" id="btnTapToPlayAction">TAP TO PLAY</button>
+            </div>
+          </div>
+
+          <!-- First-Time Interactive Tutorial Overlay (Phase 6.1) -->
+          <div class="arena-overlay-card" id="tutorialOverlay" hidden>
+            <div class="arena-overlay-inner tutorial-inner">
+              <span class="badge-pill">QUICK TUTORIAL // 5 SECONDS</span>
+              <h2 class="arena-overlay-title" id="tutorialTargetPrompt">FIND &amp; FLICK THE TARGET</h2>
+              <div class="tutorial-gesture-demo" aria-hidden="true">
+                <span class="tutorial-demo-node" id="tutorialDemoNode">#2</span>
+                <span class="tutorial-demo-arrow">↗ FLICK OUT!</span>
+              </div>
+              <p class="arena-overlay-sub">
+                Numbers have random gaps! Always check <strong>NEXT TARGET</strong> above and flick it out. Skip decoys (grabbing a decoy costs time).
+              </p>
+              <div class="tutorial-btn-row">
+                <button type="button" class="secondary-btn" id="btnSkipTutorial">Skip</button>
+                <button type="button" class="primary-btn" id="btnStartFromTutorial">GOT IT — PLAY</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Unlicensed Embed Domain Notice (Phase 4) -->
+          <div class="arena-overlay-card" id="unlicensedEmbedOverlay" hidden>
+            <div class="arena-overlay-inner">
+              <span class="badge-pill">DOMAIN LICENSE REQUIRED</span>
+              <h2 class="arena-overlay-title">UNLICENSED EMBED</h2>
+              <p class="arena-overlay-sub">This game isn't licensed for this site — play directly at BrainSweep:</p>
+              <a href="https://brainsweep-tau.vercel.app" target="_blank" rel="noopener noreferrer" class="primary-btn" id="unlicensedSiteLink" style="text-decoration: none;">PLAY AT BRAINSWEEP</a>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -181,7 +249,7 @@
       <section class="extracted-tray" aria-label="Extracted Numbers Sequence">
         <div class="tray-header">
           <span class="tray-title">EXTRACTED SEQUENCE</span>
-          <span class="tray-hint" id="trayStatusText">Drag #1 out of the inner arena to begin</span>
+          <span class="tray-hint" id="trayStatusText">Find #1 — skip the decoys!</span>
         </div>
         <div class="tray-slots" id="extractedSlots"></div>
       </section>
@@ -195,11 +263,14 @@
     <!-- =====================================================================
          1. HOME SCREEN OVERLAY (#setupModal / HomeScreen)
          ===================================================================== -->
-    <div class="modal-backdrop home-screen-backdrop active" id="setupModal">
+    <div class="modal-backdrop home-screen-backdrop active" id="setupModal" role="dialog" aria-modal="true" aria-labelledby="setupBadgePill">
       <div class="modal-card home-screen-card">
-        <!-- Top Right Hamburger Menu Strip -->
+        <!-- Top Right Hamburger Menu Strip + Daily Streak Badge -->
         <div class="home-player-strip">
-          <span class="home-player-label">SYS://MENU</span>
+          <div class="home-streak-cluster">
+            <span class="home-player-label">SYS://MENU</span>
+            <span class="streak-fire-pill" id="homeStreakBadge" title="Daily Sweep Streak">🔥 0</span>
+          </div>
           <div class="hamburger-menu-wrap" id="hamburgerMenuWrap">
             <button
               type="button"
@@ -240,8 +311,8 @@
 
         <!-- Header -->
         <div class="modal-header home-header">
-          <span class="badge-pill" id="setupBadgePill">BRAINSWEEP // COGNITIVE MATRIX</span>
-          <p id="setupSubheadline">Scan the moving field, filter out interleaved distractor gaps, and drag targets out in ascending order before the 60s timer expires.</p>
+          <span class="badge-pill" id="setupBadgePill">BRAINSWEEP // NUMBER RUSH</span>
+          <p id="setupSubheadline">Spot the target numbers in the moving field, skip the decoys, and flick targets out in ascending order before the 60s timer runs out.</p>
         </div>
 
         <!-- Offline Mode Banner (Shown when device is Offline) -->
@@ -260,17 +331,22 @@
           <div class="best-play-sub" id="homeBestScoreSub">EASY MODE</div>
         </div>
 
-        <!-- Start Challenge Prominent Button -->
+        <!-- Start Challenge Prominent Button + Daily Sweep Button -->
         <div class="home-start-wrap">
           <button type="button" class="primary-btn home-start-btn" id="btnStartGame">
             <span class="start-btn-diff-tag" id="homeStartDiffLabel">EASY // SPIRAL VORTEX</span>
             <div class="start-btn-main-row">
               <span id="homeStartMainText">START 60s CHALLENGE</span>
-              <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.6">
+              <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.6" aria-hidden="true">
                 <line x1="5" y1="12" x2="19" y2="12"/>
                 <polyline points="12 5 19 12 12 19"/>
               </svg>
             </div>
+          </button>
+
+          <button type="button" class="secondary-btn daily-sweep-btn" id="btnStartDailySweep">
+            <span id="dailySweepBtnLabel">⚡ DAILY SWEEP #1</span>
+            <small id="dailySweepStatusSub">Seeded Daily Board • 1 Scored Attempt</small>
           </button>
         </div>
 
@@ -305,7 +381,7 @@
     <!-- =====================================================================
          2. LEVEL SELECT MODAL (#levelSelectModal — Gamepad Icon)
          ===================================================================== -->
-    <div class="modal-backdrop" id="levelSelectModal">
+    <div class="modal-backdrop" id="levelSelectModal" role="dialog" aria-modal="true" aria-hidden="true" inert>
       <div class="modal-card level-select-card">
         <div class="leaderboard-top-bar">
           <div class="leaderboard-title-wrap">
@@ -326,12 +402,12 @@
                 <span class="diff-time">60s</span>
               </div>
               <div class="diff-range">12 / 20</div>
-              <p class="diff-desc">Pool of 20 (1–20): 12 targets &amp; 8 random distractors (60% ratio, ~5s/target). Relaxed scanning pace.</p>
-              <div class="diff-best" id="bestEasy">Total: 0 pts (Best: —/12)</div>
+              <p class="diff-desc">Pool of 20 (1–20): 12 targets &amp; 8 random decoys (−1.0s decoy penalty). Relaxed scanning pace.</p>
+              <div class="diff-best" id="bestEasy">Best: —/12 (Total: 0 pts)</div>
             </div>
             <button type="button" class="level-play-btn" data-play-diff="easy">
               <span>PLAY</span>
-              <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><polygon points="6 4 20 12 6 20 6 4"/></svg>
+              <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor" aria-hidden="true"><polygon points="6 4 20 12 6 20 6 4"/></svg>
             </button>
           </div>
 
@@ -343,12 +419,12 @@
                 <span class="diff-time">60s</span>
               </div>
               <div class="diff-range">20 / 36</div>
-              <p class="diff-desc">Pool of 36 (1–36): 20 targets &amp; 16 random distractors (~55% ratio, ~3s/target). Trains inhibitory control.</p>
-              <div class="diff-best" id="bestMedium">Total: 0 pts (Best: —/20)</div>
+              <p class="diff-desc">Pool of 36 (1–36): 20 targets &amp; 16 random decoys (−1.5s decoy penalty). Ignore the decoys!</p>
+              <div class="diff-best" id="bestMedium">Best: —/20 (Total: 0 pts)</div>
             </div>
             <button type="button" class="level-play-btn" data-play-diff="medium">
               <span>PLAY</span>
-              <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><polygon points="6 4 20 12 6 20 6 4"/></svg>
+              <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor" aria-hidden="true"><polygon points="6 4 20 12 6 20 6 4"/></svg>
             </button>
           </div>
 
@@ -360,12 +436,12 @@
                 <span class="diff-time">60s</span>
               </div>
               <div class="diff-range">25 / 50</div>
-              <p class="diff-desc">Pool of 50 (1–50): 25 targets &amp; 25 distractors (50% ratio, ~2.4s/target) at high trajectory velocity.</p>
-              <div class="diff-best" id="bestHard">Total: 0 pts (Best: —/25)</div>
+              <p class="diff-desc">Pool of 50 (1–50): 25 targets &amp; 25 decoys (−2.0s decoy penalty) at high trajectory velocity.</p>
+              <div class="diff-best" id="bestHard">Best: —/25 (Total: 0 pts)</div>
             </div>
             <button type="button" class="level-play-btn" data-play-diff="hard">
               <span>PLAY</span>
-              <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><polygon points="6 4 20 12 6 20 6 4"/></svg>
+              <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor" aria-hidden="true"><polygon points="6 4 20 12 6 20 6 4"/></svg>
             </button>
           </div>
         </div>
@@ -373,9 +449,9 @@
     </div>
 
     <!-- =====================================================================
-         3. HELP MODAL (#infoModal — ? Icon: ONLY Rules & Score)
+         3. HELP MODAL (#infoModal — ? Icon)
          ===================================================================== -->
-    <div class="modal-backdrop" id="infoModal">
+    <div class="modal-backdrop" id="infoModal" role="dialog" aria-modal="true" aria-hidden="true" inert>
       <div class="modal-card info-card">
         <div class="leaderboard-top-bar">
           <div class="leaderboard-title-wrap">
@@ -390,24 +466,24 @@
         <div class="info-grid">
           <div class="info-block">
             <h3>RULES</h3>
-            <p>Scan the moving numbers inside the arena and drag or flick valid target numbers across the dashed extraction border in strict ascending order within <strong>60 seconds</strong>.</p>
-            <p>Distractor ("gap") numbers are randomly interleaved within the number pool. Check the centered <strong>NEXT TARGET</strong> indicator (or the Ghost Trail number spawned where you dropped your last target) and ignore the distractor gaps!</p>
+            <p>Spot the target numbers inside the moving arena and drag or flick them across the dashed drop zone in strict ascending order within <strong>60 seconds</strong>.</p>
+            <p>Decoy ("gap") numbers are randomly mixed into the pool. Check the centered <strong>NEXT TARGET</strong> indicator (or the Ghost Trail number spawned where you dropped your last target) and skip the decoys — grabbing a decoy costs −1.0s to −2.0s!</p>
           </div>
 
           <div class="info-block">
-            <h3>SCORE</h3>
-            <p>Every valid target number you extract before the 60-second timer expires counts toward your <strong>Session Score</strong>:</p>
+            <h3>SCORE &amp; DAILY SWEEP</h3>
+            <p>Every target number you extract before the 60-second timer expires counts toward your <strong>Session Score</strong>:</p>
             <ul class="info-list">
-              <li>• <strong>EASY:</strong> Up to 12 points per session (Pool of 20)</li>
-              <li>• <strong>MEDIUM:</strong> Up to 20 points per session (Pool of 36)</li>
-              <li>• <strong>HARD:</strong> Up to 25 points per session (Pool of 50, High Speed)</li>
+              <li>• <strong>EASY:</strong> Up to 12 points per round (−1.0s decoy penalty)</li>
+              <li>• <strong>MEDIUM:</strong> Up to 20 points per round (−1.5s decoy penalty)</li>
+              <li>• <strong>HARD:</strong> Up to 25 points per round (−2.0s decoy penalty)</li>
             </ul>
-            <p>At the end of each round, your <strong>Session Score</strong> is automatically added to your cumulative <strong>Total Score</strong> on the Global Leaderboard for that difficulty!</p>
+            <p>Play the seeded <strong>Daily Sweep</strong> every day to build your 🔥 streak and compete on the Today, This Week, and All-Time Best leaderboards!</p>
           </div>
 
           <div class="info-block">
             <h3>PRIVACY POLICY</h3>
-            <p>BrainSweep uses cookies and local storage for user preferences and anonymized gameplay analytics in compliance with GDPR and CCPA.</p>
+            <p>We store your settings on this device and support NDPA, GDPR, and CCPA data rights.</p>
             <div class="help-credit-links">
               <a href="./privacy-policy/" class="footer-link">[ PRIVACY POLICY ]</a>
             </div>
@@ -420,6 +496,7 @@
               <a href="https://youtube.com/@madebykubo" target="_blank" rel="noopener noreferrer" class="footer-link">[ YOUTUBE ]</a>
               <a href="https://www.instagram.com/madebykubo" target="_blank" rel="noopener noreferrer" class="footer-link">[ INSTAGRAM ]</a>
             </div>
+            <p class="help-disclaimer-note">BrainSweep is an entertainment game. It is not a medical or training product.</p>
           </div>
         </div>
       </div>
@@ -428,7 +505,7 @@
     <!-- =====================================================================
          4. SETTINGS MODAL (#settingsModal — Gear Icon)
          ===================================================================== -->
-    <div class="modal-backdrop" id="settingsModal">
+    <div class="modal-backdrop" id="settingsModal" role="dialog" aria-modal="true" aria-hidden="true" inert>
       <div class="modal-card settings-card">
         <div class="leaderboard-top-bar">
           <div class="leaderboard-title-wrap">
@@ -445,12 +522,12 @@
           <button type="button" class="settings-row-btn" id="btnSettingSound">
             <div class="settings-row-left">
               <div class="settings-icon-box" id="settingSoundIconBox">
-                <svg id="settingSoundSvgOn" viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2.2">
+                <svg id="settingSoundSvgOn" viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2.2" aria-hidden="true">
                   <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/>
                   <path d="M15.54 8.46a5 5 0 0 1 0 7.07"/>
                   <path d="M19.07 4.93a10 10 0 0 1 0 14.14"/>
                 </svg>
-                <svg id="settingSoundSvgOff" viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2.2" hidden>
+                <svg id="settingSoundSvgOff" viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2.2" hidden aria-hidden="true">
                   <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/>
                   <line x1="23" y1="9" x2="17" y2="15"/>
                   <line x1="17" y1="9" x2="23" y2="15"/>
@@ -467,7 +544,7 @@
           <button type="button" class="settings-row-btn" id="btnSettingDifficulty">
             <div class="settings-row-left">
               <div class="settings-icon-box">
-                <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2.2">
+                <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2.2" aria-hidden="true">
                   <rect x="3" y="14" width="4" height="7"/>
                   <rect x="10" y="9" width="4" height="12"/>
                   <rect x="17" y="4" width="4" height="17"/>
@@ -484,7 +561,7 @@
           <button type="button" class="settings-row-btn" id="btnSettingTrajectory">
             <div class="settings-row-left">
               <div class="settings-icon-box">
-                <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2.2">
+                <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2.2" aria-hidden="true">
                   <path d="M12 12m-2 0a2 2 0 1 0 4 0a4 4 0 1 0 -8 0a6 6 0 1 0 12 0a8 8 0 1 0 -16 0"/>
                 </svg>
               </div>
@@ -499,7 +576,7 @@
           <button type="button" class="settings-row-btn" id="btnSettingTheme">
             <div class="settings-row-left">
               <div class="settings-icon-box">
-                <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2.2">
+                <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2.2" aria-hidden="true">
                   <circle cx="12" cy="12" r="9"/>
                   <circle cx="9.5" cy="9.5" r="1.3" fill="currentColor"/>
                   <circle cx="14.5" cy="9.5" r="1.3" fill="currentColor"/>
@@ -513,6 +590,40 @@
             </div>
             <span class="settings-value-badge" id="settingThemeValue">DEFAULT</span>
           </button>
+
+          <!-- 5. Large Numbers Accessibility Toggle -->
+          <button type="button" class="settings-row-btn" id="btnSettingLargeNumbers">
+            <div class="settings-row-left">
+              <div class="settings-icon-box" id="settingLargeNumbersIconBox">
+                <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2.2" aria-hidden="true">
+                  <circle cx="12" cy="12" r="9"/>
+                  <line x1="12" y1="8" x2="12" y2="16"/>
+                  <line x1="8" y1="12" x2="16" y2="12"/>
+                </svg>
+              </div>
+              <div class="settings-row-text">
+                <span class="settings-row-title">LARGE NUMBERS</span>
+              </div>
+            </div>
+            <span class="settings-value-badge off" id="settingLargeNumbersValue">OFF</span>
+          </button>
+
+          <!-- 6. Reduced Motion Accessibility Toggle -->
+          <button type="button" class="settings-row-btn" id="btnSettingReducedMotion">
+            <div class="settings-row-left">
+              <div class="settings-icon-box" id="settingReducedMotionIconBox">
+                <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2.2" aria-hidden="true">
+                  <circle cx="12" cy="12" r="9"/>
+                  <line x1="9" y1="9" x2="9" y2="15"/>
+                  <line x1="15" y1="9" x2="15" y2="15"/>
+                </svg>
+              </div>
+              <div class="settings-row-text">
+                <span class="settings-row-title">REDUCED MOTION</span>
+              </div>
+            </div>
+            <span class="settings-value-badge off" id="settingReducedMotionValue">OFF</span>
+          </button>
         </div>
 
         <div class="modal-footer">
@@ -524,7 +635,7 @@
     <!-- =====================================================================
          5. TRAJECTORY SUB-POPUP MODAL (#trajectoryModal)
          ===================================================================== -->
-    <div class="modal-backdrop sub-modal-backdrop" id="trajectoryModal">
+    <div class="modal-backdrop sub-modal-backdrop" id="trajectoryModal" role="dialog" aria-modal="true" aria-hidden="true" inert>
       <div class="modal-card trajectory-popup-card">
         <div class="leaderboard-top-bar">
           <div class="leaderboard-title-wrap">
@@ -538,7 +649,7 @@
 
         <div class="trajectory-options-list" id="patternGrid">
           <button type="button" class="pattern-chip active" data-pattern="spiral">
-            <span class="pattern-icon">🌀</span>
+            <span class="pattern-icon" aria-hidden="true">🌀</span>
             <div class="pattern-chip-info">
               <strong>Spiral Vortex</strong>
               <small>Concentric inward/outward spiral orbits</small>
@@ -546,7 +657,7 @@
           </button>
 
           <button type="button" class="pattern-chip" data-pattern="zigzag">
-            <span class="pattern-icon">⚡</span>
+            <span class="pattern-icon" aria-hidden="true">⚡</span>
             <div class="pattern-chip-info">
               <strong>Zig-Zag Sweep</strong>
               <small>Sharp angular sawtooth vectors</small>
@@ -554,7 +665,7 @@
           </button>
 
           <button type="button" class="pattern-chip" data-pattern="random">
-            <span class="pattern-icon">🎲</span>
+            <span class="pattern-icon" aria-hidden="true">🎲</span>
             <div class="pattern-chip-info">
               <strong>Random Drift</strong>
               <small>Chaotic multi-directional elastic motion</small>
@@ -562,7 +673,7 @@
           </button>
 
           <button type="button" class="pattern-chip" data-pattern="wave">
-            <span class="pattern-icon">🌊</span>
+            <span class="pattern-icon" aria-hidden="true">🌊</span>
             <div class="pattern-chip-info">
               <strong>Harmonic Wave</strong>
               <small>Flowing sinusoidal streams</small>
@@ -570,7 +681,7 @@
           </button>
 
           <button type="button" class="pattern-chip" data-pattern="mixed">
-            <span class="pattern-icon">🔀</span>
+            <span class="pattern-icon" aria-hidden="true">🔀</span>
             <div class="pattern-chip-info">
               <strong>Hybrid Chaos</strong>
               <small>Combines spiral, zig-zag &amp; random</small>
@@ -587,7 +698,7 @@
     <!-- =====================================================================
          5B. COLOR THEME SUB-POPUP MODAL (#themeModal)
          ===================================================================== -->
-    <div class="modal-backdrop sub-modal-backdrop" id="themeModal">
+    <div class="modal-backdrop sub-modal-backdrop" id="themeModal" role="dialog" aria-modal="true" aria-hidden="true" inert>
       <div class="modal-card trajectory-popup-card theme-popup-card">
         <div class="leaderboard-top-bar">
           <div class="leaderboard-title-wrap">
@@ -611,32 +722,42 @@
           </button>
 
           <button type="button" class="pattern-chip theme-chip" data-theme-id="green">
-            <span class="theme-swatch" style="background: #001100; border-color: #008F11;">
+            <span class="theme-swatch" style="background: #001100; border-color: #00A819;">
               <span class="theme-swatch-dot" style="background: #39FF14;"></span>
             </span>
             <div class="pattern-chip-info">
               <strong>Phosphor Green</strong>
-              <small>BG: #001100 • Primary: #39FF14 • Border: #008F11</small>
+              <small>BG: #001100 • Primary: #39FF14 • Border: #00A819</small>
             </div>
           </button>
 
           <button type="button" class="pattern-chip theme-chip" data-theme-id="cyan">
             <span class="theme-swatch" style="background: #0B0C10; border-color: #00E5FF;">
-              <span class="theme-swatch-dot" style="background: #00E5FF; box-shadow: 0 0 6px #FF007F;"></span>
+              <span class="theme-swatch-dot" style="background: #00E5FF; box-shadow: 0 0 6px #FF4D9E;"></span>
             </span>
             <div class="pattern-chip-info">
               <strong>Cyberpunk Cyan</strong>
-              <small>BG: #0B0C10 • Primary: #00E5FF • Accent: #FF007F</small>
+              <small>BG: #0B0C10 • Primary: #00E5FF • Accent: #FF4D9E</small>
             </div>
           </button>
 
           <button type="button" class="pattern-chip theme-chip" data-theme-id="magenta">
-            <span class="theme-swatch" style="background: #1A0B1F; border-color: #FF00CC;">
-              <span class="theme-swatch-dot" style="background: #FF00CC; box-shadow: 0 0 6px #FFE600;"></span>
+            <span class="theme-swatch" style="background: #1A0B1F; border-color: #FF33D4;">
+              <span class="theme-swatch-dot" style="background: #FF33D4; box-shadow: 0 0 6px #FFE600;"></span>
             </span>
             <div class="pattern-chip-info">
               <strong>Vaporwave Magenta</strong>
-              <small>BG: #1A0B1F • Primary: #FF00CC • Accent: #FFE600</small>
+              <small>BG: #1A0B1F • Primary: #FF33D4 • Accent: #FFE600</small>
+            </div>
+          </button>
+
+          <button type="button" class="pattern-chip theme-chip" data-theme-id="clear">
+            <span class="theme-swatch" style="background: #0A0E14; border-color: #38BDF8;">
+              <span class="theme-swatch-dot" style="background: #FFFFFF;"></span>
+            </span>
+            <div class="pattern-chip-info">
+              <strong>Clear (High Contrast)</strong>
+              <small>Plain bold sans-serif numbers • Larger radius • No scanlines</small>
             </div>
           </button>
         </div>
@@ -648,12 +769,12 @@
     </div>
 
     <!-- =====================================================================
-         6. RESULTS / COGNITIVE TELEMETRY MODAL (#resultsModal)
+         6. RESULTS / END-OF-ROUND MODAL (#resultsModal)
          ===================================================================== -->
-    <div class="modal-backdrop" id="resultsModal">
+    <div class="modal-backdrop" id="resultsModal" role="dialog" aria-modal="true" aria-hidden="true" inert>
       <div class="modal-card results-card">
         <div class="top-nav-strip modal-nav-strip">
-          <button type="button" class="top-strip-icon-btn" id="btnLeaderboardResults" title="Total Score Leaderboard" aria-label="Open Leaderboard">
+          <button type="button" class="top-strip-icon-btn" id="btnLeaderboardResults" title="Leaderboard" aria-label="Open Leaderboard">
             <svg viewBox="0 0 36 32" width="28" height="26" fill="currentColor" aria-hidden="true">
               <path d="M3 13 L10 13 L11 29 L5 29 Z" />
               <path d="M26 16 L33 16 L31 29 L25 29 Z" />
@@ -674,9 +795,18 @@
         </div>
 
         <div class="modal-header">
-          <span class="badge-pill" id="resultBadge">SESSION COMPLETE</span>
+          <div class="results-badge-row">
+            <span class="badge-pill" id="resultBadge">ROUND COMPLETE</span>
+            <span class="streak-fire-pill" id="resStreakBadge">🔥 0</span>
+          </div>
           <h2 id="resultHeadline">Time's Up!</h2>
-          <p id="resultSubheadline">Here is your cognitive visual-motor breakdown.</p>
+          <p id="resultSubheadline">Your speed breakdown.</p>
+        </div>
+
+        <!-- 0-Score Helpful Tip & How to Play Button (Phase 3.9) -->
+        <div class="zero-score-tip-box" id="zeroScoreHelpWrap" hidden>
+          <p>No numbers cleared yet — tip: find the <strong>NEXT TARGET</strong> number and flick it out!</p>
+          <button type="button" class="secondary-btn" id="btnZeroScoreHowToPlay">HOW TO PLAY</button>
         </div>
 
         <div class="stats-grid">
@@ -685,26 +815,43 @@
             <span class="stat-val accent-cyan" id="resExtracted">0</span>
           </div>
           <div class="stat-box">
-            <span class="stat-label">TOTAL SCORE</span>
+            <span class="stat-label" id="resSecondStatLabel">BEST / TOTAL</span>
             <span class="stat-val mono accent-amber" id="resTime">—</span>
           </div>
           <div class="stat-box">
             <span class="stat-label">AVG SPEED</span>
-            <span class="stat-val mono" id="resAvgSpeed">3.05s / #</span>
+            <span class="stat-val mono" id="resAvgSpeed">—</span>
           </div>
           <div class="stat-box">
             <span class="stat-label">ACCURACY</span>
-            <span class="stat-val accent-emerald" id="resAccuracy">100%</span>
+            <span class="stat-val accent-emerald" id="resAccuracy">—</span>
           </div>
         </div>
 
         <!-- Reaction Split Mini Chart -->
         <div class="telemetry-section">
           <div class="telemetry-header">
-            <span>Visual Search &amp; Extraction Splits (sec per number)</span>
-            <span id="resCognitiveRank" class="rank-chip">Cognitive Rating: S</span>
+            <span class="telemetry-title-text">Speed per number (sec)</span>
+            <span id="resCognitiveRank" class="rank-chip">Sweep Rank: S</span>
           </div>
           <div class="split-bars" id="splitBarsContainer"></div>
+        </div>
+
+        <!-- Share & Sponsor CTA Row (Phase 5.4 & 6.5) -->
+        <div class="results-share-cta-row">
+          <button type="button" class="secondary-btn share-result-btn" id="btnShareResult">
+            <span>SHARE SCORE</span>
+          </button>
+          <a
+            href="#"
+            target="_blank"
+            rel="noopener sponsored"
+            class="primary-btn sponsor-cta-btn"
+            id="btnEmbedSponsorCta"
+            hidden
+          >
+            <span id="embedSponsorCtaText">VISIT SPONSOR</span>
+          </a>
         </div>
 
         <div class="modal-footer results-actions">
@@ -719,23 +866,25 @@
     <!-- =====================================================================
          7. PLAYER REGISTRATION MODAL (#registerModal)
          ===================================================================== -->
-    <div class="modal-backdrop sub-modal-backdrop" id="registerModal">
+    <div class="modal-backdrop sub-modal-backdrop" id="registerModal" role="dialog" aria-modal="true" aria-hidden="true" inert>
       <div class="modal-card register-card">
         <div class="modal-header">
           <span class="badge-pill">GLOBAL LEADERBOARD PROFILE</span>
-          <h2>Player Registration</h2>
-          <p>Enter your unique callsign and email to record your cumulative scores on the Global BrainSweep Leaderboard.</p>
+          <h2 id="registerModalTitle">Save this score to the leaderboard?</h2>
+          <p>Your email is only used to protect your username and recover your scores.</p>
         </div>
 
         <form id="registerForm" class="register-form" novalidate>
           <div class="form-field">
-            <label for="regUsername">USERNAME (UNIQUE)</label>
+            <label for="regUsername">USERNAME (3–16 LETTERS/NUMBERS/_)</label>
             <input
               type="text"
               id="regUsername"
               name="username"
-              maxlength="20"
-              placeholder="e.g. NeoCortex99"
+              minlength="3"
+              maxlength="16"
+              pattern="[A-Za-z0-9_]{3,16}"
+              placeholder="e.g. KuboRunner99"
               autocomplete="username"
               required
             />
@@ -754,12 +903,21 @@
             />
           </div>
 
+          <label class="toggle-option retro-toggle-row register-optin-row" for="regMarketingOptIn">
+            <input type="checkbox" id="regMarketingOptIn" class="retro-checkbox" />
+            <span class="retro-checkbox-box" aria-hidden="true"></span>
+            <span class="toggle-text">
+              <strong>Send me game updates (optional)</strong>
+              <small>Unticked by default. Unsubscribe anytime.</small>
+            </span>
+          </label>
+
           <div class="form-error" id="regErrorMsg" hidden></div>
 
           <div class="modal-footer register-actions">
-            <button type="button" class="secondary-btn" id="btnCancelRegister">Cancel</button>
+            <button type="button" class="secondary-btn" id="btnCancelRegister">Not now</button>
             <button type="submit" class="primary-btn" id="btnSubmitRegister">
-              <span id="btnSubmitRegisterText">SAVE &amp; CONTINUE</span>
+              <span id="btnSubmitRegisterText">SAVE SCORE</span>
             </button>
           </div>
         </form>
@@ -767,25 +925,32 @@
     </div>
 
     <!-- =====================================================================
-         8. GLOBAL CUMULATIVE SCORE LEADERBOARD MODAL (#leaderboardModal)
+         8. GLOBAL LEADERBOARD MODAL (#leaderboardModal — Today / Week / All-Time)
          ===================================================================== -->
-    <div class="modal-backdrop" id="leaderboardModal">
+    <div class="modal-backdrop" id="leaderboardModal" role="dialog" aria-modal="true" aria-hidden="true" inert>
       <div class="modal-card leaderboard-card">
         <div class="leaderboard-top-bar">
           <div class="leaderboard-title-wrap">
             <span class="badge-pill">TOP 50 GLOBAL RANKINGS</span>
-            <h2>TOTAL SCORE LEADERBOARD</h2>
+            <h2>LEADERBOARD</h2>
           </div>
           <button type="button" class="icon-btn icon-only" id="btnCloseLeaderboard" title="Close Leaderboard" aria-label="Close Leaderboard">
             ✕
           </button>
         </div>
 
-        <!-- 3 Difficulty Cumulative Tabs: EASY TOTAL | MEDIUM TOTAL | HARD TOTAL -->
-        <div class="leaderboard-tabs" id="leaderboardTabs" role="tablist">
-          <button type="button" class="lb-tab active" data-lb-diff="easy" role="tab" aria-selected="true">EASY TOTAL</button>
-          <button type="button" class="lb-tab" data-lb-diff="medium" role="tab" aria-selected="false">MEDIUM TOTAL</button>
-          <button type="button" class="lb-tab" data-lb-diff="hard" role="tab" aria-selected="false">HARD TOTAL</button>
+        <!-- Primary Board Tabs: TODAY (DAILY) | THIS WEEK | ALL-TIME BEST -->
+        <div class="leaderboard-board-tabs" id="leaderboardBoardTabs" role="tablist" aria-label="Leaderboard Timeframe">
+          <button type="button" class="lb-board-tab" data-lb-board="today" role="tab" aria-selected="false">TODAY (DAILY)</button>
+          <button type="button" class="lb-board-tab" data-lb-board="week" role="tab" aria-selected="false">THIS WEEK</button>
+          <button type="button" class="lb-board-tab active" data-lb-board="alltime" role="tab" aria-selected="true">ALL-TIME BEST</button>
+        </div>
+
+        <!-- Secondary Difficulty Tabs: EASY | MEDIUM | HARD -->
+        <div class="leaderboard-tabs" id="leaderboardTabs" role="tablist" aria-label="Difficulty Filter">
+          <button type="button" class="lb-tab active" data-lb-diff="easy" role="tab" aria-selected="true">EASY</button>
+          <button type="button" class="lb-tab" data-lb-diff="medium" role="tab" aria-selected="false">MEDIUM</button>
+          <button type="button" class="lb-tab" data-lb-diff="hard" role="tab" aria-selected="false">HARD</button>
         </div>
 
         <!-- Leaderboard Table Container -->
@@ -795,12 +960,13 @@
               <tr>
                 <th class="col-pos">POS</th>
                 <th class="col-name">NAME</th>
-                <th class="col-pts">POINTS</th>
+                <th class="col-pts">SCORE</th>
+                <th class="col-time">TIME</th>
               </tr>
             </thead>
             <tbody id="leaderboardTableBody">
               <tr>
-                <td colspan="3" class="lb-status-cell">Loading global scores...</td>
+                <td colspan="4" class="lb-status-cell">Loading global scores...</td>
               </tr>
             </tbody>
           </table>
@@ -819,11 +985,11 @@
     <!-- =====================================================================
          8B. SINGLE-PAGE STATISTICS MODAL (#statisticsModal)
          ===================================================================== -->
-    <div class="modal-backdrop" id="statisticsModal">
+    <div class="modal-backdrop" id="statisticsModal" role="dialog" aria-modal="true" aria-hidden="true" inert>
       <div class="modal-card statistics-card" id="statisticsCard">
         <div class="leaderboard-top-bar">
           <div class="leaderboard-title-wrap">
-            <span class="badge-pill">COGNITIVE TELEMETRY // ARCHIVE</span>
+            <span class="badge-pill">PLAYER TELEMETRY // ARCHIVE</span>
             <h2>STATISTICS</h2>
           </div>
           <button type="button" class="icon-btn icon-only" id="btnCloseStatistics" title="Close Statistics" aria-label="Close Statistics">
@@ -905,11 +1071,11 @@
     <!-- =====================================================================
          8C. ACHIEVEMENTS MODAL (#achievementsModal)
          ===================================================================== -->
-    <div class="modal-backdrop" id="achievementsModal">
+    <div class="modal-backdrop" id="achievementsModal" role="dialog" aria-modal="true" aria-hidden="true" inert>
       <div class="modal-card achievements-card">
         <div class="leaderboard-top-bar">
           <div class="leaderboard-title-wrap">
-            <span class="badge-pill" id="achievementsCountBadge">UNLOCKED: 0 / 15</span>
+            <span class="badge-pill" id="achievementsCountBadge">UNLOCKED: 0 / 17</span>
             <h2 class="achievements-header-title">
               <svg class="achievements-trophy-svg" viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2.2" aria-hidden="true">
                 <path d="M6 4h12v5a6 6 0 0 1-12 0V4z" />
@@ -942,7 +1108,7 @@
          ===================================================================== -->
     <nav class="bottom-nav-tray" id="bottomNav" aria-label="Main Navigation">
       <!-- 1. High Score Icon (Podium) -->
-      <button type="button" class="bottom-nav-btn" data-nav="leaderboard" id="navBtnLeaderboard" title="Total Score Leaderboard" aria-label="High Scores">
+      <button type="button" class="bottom-nav-btn" data-nav="leaderboard" id="navBtnLeaderboard" title="Leaderboard">
         <svg viewBox="0 0 36 32" width="24" height="22" fill="currentColor" aria-hidden="true">
           <path d="M3 14 L10 14 L11 28 L5 28 Z" />
           <path d="M26 17 L33 17 L31 28 L25 28 Z" />
@@ -952,7 +1118,7 @@
       </button>
 
       <!-- 2. Gamepad Icon (Play / Levels) -->
-      <button type="button" class="bottom-nav-btn" data-nav="levels" id="navBtnLevels" title="Select Difficulty / Stage" aria-label="Level Select">
+      <button type="button" class="bottom-nav-btn" data-nav="levels" id="navBtnLevels" title="Select Difficulty">
         <svg viewBox="0 0 28 24" width="24" height="22" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round" aria-hidden="true">
           <rect x="2" y="6" width="24" height="13" rx="4" />
           <line x1="8" y1="10" x2="8" y2="15" />
@@ -964,7 +1130,7 @@
       </button>
 
       <!-- 3. Home Icon (House) -->
-      <button type="button" class="bottom-nav-btn active" data-nav="home" id="navBtnHome" title="Home Screen" aria-label="Home Screen">
+      <button type="button" class="bottom-nav-btn active" data-nav="home" id="navBtnHome" title="Home Screen">
         <svg viewBox="0 0 24 24" width="24" height="22" fill="currentColor" aria-hidden="true">
           <path d="M12 3L2 11.5h3V21h5v-6h4v6h5v-9.5h3L12 3z" />
         </svg>
@@ -972,7 +1138,7 @@
       </button>
 
       <!-- 4. Help Icon (Question Mark) -->
-      <button type="button" class="bottom-nav-btn" data-nav="help" id="navBtnHelp" title="Rules &amp; Scoring Guide" aria-label="Help">
+      <button type="button" class="bottom-nav-btn" data-nav="help" id="navBtnHelp" title="How to Play">
         <svg viewBox="0 0 24 24" width="24" height="22" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="square" aria-hidden="true">
           <path d="M9 9a3 3 0 1 1 4.5 2.6c-.9.5-1.5 1.2-1.5 2.4v1" />
           <rect x="11" y="18" width="2.2" height="2.2" fill="currentColor" stroke="none" />
@@ -981,7 +1147,7 @@
       </button>
 
       <!-- 5. Settings Icon (Gear / Cog) -->
-      <button type="button" class="bottom-nav-btn" data-nav="settings" id="navBtnSettings" title="Game Settings" aria-label="Settings">
+      <button type="button" class="bottom-nav-btn" data-nav="settings" id="navBtnSettings" title="Settings">
         <svg viewBox="0 0 24 24" width="24" height="22" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
           <circle cx="12" cy="12" r="3.2" />
           <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" />
@@ -1007,15 +1173,20 @@
       </button>
     </div>
 
-    <!-- Non-Intrusive Cookie & LocalStorage Consent Banner -->
-    <div class="cookie-consent-banner" id="cookieConsentBanner" role="region" aria-label="Cookie Consent" hidden>
+    <!-- Honest LocalStorage & Consent-Gated Analytics Banner (Phase 2) -->
+    <div class="cookie-consent-banner" id="cookieConsentBanner" role="region" aria-label="Storage and Analytics Consent" hidden>
       <span class="cookie-consent-text">
-        This game uses cookies &amp; local storage for preferences and anonymized gameplay analytics.
+        We store your settings on this device. With your OK, we also count anonymous plays to improve the game.
       </span>
-      <button type="button" class="cookie-accept-btn" id="btnAcceptCookies">ACCEPT</button>
+      <div class="cookie-consent-actions">
+        <button type="button" class="cookie-decline-btn" id="btnDeclineCookies">DECLINE</button>
+        <button type="button" class="cookie-accept-btn" id="btnAcceptCookies">ACCEPT</button>
+      </div>
     </div>
   </div>
 
+  <script src="config.js"></script>
+  <script src="analytics.js"></script>
   <script src="game.js"></script>
 </body>
 </html>
