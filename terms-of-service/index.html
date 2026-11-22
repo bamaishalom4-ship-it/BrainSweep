@@ -154,7 +154,7 @@
     </header>
 
     <p>
-      These Terms of Service ("Terms") govern access to and use of the <strong>BrainSweep</strong> 60-second number puzzle game and B2B embeddable engagement widget (the "Service"), operated by <strong data-cfg="legalEntity">BrainSweep</strong> (<span data-cfg="country">Nigeria</span>). By playing or embedding BrainSweep, you agree to these Terms.
+      BrainSweep is a game operated by <strong data-cfg="legalEntity">MadeByKubo</strong>, based in <span data-cfg="country">Nigeria</span>. These Terms of Service ("Terms") govern access to and use of the <strong>BrainSweep</strong> 60-second number puzzle game and B2B embeddable engagement widget (the "Service"). By playing or embedding BrainSweep, you agree to these Terms.
     </p>
 
     <h2>1. ENTERTAINMENT NATURE OF THE SERVICE</h2>
@@ -177,17 +177,18 @@
 
     <h2>4. INTELLECTUAL PROPERTY</h2>
     <p>
-      All code, visual themes, audio synthesis, and branding of BrainSweep remain the property of <strong data-cfg="legalEntity">BrainSweep</strong>. Sponsor logos and CTA links passed via embed URL parameters remain the property of their respective Publishers or sponsors.
+      All code, visual themes, audio synthesis, and branding of BrainSweep remain the property of <strong data-cfg="legalEntity">MadeByKubo</strong>. Sponsor logos and CTA links passed via embed URL parameters remain the property of their respective Publishers or sponsors.
     </p>
 
     <h2>5. DISCLAIMER OF WARRANTIES &amp; LIMITATION OF LIABILITY</h2>
     <p>
-      The Service is provided "AS IS" and "AS AVAILABLE" without warranties of any kind. To the fullest extent permitted by law, <strong data-cfg="legalEntity">BrainSweep</strong> shall not be liable for any indirect, incidental, or consequential damages arising from the use or unavailability of the Service.
+      The Service is provided "AS IS" and "AS AVAILABLE" without warranties of any kind. To the fullest extent permitted by law, <strong data-cfg="legalEntity">MadeByKubo</strong> shall not be liable for any indirect, incidental, or consequential damages arising from the use or unavailability of the Service.
     </p>
 
     <h2>6. GOVERNING LAW &amp; CONTACT</h2>
     <p>
       These Terms are governed by and construed in accordance with the laws of the <strong>Federal Republic of Nigeria</strong>. Any disputes shall be subject to the exclusive jurisdiction of the courts located in Abuja, FCT, Nigeria.<br />
+      Operator: <strong data-cfg="legalEntity">MadeByKubo</strong> (<span data-cfg="country">Nigeria</span>)<br />
       Contact: <strong data-cfg="contactEmail">madebykubo@gmail.com</strong>
     </p>
 
@@ -196,6 +197,9 @@
       <a href="../dpa/">[ DATA PROCESSING AGREEMENT ]</a>
       <a href="../developers/">[ DEVELOPER EMBED KIT ]</a>
     </nav>
+    <footer style="margin-top: 20px; padding-top: 14px; border-top: 1px dashed var(--border-subtle); font-family: var(--font-pixel); font-size: 0.5rem; color: var(--muted-text); text-align: center;">
+      BrainSweep © <span data-year>2026</span> MadeByKubo
+    </footer>
   </main>
   <script>
     (function () {
@@ -203,6 +207,10 @@
       document.querySelectorAll('[data-cfg]').forEach(function (el) {
         var key = el.getAttribute('data-cfg');
         if (cfg[key]) el.textContent = cfg[key];
+      });
+      var y = String(new Date().getFullYear());
+      document.querySelectorAll('[data-year]').forEach(function (el) {
+        el.textContent = y;
       });
     })();
   </script>

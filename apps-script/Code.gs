@@ -27,6 +27,7 @@ const LEADERBOARD_SHEET_NAME = 'Leaderboard';
 const ROUNDS_SHEET_NAME = 'RoundsLog';
 const LEADS_SHEET_NAME = 'PublisherLeads';
 const LEAD_ALERT_EMAIL = 'madebykubo@gmail.com';
+const MIGRATION_DATE_ISO = '2026-11-22T00:00:00.000Z';
 
 const LEADERBOARD_HEADERS = [
   'Username',
@@ -43,6 +44,7 @@ const LEADERBOARD_HEADERS = [
   'MarketingOptIn',
   'MarketingOptInAt',
   'UpdatedAt',
+  'legacy',
 ];
 
 const ROUNDS_HEADERS = [
@@ -54,6 +56,7 @@ const ROUNDS_HEADERS = [
   'IsDaily',
   'Score',
   'TimeMs',
+  'legacy',
 ];
 
 const LEADS_HEADERS = [
@@ -143,6 +146,16 @@ function jsonResponse(payload) {
   );
 }
 
+function errorResponse(errorCode, message) {
+  return jsonResponse({
+    ok: false,
+    status: 'error',
+    error: errorCode,
+    code: String(errorCode || 'server_error').toUpperCase(),
+    message: message || errorCode,
+  });
+}
+
 function getOrInitLeaderboardSheet() {
   const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
   let sheet = ss.getSheetByName(LEADERBOARD_SHEET_NAME) || ss.getSheets()[0];
@@ -158,7 +171,7 @@ function getOrInitLeaderboardSheet() {
     if (String(firstRow[0]).trim() !== 'Username') {
       sheet.insertRowBefore(1);
       sheet.getRange(1, 1, 1, LEADERBOARD_HEADERS.length).setValues([LEADERBOARD_HEADERS]);
-    } else if (sheet.getLastColumn() < LEADERBOARD_HEADERS.length) {
+    } else if (sheet.getLastColumn() < LEADERBOARD_HEADERS.length || String(firstRow[14] || '').trim() !== 'legacy') {
       sheet.getRange(1, 1, 1, LEADERBOARD_HEADERS.length).setValues([LEADERBOARD_HEADERS]);
     }
   }
@@ -173,8 +186,89 @@ function getOrInitRoundsSheet() {
     sheet.appendRow(ROUNDS_HEADERS);
   } else if (sheet.getLastRow() === 0) {
     sheet.appendRow(ROUNDS_HEADERS);
+  } else {
+    const numCols = Math.max(sheet.getLastColumn(), ROUNDS_HEADERS.length);
+    const firstRow = sheet.getRange(1, 1, 1, numCols).getValues()[0];
+    if (sheet.getLastColumn() < ROUNDS_HEADERS.length || String(firstRow[8] || '').trim() !== 'legacy') {
+      sheet.getRange(1, 1, 1, ROUNDS_HEADERS.length).setValues([ROUNDS_HEADERS]);
+    }
   }
   return sheet;
+}
+
+/**
+ * ONE-TIME MIGRATION FUNCTION (run manually once from Apps Script Editor):
+ * Flags legacy rows where score === targetCount AND timeMs === 60000 (or converted from
+ * old cumulative totals) created before MIGRATION_DATE_ISO with legacy = TRUE.
+ * Does NOT delete any rows.
+ */
+function cleanLegacyRows() {
+  const migrationMs = Date.parse(MIGRATION_DATE_ISO);
+  let flaggedLeaderboard = 0;
+  let flaggedRounds = 0;
+
+  // 1. Flag legacy rows in Leaderboard sheet
+  const lbSheet = getOrInitLeaderboardSheet();
+  const lbLast = lbSheet.getLastRow();
+  if (lbLast > 1) {
+    const lbData = lbSheet
+      .getRange(2, 1, lbLast - 1, LEADERBOARD_HEADERS.length)
+      .getValues();
+    for (let i = 0; i < lbData.length; i++) {
+      const row = lbData[i];
+      const updatedMs = normalizeSheetTimestampMs(row[13]);
+      const isBeforeMigration = !Number.isFinite(updatedMs) || updatedMs < migrationMs;
+
+      const easyCum = parseSafeInt(row[2], 0);
+      const medCum = parseSafeInt(row[3], 0);
+      const hardCum = parseSafeInt(row[4], 0);
+
+      const easyBest = parseSafeInt(row[5], 0);
+      const easyTime = parseSafeInt(row[6], 60000) || 60000;
+      const medBest = parseSafeInt(row[7], 0);
+      const medTime = parseSafeInt(row[8], 60000) || 60000;
+      const hardBest = parseSafeInt(row[9], 0);
+      const hardTime = parseSafeInt(row[10], 60000) || 60000;
+
+      const isConvertedFromCumulative =
+        (easyBest === 0 && easyCum > 0) ||
+        (medBest === 0 && medCum > 0) ||
+        (hardBest === 0 && hardCum > 0);
+      const isExact60kCap =
+        (easyBest === 12 && easyTime === 60000) ||
+        (medBest === 20 && medTime === 60000) ||
+        (hardBest === 25 && hardTime === 60000);
+
+      const isLegacy = isBeforeMigration && (isConvertedFromCumulative || isExact60kCap);
+      lbSheet.getRange(i + 2, 15).setValue(isLegacy);
+      if (isLegacy) flaggedLeaderboard += 1;
+    }
+  }
+
+  // 2. Flag legacy rows in RoundsLog sheet
+  const rSheet = getOrInitRoundsSheet();
+  const rLast = rSheet.getLastRow();
+  if (rLast > 1) {
+    const rData = rSheet.getRange(2, 1, rLast - 1, ROUNDS_HEADERS.length).getValues();
+    for (let i = 0; i < rData.length; i++) {
+      const row = rData[i];
+      const tsMs = normalizeSheetTimestampMs(row[0]);
+      const isBeforeMigration = !Number.isFinite(tsMs) || tsMs < migrationMs;
+      const diffKey = String(row[4] || '').trim().toLowerCase();
+      const diffCfg = ALLOWED_DIFFICULTIES[diffKey] || ALLOWED_DIFFICULTIES.easy;
+      const score = parseSafeInt(row[6], 0);
+      const timeMs = parseSafeInt(row[7], 60000) || 60000;
+
+      const isLegacy = isBeforeMigration && timeMs === 60000 && score === diffCfg.maxTargets;
+      rSheet.getRange(i + 2, 9).setValue(isLegacy);
+      if (isLegacy) flaggedRounds += 1;
+    }
+  }
+
+  Logger.log(
+    `cleanLegacyRows complete. Flagged Leaderboard rows: ${flaggedLeaderboard}, RoundsLog rows: ${flaggedRounds}`
+  );
+  return { ok: true, flaggedLeaderboard, flaggedRounds };
 }
 
 function getOrInitLeadsSheet() {
@@ -332,7 +426,8 @@ function containsProfanity(username) {
  * doGet(e)
  * Query params:
  *   ?board=today | week | alltime (default: alltime)
- *   ?difficulty=easy | medium | hard (default: easy)
+ *   ?difficulty=easy | medium | hard | daily_easy | daily_medium | daily_hard (default: easy)
+ * Excludes legacy=TRUE rows from all boards. Daily and normal runs are strictly separated.
  * Returns top 50 entries: { position, username, score, timeMs } — NEVER returns emails.
  */
 function doGet(e) {
@@ -341,16 +436,25 @@ function doGet(e) {
       .trim()
       .toLowerCase();
     const diffCfg = ALLOWED_DIFFICULTIES[rawDiff] || ALLOWED_DIFFICULTIES.easy;
+    const requestedDiff = ALLOWED_DIFFICULTIES[rawDiff] ? rawDiff : 'easy';
     const baseDiff = diffCfg.base;
+    const isDailyReq = diffCfg.isDaily;
     const board = String((e && e.parameter && e.parameter.board) || 'alltime')
       .trim()
       .toLowerCase();
 
-    if (board === 'today' || board === 'week') {
+    // Daily boards or today/week boards read strictly from RoundsLog (excluding legacy rows)
+    if (board === 'today' || board === 'week' || isDailyReq) {
       const roundsSheet = getOrInitRoundsSheet();
       const lastRow = roundsSheet.getLastRow();
       if (lastRow <= 1) {
-        return jsonResponse({ status: 'ok', board, difficulty: baseDiff, entries: [] });
+        return jsonResponse({
+          ok: true,
+          status: 'ok',
+          board,
+          difficulty: requestedDiff,
+          entries: [],
+        });
       }
       const rows = roundsSheet
         .getRange(2, 1, lastRow - 1, ROUNDS_HEADERS.length)
@@ -360,18 +464,27 @@ function doGet(e) {
 
       const bestByUser = {};
       for (let i = 0; i < rows.length; i++) {
+        const isLegacyRow = normalizeSheetBool(rows[i][8]);
+        if (isLegacyRow) continue;
+
         const tsMs = normalizeSheetTimestampMs(rows[i][0]);
         const dateLagos = normalizeSheetDateLagos(rows[i][1]);
         const uname = String(rows[i][3] || '').trim();
         const rowDiff = String(rows[i][4] || '').trim().toLowerCase();
-        const isDaily = normalizeSheetBool(rows[i][5]);
+        const isDailyRow =
+          normalizeSheetBool(rows[i][5]) || rowDiff.indexOf('daily_') === 0;
+        const rowBaseDiff = rowDiff.replace(/^daily_/, '');
         const score = parseSafeInt(rows[i][6], 0);
         const timeMs = parseSafeInt(rows[i][7], 60000);
 
-        if (!uname || score <= 0 || rowDiff !== baseDiff) continue;
+        if (!uname || score <= 0 || rowBaseDiff !== baseDiff) continue;
+
+        // Strict separation: daily_* queries ONLY return daily runs; normal queries NEVER include daily runs
+        if (isDailyReq && !isDailyRow) continue;
+        if (!isDailyReq && isDailyRow) continue;
 
         if (board === 'today') {
-          if (!isDaily || dateLagos !== todayLagos) continue;
+          if (dateLagos !== todayLagos) continue;
         } else if (board === 'week') {
           if (Number.isFinite(tsMs) && tsMs < sevenDaysAgoMs) continue;
         }
@@ -400,35 +513,43 @@ function doGet(e) {
         timeMs: item.timeMs,
       }));
 
-      return jsonResponse({ status: 'ok', board, difficulty: baseDiff, entries: top50 });
+      return jsonResponse({
+        ok: true,
+        status: 'ok',
+        board,
+        difficulty: requestedDiff,
+        entries: top50,
+      });
     }
 
-    // Default board: 'alltime' (Best single round per user, tie-broken by faster timeMs)
+    // Normal 'alltime' board (Best single normal round per user, excluding legacy rows)
     const sheet = getOrInitLeaderboardSheet();
     const lastRow = sheet.getLastRow();
     if (lastRow <= 1) {
-      return jsonResponse({ status: 'ok', board: 'alltime', difficulty: baseDiff, entries: [] });
+      return jsonResponse({
+        ok: true,
+        status: 'ok',
+        board: 'alltime',
+        difficulty: requestedDiff,
+        entries: [],
+      });
     }
 
     const data = sheet
       .getRange(2, 1, lastRow - 1, LEADERBOARD_HEADERS.length)
       .getValues();
-    const cumCol = baseDiff === 'medium' ? 3 : baseDiff === 'hard' ? 4 : 2;
     const bestCol = baseDiff === 'medium' ? 7 : baseDiff === 'hard' ? 9 : 5;
     const timeCol = baseDiff === 'medium' ? 8 : baseDiff === 'hard' ? 10 : 6;
-    const maxTargets = diffCfg.maxTargets;
 
     const entries = [];
     for (let i = 0; i < data.length; i++) {
+      const isLegacyRow = normalizeSheetBool(data[i][14]);
+      if (isLegacyRow) continue;
+
       const uname = String(data[i][0] || '').trim();
       if (!uname) continue;
 
-      let bestScore = parseSafeInt(data[i][bestCol], 0);
-      const cumScore = parseSafeInt(data[i][cumCol], 0);
-      // Fallback migration for legacy rows before EasyBest column existed
-      if (bestScore === 0 && cumScore > 0) {
-        bestScore = Math.min(maxTargets, cumScore);
-      }
+      const bestScore = parseSafeInt(data[i][bestCol], 0);
       const bestTimeMs = parseSafeInt(data[i][timeCol], 60000) || 60000;
 
       if (bestScore > 0) {
@@ -453,24 +574,25 @@ function doGet(e) {
     }));
 
     return jsonResponse({
+      ok: true,
       status: 'ok',
       board: 'alltime',
-      difficulty: baseDiff,
+      difficulty: requestedDiff,
       entries: top50,
     });
   } catch (err) {
-    return jsonResponse({
-      status: 'error',
-      code: 'SERVER_ERROR',
-      message: String(err && err.message ? err.message : err),
-    });
+    return errorResponse(
+      'server_error',
+      String(err && err.message ? err.message : err)
+    );
   }
 }
 
 /**
  * doPost(e)
- * Validates & records score submissions with rate limiting, duplicate roundId prevention,
- * plausible time checks, and marketing opt-in storage.
+ * Validates & records score submissions with 20s cooldown + 60/day rate limits,
+ * required unique roundId, plausible time bounds (score*350..60000ms), HTML-stripped
+ * nicknames (2-16 chars) with profanity filter, optional email, and marketing opt-in.
  */
 function doPost(e) {
   const lock = LockService.getScriptLock();
@@ -486,110 +608,140 @@ function doPost(e) {
       return handlePublisherLeadSubmission(body);
     }
 
-    const username = String(body.username || '').trim();
+    // 1. Validate Nickname / Username (strip HTML, 2-16 chars, no profanity)
+    const rawName = String(
+      body.nickname !== undefined ? body.nickname : body.username || ''
+    );
+    const strippedName = rawName.replace(/<[^>]*>/g, '').trim();
+    if (
+      strippedName.length < 2 ||
+      strippedName.length > 16 ||
+      !/^[A-Za-z0-9_ -]{2,16}$/.test(strippedName)
+    ) {
+      return errorResponse(
+        'invalid_nickname',
+        'Nickname must be 2–16 characters (letters, numbers, spaces, hyphen, or underscore).'
+      );
+    }
+    if (containsProfanity(strippedName)) {
+      return errorResponse(
+        'profanity_blocked',
+        'Please choose an appropriate nickname.'
+      );
+    }
+    const username = strippedName;
+
+    // 2. Email is OPTIONAL (validate only if provided; never returned in any GET)
     const email = String(body.email || '').trim().toLowerCase();
-    const rawDiff = String(body.difficulty || 'easy').trim().toLowerCase();
-    const roundId = String(body.roundId || '').trim();
-    const marketingOptIn = Boolean(body.marketingOptIn);
-
-    // 1. Validate Username (3-16 chars, alphanumeric/underscore, no profanity)
-    if (!/^[A-Za-z0-9_]{3,16}$/.test(username)) {
-      return jsonResponse({
-        status: 'error',
-        code: 'INVALID_USERNAME',
-        message: 'Username must be 3–16 characters (letters, numbers, or underscore).',
-      });
-    }
-    if (containsProfanity(username)) {
-      return jsonResponse({
-        status: 'error',
-        code: 'PROFANITY_DETECTED',
-        message: 'Please choose an appropriate username.',
-      });
-    }
-
-    // 2. Validate Email
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-      return jsonResponse({
-        status: 'error',
-        code: 'INVALID_EMAIL',
-        message: 'Please provide a valid email address.',
-      });
+    if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      return errorResponse('invalid_email', 'Please provide a valid email address.');
     }
 
     // 3. Validate Difficulty
+    const rawDiff = String(body.difficulty || 'easy').trim().toLowerCase();
     if (!ALLOWED_DIFFICULTIES[rawDiff]) {
-      return jsonResponse({
-        status: 'error',
-        code: 'INVALID_DIFFICULTY',
-        message: 'Invalid difficulty mode.',
-      });
+      return errorResponse('invalid_difficulty', 'Invalid difficulty mode.');
     }
     const diffCfg = ALLOWED_DIFFICULTIES[rawDiff];
     const baseDiff = diffCfg.base;
     const isDaily = Boolean(body.isDaily) || diffCfg.isDaily;
+    const storedDiff = isDaily ? `daily_${baseDiff}` : baseDiff;
 
-    // 4. Validate Session Score (0..maxTargets)
+    // 4. Validate Session Score (integer, 0 <= score <= maxTargets)
     const rawScore =
       body.sessionScore !== undefined ? body.sessionScore : body.score;
     const sessionScore = Number(rawScore);
     if (
+      rawScore === undefined ||
+      rawScore === null ||
+      rawScore === '' ||
       !Number.isInteger(sessionScore) ||
       sessionScore < 0 ||
       sessionScore > diffCfg.maxTargets
     ) {
-      return jsonResponse({
-        status: 'error',
-        code: 'INVALID_SCORE',
-        message: `Score must be an integer between 0 and ${diffCfg.maxTargets}.`,
-      });
+      return errorResponse(
+        'score_out_of_range',
+        `Score must be an integer between 0 and ${diffCfg.maxTargets}.`
+      );
     }
 
-    // 5. Validate Plausible Completion Time (>= 300ms per extracted target when sessionScore > 0)
-    const timeTakenMs = parseSafeInt(body.timeTakenMs, 60000);
-    const minPlausibleMs = sessionScore > 0 ? Math.max(1200, sessionScore * 300) : 0;
-    if (sessionScore > 0 && timeTakenMs < minPlausibleMs) {
-      return jsonResponse({
-        status: 'error',
-        code: 'IMPLAUSIBLE_TIME',
-        message: 'Round completion time is below the minimum plausible threshold.',
-      });
+    // 5. Validate Plausible Completion Time (score * 350ms <= timeMs <= 60000ms)
+    const rawTime =
+      body.timeMs !== undefined ? body.timeMs : body.timeTakenMs;
+    const timeTakenMs =
+      rawTime !== undefined && rawTime !== null && rawTime !== ''
+        ? Number(rawTime)
+        : 60000;
+    const minPlausibleMs = sessionScore > 0 ? sessionScore * 350 : 0;
+    if (
+      sessionScore > 0 &&
+      (!Number.isFinite(timeTakenMs) ||
+        timeTakenMs < minPlausibleMs ||
+        timeTakenMs > 60000)
+    ) {
+      return errorResponse(
+        'implausible_time',
+        `Completion time must be between ${minPlausibleMs}ms and 60000ms.`
+      );
     }
+    const cleanTimeMs = Math.round(
+      Number.isFinite(timeTakenMs) ? Math.min(60000, Math.max(0, timeTakenMs)) : 60000
+    );
 
+    const roundId = String(body.roundId || '').trim();
+    const marketingOptIn = Boolean(body.marketingOptIn);
     const cache = CacheService.getScriptCache();
+    const props = PropertiesService.getScriptProperties();
     const unameLower = username.toLowerCase();
     const todayLagos = getLagosDateString(new Date());
+    const playerKey = String(
+      body.playerId || `${unameLower}_${String(body.fingerprint || '')}`
+    )
+      .trim()
+      .toLowerCase()
+      .slice(0, 64);
 
-    // 6. Duplicate roundId check & 45-second rate limit (when submitting a round score > 0)
+    // 6. Required unique roundId + 20s cooldown + 60/day rate limit (when score > 0)
     if (sessionScore > 0) {
-      if (roundId) {
-        const roundCacheKey = `round_${roundId}`;
-        if (cache.get(roundCacheKey)) {
-          return jsonResponse({
-            status: 'error',
-            code: 'DUPLICATE_ROUND',
-            message: 'This round has already been submitted.',
-          });
-        }
+      if (!roundId) {
+        return errorResponse(
+          'missing_round_id',
+          'A unique roundId is required for score submissions.'
+        );
       }
 
-      const rateCacheKey = `rate_${unameLower}`;
-      if (action !== 'register' && cache.get(rateCacheKey)) {
-        return jsonResponse({
-          status: 'error',
-          code: 'RATE_LIMITED',
-          message: 'Please wait 45 seconds before submitting another score.',
-        });
+      const roundCacheKey = `round_${roundId}`;
+      if (cache.get(roundCacheKey)) {
+        return errorResponse(
+          'duplicate_round_id',
+          'This roundId has already been submitted.'
+        );
+      }
+
+      const rate20Key = `rate20_${playerKey}`;
+      if (action !== 'register' && cache.get(rate20Key)) {
+        return errorResponse(
+          'rate_limited_20s',
+          'Please wait 20 seconds before submitting another score.'
+        );
+      }
+
+      const dayCountKey = `daycount_${todayLagos}_${playerKey}`;
+      const currentDayCount = parseSafeInt(props.getProperty(dayCountKey), 0);
+      if (currentDayCount >= 60) {
+        return errorResponse(
+          'daily_rate_limit_exceeded',
+          'Daily submission limit (60 per day) reached.'
+        );
       }
 
       if (isDaily) {
-        const dailyCacheKey = `daily_${todayLagos}_${baseDiff}_${unameLower}`;
+        const dailyCacheKey = `daily_${todayLagos}_${storedDiff}_${unameLower}`;
         if (cache.get(dailyCacheKey)) {
-          return jsonResponse({
-            status: 'error',
-            code: 'DAILY_ALREADY_SUBMITTED',
-            message: 'You have already submitted your scored Daily Sweep for today.',
-          });
+          return errorResponse(
+            'daily_already_submitted',
+            'You have already submitted your scored Daily Sweep for today.'
+          );
         }
       }
     }
@@ -617,15 +769,14 @@ function doPost(e) {
       }
     }
 
-    // Check username ownership by email
-    if (foundRowNumber !== -1) {
+    // Check username ownership by email (when both existing and incoming emails exist)
+    if (foundRowNumber !== -1 && email) {
       const existingEmail = String(rowValues[1] || '').trim().toLowerCase();
       if (existingEmail && existingEmail !== email) {
-        return jsonResponse({
-          status: 'error',
-          code: 'USERNAME_TAKEN',
-          message: 'Username already taken. Please choose another.',
-        });
+        return errorResponse(
+          'username_taken',
+          'Username already taken. Please choose another.'
+        );
       }
     }
 
@@ -642,21 +793,27 @@ function doPost(e) {
           const rId = String(rData[i][2] || '');
           const rUser = String(rData[i][3] || '').trim().toLowerCase();
           const rDiff = String(rData[i][4] || '').trim().toLowerCase();
-          const rDaily = normalizeSheetBool(rData[i][5]);
+          const rBaseDiff = rDiff.replace(/^daily_/, '');
+          const rDaily =
+            normalizeSheetBool(rData[i][5]) || rDiff.indexOf('daily_') === 0;
 
           if (roundId && rId === roundId) {
-            return jsonResponse({
-              status: 'error',
-              code: 'DUPLICATE_ROUND',
-              message: 'This round has already been recorded.',
-            });
+            return errorResponse(
+              'duplicate_round_id',
+              'This roundId has already been recorded.'
+            );
           }
-          if (isDaily && rDaily && rDate === todayLagos && rUser === unameLower && rDiff === baseDiff) {
-            return jsonResponse({
-              status: 'error',
-              code: 'DAILY_ALREADY_SUBMITTED',
-              message: 'Daily Sweep score already recorded for today.',
-            });
+          if (
+            isDaily &&
+            rDaily &&
+            rDate === todayLagos &&
+            rUser === unameLower &&
+            rBaseDiff === baseDiff
+          ) {
+            return errorResponse(
+              'daily_already_submitted',
+              'Daily Sweep score already recorded for today.'
+            );
           }
         }
       }
@@ -665,7 +822,7 @@ function doPost(e) {
     const nowIso = new Date().toISOString();
     let newTotal = sessionScore;
     let bestScore = sessionScore;
-    let bestTimeMs = timeTakenMs;
+    let bestTimeMs = cleanTimeMs;
 
     if (foundRowNumber !== -1) {
       const existingCum = parseSafeInt(rowValues[cumCol], 0);
@@ -673,20 +830,27 @@ function doPost(e) {
 
       const prevBest = parseSafeInt(rowValues[bestCol], 0);
       const prevTime = parseSafeInt(rowValues[timeCol], 60000) || 60000;
+
+      // Normal all-time best only updates on normal (!isDaily) rounds so daily & normal never mix
       if (
-        sessionScore > prevBest ||
-        (sessionScore === prevBest && sessionScore > 0 && timeTakenMs < prevTime)
+        !isDaily &&
+        (sessionScore > prevBest ||
+          (sessionScore === prevBest && sessionScore > 0 && cleanTimeMs < prevTime))
       ) {
         bestScore = sessionScore;
-        bestTimeMs = timeTakenMs;
+        bestTimeMs = cleanTimeMs;
       } else {
         bestScore = prevBest;
         bestTimeMs = prevTime;
       }
 
       sheet.getRange(foundRowNumber, cumCol + 1).setValue(newTotal);
-      sheet.getRange(foundRowNumber, bestCol + 1).setValue(bestScore);
-      sheet.getRange(foundRowNumber, timeCol + 1).setValue(bestTimeMs);
+      if (!isDaily) {
+        sheet.getRange(foundRowNumber, bestCol + 1).setValue(bestScore);
+        sheet.getRange(foundRowNumber, timeCol + 1).setValue(bestTimeMs);
+        // Submitting a real new non-daily round unflags legacy for this player
+        sheet.getRange(foundRowNumber, 15).setValue(false);
+      }
       if (marketingOptIn) {
         sheet.getRange(foundRowNumber, 12).setValue(true);
         sheet.getRange(foundRowNumber, 13).setValue(nowIso);
@@ -699,15 +863,16 @@ function doPost(e) {
         baseDiff === 'easy' ? sessionScore : 0,
         baseDiff === 'medium' ? sessionScore : 0,
         baseDiff === 'hard' ? sessionScore : 0,
-        baseDiff === 'easy' ? sessionScore : 0,
-        baseDiff === 'easy' ? timeTakenMs : 60000,
-        baseDiff === 'medium' ? sessionScore : 0,
-        baseDiff === 'medium' ? timeTakenMs : 60000,
-        baseDiff === 'hard' ? sessionScore : 0,
-        baseDiff === 'hard' ? timeTakenMs : 60000,
+        !isDaily && baseDiff === 'easy' ? sessionScore : 0,
+        !isDaily && baseDiff === 'easy' ? cleanTimeMs : 60000,
+        !isDaily && baseDiff === 'medium' ? sessionScore : 0,
+        !isDaily && baseDiff === 'medium' ? cleanTimeMs : 60000,
+        !isDaily && baseDiff === 'hard' ? sessionScore : 0,
+        !isDaily && baseDiff === 'hard' ? cleanTimeMs : 60000,
         marketingOptIn,
         marketingOptIn ? nowIso : '',
         nowIso,
+        false, // legacy = FALSE
       ];
       sheet.appendRow(newRow);
     }
@@ -716,39 +881,42 @@ function doPost(e) {
       roundsSheet.appendRow([
         nowIso,
         "'" + todayLagos,
-        roundId || Utilities.getUuid(),
+        roundId,
         username,
-        baseDiff,
+        storedDiff,
         isDaily,
         sessionScore,
-        timeTakenMs,
+        cleanTimeMs,
+        false, // legacy = FALSE
       ]);
 
-      if (roundId) {
-        cache.put(`round_${roundId}`, '1', 21600);
-      }
-      cache.put(`rate_${unameLower}`, '1', 45);
+      cache.put(`round_${roundId}`, '1', 21600);
+      cache.put(`rate20_${playerKey}`, '1', 20);
+      const dayCountKey = `daycount_${todayLagos}_${playerKey}`;
+      const nextCount = parseSafeInt(props.getProperty(dayCountKey), 0) + 1;
+      props.setProperty(dayCountKey, String(nextCount));
       if (isDaily) {
-        cache.put(`daily_${todayLagos}_${baseDiff}_${unameLower}`, '1', 21600);
+        cache.put(`daily_${todayLagos}_${storedDiff}_${unameLower}`, '1', 21600);
       }
     }
 
     return jsonResponse({
+      ok: true,
       status: 'ok',
       username,
-      difficulty: baseDiff,
+      difficulty: storedDiff,
       isDaily,
       sessionScore,
+      timeMs: cleanTimeMs,
       newTotal,
       bestScore,
       bestTimeMs,
     });
   } catch (err) {
-    return jsonResponse({
-      status: 'error',
-      code: 'SERVER_ERROR',
-      message: String(err && err.message ? err.message : err),
-    });
+    return errorResponse(
+      'server_error',
+      String(err && err.message ? err.message : err)
+    );
   } finally {
     try {
       lock.releaseLock();

@@ -160,7 +160,7 @@
     </header>
 
     <p>
-      This Privacy Policy explains how <strong data-cfg="legalEntity">BrainSweep</strong>, operating in <strong data-cfg="country">Nigeria</strong> ("BrainSweep", "we", "us", or "our"), handles information when you play the BrainSweep web game or interact with the BrainSweep embeddable widget on a partner website ("Publisher").
+      BrainSweep is a game operated by <strong data-cfg="legalEntity">MadeByKubo</strong>, based in <strong data-cfg="country">Nigeria</strong> ("MadeByKubo", "we", "us", or "our"). This Privacy Policy explains how we handle information when you play BrainSweep or interact with the BrainSweep embeddable widget on a partner website ("Publisher").
     </p>
 
     <div class="callout">
@@ -209,7 +209,7 @@
 
     <h2>6. CONTACT US</h2>
     <p>
-      Data Controller / Operator: <strong data-cfg="legalEntity">BrainSweep</strong> (<span data-cfg="country">Nigeria</span>)<br />
+      Data Controller / Operator: <strong data-cfg="legalEntity">MadeByKubo</strong> (<span data-cfg="country">Nigeria</span>)<br />
       Contact Email: <strong data-cfg="contactEmail">madebykubo@gmail.com</strong>
     </p>
 
@@ -218,6 +218,9 @@
       <a href="../dpa/">[ DATA PROCESSING AGREEMENT ]</a>
       <a href="../developers/">[ DEVELOPER EMBED KIT ]</a>
     </nav>
+    <footer style="margin-top: 20px; padding-top: 14px; border-top: 1px dashed var(--border-subtle); font-family: var(--font-pixel); font-size: 0.5rem; color: var(--muted-text); text-align: center;">
+      BrainSweep © <span data-year>2026</span> MadeByKubo
+    </footer>
   </main>
   <script>
     (function () {
@@ -225,6 +228,10 @@
       document.querySelectorAll('[data-cfg]').forEach(function (el) {
         var key = el.getAttribute('data-cfg');
         if (cfg[key]) el.textContent = cfg[key];
+      });
+      var y = String(new Date().getFullYear());
+      document.querySelectorAll('[data-year]').forEach(function (el) {
+        el.textContent = y;
       });
     })();
   </script>

@@ -83,7 +83,7 @@
   }
 
   function getDailyPuzzleNumber(dateKey = getLagosDateString()) {
-    const launchStr = (getAppConfig().dailyLaunchDate || '2026-11-01').trim();
+    const launchStr = (getAppConfig().dailyLaunchDate || '2026-11-22').trim();
     const parseUtcDay = (str) => {
       const [y, m, d] = str.split('-').map((n) => parseInt(n, 10));
       return Date.UTC(y || 2026, (m || 1) - 1, d || 1);
@@ -2249,6 +2249,11 @@
 
     syncDailyAndStreakUI();
 
+    // Phase 5.3: Hide Share button when round score is 0
+    if (btnShareResult) {
+      btnShareResult.hidden = shareScore <= 0;
+    }
+
     if (btnEmbedSponsorCta) {
       btnEmbedSponsorCta.hidden = !(state.ctaUrl && state.ctaText);
     }
@@ -3009,8 +3014,12 @@
             text: shareText,
           });
           return;
-        } catch {
-          // User dismissed or share unavailable — fall through to clipboard copy
+        } catch (err) {
+          // Phase 5.2: If user dismissed the share sheet (AbortError), do nothing
+          if (err && err.name === 'AbortError') {
+            return;
+          }
+          // Non-abort error: fall through to clipboard copy
         }
       }
 
@@ -3050,6 +3059,27 @@
         text: state.ctaText || '',
       });
     });
+  }
+
+  // Phase 5.6: "Show tutorial again" buttons in Help & Settings
+  function replayInteractiveTutorial() {
+    try {
+      localStorage.removeItem(TUTORIAL_SEEN_KEY);
+    } catch {
+      // ignore storage errors
+    }
+    returnToResultsOnClose = false;
+    sound.init();
+    startGame({ daily: false, skipTutorial: false });
+  }
+
+  const btnHelpShowTutorial = document.getElementById('btnHelpShowTutorial');
+  if (btnHelpShowTutorial) {
+    btnHelpShowTutorial.addEventListener('click', replayInteractiveTutorial);
+  }
+  const btnSettingShowTutorial = document.getElementById('btnSettingShowTutorial');
+  if (btnSettingShowTutorial) {
+    btnSettingShowTutorial.addEventListener('click', replayInteractiveTutorial);
   }
 
   btnPlayAgain.addEventListener('click', () => {
@@ -3420,7 +3450,7 @@
       rounds.forEach((r) => {
         if (!r || !r.username || r.difficulty !== difficulty || (Number(r.score) || 0) <= 0) return;
         if (board === 'today' && (!r.isDaily || r.dateLagos !== todayKey)) return;
-        if (board === 'week' && Number(r.ts) < weekCutoff) return;
+        if (board === 'week' && (r.isDaily || Number(r.ts) < weekCutoff)) return;
 
         const key = String(r.username).trim().toLowerCase();
         const prev = bestByUser[key];
@@ -3519,6 +3549,20 @@
     }
   }
 
+  const PLAYER_ID_STORAGE_KEY = 'brainsweep_player_id_v1';
+  function getOrCreatePlayerId() {
+    try {
+      let pid = localStorage.getItem(PLAYER_ID_STORAGE_KEY);
+      if (!pid) {
+        pid = createRoundId();
+        localStorage.setItem(PLAYER_ID_STORAGE_KEY, pid);
+      }
+      return pid;
+    } catch {
+      return createRoundId();
+    }
+  }
+
   // Send POST request to Google Apps Script Web App
   async function postScoreToBackend({
     username,
@@ -3532,7 +3576,7 @@
     action = 'submit',
   }) {
     const cleanSessionScore = Math.max(0, parseInt(sessionScore, 10) || 0);
-    const cleanTimeMs = Math.max(100, parseInt(timeTakenMs, 10) || 60000);
+    const cleanTimeMs = Math.max(100, Math.min(60000, parseInt(timeTakenMs, 10) || 60000));
 
     if (!isApiUrlConfigured()) {
       return upsertLocalLeaderboardMirror({
@@ -3556,11 +3600,14 @@
         body: JSON.stringify({
           action,
           username: username.trim(),
-          email: email.trim().toLowerCase(),
+          nickname: username.trim(),
+          playerId: getOrCreatePlayerId(),
+          email: email ? email.trim().toLowerCase() : '',
           difficulty: isDaily ? `daily_${difficulty || 'easy'}` : difficulty || 'easy',
           isDaily: Boolean(isDaily),
           sessionScore: cleanSessionScore,
           score: cleanSessionScore,
+          timeMs: cleanTimeMs,
           timeTakenMs: cleanTimeMs,
           roundId: roundId || createRoundId(),
           marketingOptIn: Boolean(marketingOptIn),
@@ -3570,7 +3617,7 @@
     );
 
     const data = await response.json();
-    if (data && data.status === 'ok') {
+    if (data && (data.status === 'ok' || data.ok === true)) {
       const backendTotal =
         data.newTotal !== undefined
           ? parseInt(data.newTotal, 10)
@@ -3600,13 +3647,15 @@
       return getLocalTop50ForBoard(board, difficulty);
     }
 
+    // Phase 3.2: Strictly separate daily_* from normal difficulties
+    const queryDifficulty = board === 'today' ? `daily_${difficulty}` : difficulty;
     const apiUrl = getLeaderboardApiUrl();
     const sep = apiUrl.includes('?') ? '&' : '?';
-    const url = `${apiUrl}${sep}board=${encodeURIComponent(board)}&difficulty=${encodeURIComponent(difficulty)}`;
+    const url = `${apiUrl}${sep}board=${encodeURIComponent(board)}&difficulty=${encodeURIComponent(queryDifficulty)}`;
     const response = await fetchWithTimeout(url, { method: 'GET' }, 8000);
     const data = await response.json();
 
-    if (data && data.status === 'ok' && Array.isArray(data.entries)) {
+    if (data && (data.status === 'ok' || data.ok === true) && Array.isArray(data.entries)) {
       return data.entries;
     }
     throw new Error((data && data.message) || 'Failed to load leaderboard');
@@ -4118,7 +4167,10 @@
       }
 
       const safeLogoUrl = sanitizeHttpsUrl(params.get('brand_logo'));
-      const safeSponsorText = sanitizePlainText(params.get('sponsor_text'), 40);
+      const safeSponsorText = sanitizePlainText(
+        params.get('sponsor_text') || params.get('sponsor'),
+        40
+      );
       if ((safeLogoUrl || safeSponsorText) && embedSponsorBar) {
         if (safeLogoUrl && embedBrandLogoImg) {
           embedBrandLogoImg.src = safeLogoUrl;
@@ -4143,6 +4195,17 @@
       if (state.isEmbedMode) {
         document.documentElement.setAttribute('data-embed', 'true');
         document.body.classList.add('embed-mode');
+
+        // Phase 1.6: Show unobtrusive "BrainSweep by MadeByKubo" credit in embeds
+        // unless ?whitelabel=1 is authorized on a domain in allowedEmbedDomains.
+        const embedCreatorCredit = document.getElementById('embedCreatorCredit');
+        const isWhitelabeled =
+          window.BrainSweepAnalytics &&
+          typeof window.BrainSweepAnalytics.isWhitelabelAuthorized === 'function' &&
+          window.BrainSweepAnalytics.isWhitelabelAuthorized();
+        if (embedCreatorCredit) {
+          embedCreatorCredit.hidden = Boolean(isWhitelabeled);
+        }
 
         // Domain license check (Phase 4)
         if (
@@ -5054,6 +5117,10 @@
   }
 
   // --- Initial Boot ---
+  const currentYearText = String(new Date().getFullYear());
+  document.querySelectorAll('[data-year]').forEach((el) => {
+    el.textContent = currentYearText;
+  });
   loadPersistedSettings();
   applyEmbedUrlParams();
   syncPlayerProfileUI();

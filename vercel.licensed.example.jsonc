@@ -1,0 +1,27 @@
+// Example: How to restrict a licensed embed path to specific paying client domains in vercel.json.
+// NOTE: Standard JSON (vercel.json) does not allow // comments. When activating licensed routes,
+// copy ONLY the JSON object block inside "headers" below into vercel.json (without comments).
+{
+  "headers": [
+    // Free pilot default (keep on main page):
+    {
+      "source": "/(.*)",
+      "headers": [
+        {
+          "key": "Content-Security-Policy",
+          "value": "default-src 'self'; script-src 'self' 'unsafe-inline' https://cloud.umami.is https://plausible.io; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self' data:; connect-src 'self' https://script.google.com https://script.googleusercontent.com https://cloud.umami.is https://api-gateway.umami.dev https://plausible.io; frame-src 'self'; frame-ancestors *;"
+        }
+      ]
+    },
+    // Paid licensed path example — restrict framing to specific approved client domains:
+    {
+      "source": "/licensed/(.*)",
+      "headers": [
+        {
+          "key": "Content-Security-Policy",
+          "value": "default-src 'self'; script-src 'self' 'unsafe-inline' https://cloud.umami.is https://plausible.io; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self' data:; connect-src 'self' https://script.google.com https://script.googleusercontent.com https://cloud.umami.is https://api-gateway.umami.dev https://plausible.io; frame-src 'self'; frame-ancestors https://client1.com https://client2.com;"
+        }
+      ]
+    }
+  ]
+}

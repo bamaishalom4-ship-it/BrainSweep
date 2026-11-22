@@ -4,11 +4,35 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <meta name="theme-color" content="#fc6200" />
+  <meta name="author" content="MadeByKubo" />
+  <meta name="application-name" content="BrainSweep" />
   <meta name="description" content="A fast 60-second number puzzle. Spot, flick, beat your best. Plays offline." />
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
   <title>BrainSweep — 60-Second Number Rush</title>
   <link rel="canonical" href="https://brainsweep-tau.vercel.app/" />
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "VideoGame",
+    "name": "BrainSweep",
+    "description": "A fast 60-second number puzzle. Spot, flick, beat your best. Plays offline.",
+    "url": "https://brainsweep-tau.vercel.app",
+    "inLanguage": "en",
+    "genre": "Puzzle",
+    "isAccessibleForFree": true,
+    "author": {
+      "@type": "Organization",
+      "name": "MadeByKubo",
+      "url": "https://www.instagram.com/madebykubo"
+    },
+    "creator": {
+      "@type": "Organization",
+      "name": "MadeByKubo",
+      "url": "https://www.instagram.com/madebykubo"
+    }
+  }
+  </script>
 
   <!-- Open Graph / WhatsApp / Social Sharing -->
   <meta property="og:type" content="website" />
@@ -89,7 +113,7 @@
       <!-- Secondary Telemetry HUD in Header -->
       <div class="hud-bar" id="hudBar">
         <div class="hud-card timer-card" id="timerHudCard">
-          <span class="hud-label">TIME LEFT</span>
+          <span class="hud-label">TIME</span>
           <div class="hud-value-wrap">
             <span class="hud-value mono" id="hudTimer">01:00.0</span>
           </div>
@@ -99,7 +123,7 @@
         </div>
 
         <div class="hud-card streak-card">
-          <span class="hud-label">EXTRACTED</span>
+          <span class="hud-label">FOUND</span>
           <div class="hud-value-wrap">
             <span class="hud-value accent-emerald" id="hudExtracted">0</span>
             <span class="hud-sub" id="hudStreakBadge">0x</span>
@@ -107,10 +131,10 @@
         </div>
 
         <div class="hud-card pace-card" id="paceHudCard">
-          <span class="hud-label">PACE / AVG</span>
+          <span class="hud-label">PACE</span>
           <div class="hud-value-wrap">
             <span class="hud-value mono" id="hudPace">—</span>
-            <span class="hud-sub">sec / num</span>
+            <span class="hud-sub">s/#</span>
           </div>
         </div>
       </div>
@@ -257,8 +281,13 @@
 
     <!-- Footer Credit Bar (Gameplay Screen) -->
     <footer class="site-footer">
-      <span class="footer-credit">© MadeByKubo 2026</span>
+      <span class="footer-credit">BrainSweep © <span data-year>2026</span> MadeByKubo</span>
     </footer>
+
+    <!-- Unobtrusive Embed Creator Credit (Shown in Embed Mode unless whitelabeled on an allowed domain) -->
+    <div class="embed-creator-credit" id="embedCreatorCredit" hidden>
+      BrainSweep by MadeByKubo
+    </div>
 
     <!-- =====================================================================
          1. HOME SCREEN OVERLAY (#setupModal / HomeScreen)
@@ -373,7 +402,7 @@
 
         <!-- Home Screen Credit -->
         <div class="modal-credit">
-          <span>© MadeByKubo 2026</span>
+          <span>BrainSweep © <span data-year>2026</span> MadeByKubo</span>
         </div>
       </div>
     </div>
@@ -491,10 +520,14 @@
 
           <div class="info-block">
             <h3>CREDIT</h3>
-            <p>© MadeByKubo 2026</p>
+            <p>BrainSweep is made by MadeByKubo.</p>
+            <p>BrainSweep © <span data-year>2026</span> MadeByKubo</p>
             <div class="help-credit-links">
               <a href="https://youtube.com/@madebykubo" target="_blank" rel="noopener noreferrer" class="footer-link">[ YOUTUBE ]</a>
               <a href="https://www.instagram.com/madebykubo" target="_blank" rel="noopener noreferrer" class="footer-link">[ INSTAGRAM ]</a>
+            </div>
+            <div style="margin-top: 10px;">
+              <button type="button" class="secondary-btn" id="btnHelpShowTutorial" style="width: 100%; padding: 10px 14px;">SHOW TUTORIAL AGAIN</button>
             </div>
             <p class="help-disclaimer-note">BrainSweep is an entertainment game. It is not a medical or training product.</p>
           </div>
@@ -623,6 +656,23 @@
               </div>
             </div>
             <span class="settings-value-badge off" id="settingReducedMotionValue">OFF</span>
+          </button>
+
+          <!-- 7. Replay Interactive Tutorial -->
+          <button type="button" class="settings-row-btn" id="btnSettingShowTutorial">
+            <div class="settings-row-left">
+              <div class="settings-icon-box">
+                <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2.2" aria-hidden="true">
+                  <circle cx="12" cy="12" r="9"/>
+                  <path d="M9.5 9.5a2.5 2.5 0 1 1 3.8 2.1c-.8.5-1.3 1-1.3 2v.4"/>
+                  <circle cx="12" cy="17" r="0.8" fill="currentColor"/>
+                </svg>
+              </div>
+              <div class="settings-row-text">
+                <span class="settings-row-title">SHOW TUTORIAL AGAIN</span>
+              </div>
+            </div>
+            <span class="settings-value-badge">PLAY</span>
           </button>
         </div>
 
@@ -1185,8 +1235,8 @@
     </div>
   </div>
 
-  <script src="config.js"></script>
-  <script src="analytics.js"></script>
-  <script src="game.js"></script>
+  <script defer src="config.js"></script>
+  <script defer src="analytics.js"></script>
+  <script defer src="game.js"></script>
 </body>
 </html>

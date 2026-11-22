@@ -306,8 +306,8 @@ html, body {
 
 .hud-label {
   font-family: var(--font-pixel);
-  font-size: 0.46rem;
-  letter-spacing: 0.04em;
+  font-size: clamp(10px, 2.6vw, 12px);
+  letter-spacing: 0.03em;
   color: var(--text-muted);
   text-transform: uppercase;
   margin-bottom: 4px;
@@ -381,14 +381,15 @@ html, body {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 6px;
+  gap: 5px;
   background: var(--bg-panel);
   color: var(--primary-text);
   border: 2px solid var(--border-subtle);
-  padding: 7px 10px;
+  padding: 7px 8px;
   min-height: 36px;
   font-family: var(--font-pixel);
-  font-size: 0.55rem;
+  font-size: clamp(11px, 2.8vw, 12px);
+  letter-spacing: 0;
   cursor: pointer;
   transition: background-color 0.12s ease, color 0.12s ease;
 }
@@ -501,7 +502,7 @@ body.offline-mode .hud-card {
 
 .target-card .hud-label {
   margin-bottom: 0;
-  font-size: 0.5rem;
+  font-size: clamp(11px, 2.8vw, 13px);
   color: var(--primary-text);
 }
 
@@ -700,7 +701,7 @@ body.offline-mode .hud-card {
   padding: 7px 12px;
   border: 2px solid var(--text-main);
   font-family: var(--font-pixel);
-  font-size: 0.54rem;
+  font-size: clamp(10px, 2.6vw, 12px);
   line-height: 1.45;
   text-align: center;
   white-space: normal;
@@ -1094,7 +1095,7 @@ body.offline-mode .hud-card {
   background: var(--bg-color);
   color: var(--primary-text);
   font-family: var(--font-pixel);
-  font-size: 0.62rem;
+  font-size: clamp(11px, 2.8vw, 12px);
   cursor: pointer;
 }
 
@@ -2224,24 +2225,32 @@ body.results-active .bottom-nav-tray {
     order: 2;
     width: 100%;
     display: flex;
-    gap: 6px;
+    gap: 5px;
   }
   .icon-btn.has-label {
     flex: 1;
-    padding: 7px 6px;
+    padding: 6px 4px;
+    gap: 4px;
+    min-width: 0;
+    font-size: 11px;
+  }
+  .icon-btn.has-label svg {
+    width: 15px;
+    height: 15px;
+    flex-shrink: 0;
   }
   .icon-btn.icon-only {
-    width: 36px;
+    width: 34px;
   }
   .hud-bar {
     order: 3;
     width: 100%;
     display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    gap: 6px;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 5px;
   }
   body.offline-mode .hud-bar {
-    grid-template-columns: repeat(2, 1fr);
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
   body.offline-mode .hud-value {
     font-size: 0.76rem;
@@ -2254,11 +2263,13 @@ body.results-active .bottom-nav-tray {
   }
   .target-card {
     min-width: 190px;
-    padding: 5px 14px;
-    gap: 10px;
+    max-width: 100%;
+    padding: 5px 12px;
+    gap: 8px;
   }
   .target-card .hud-label {
-    font-size: 0.44rem;
+    font-size: clamp(11px, 2.8vw, 13px);
+    letter-spacing: 0.01em;
   }
   .target-card .hud-value {
     font-size: 0.88rem;
@@ -2268,21 +2279,21 @@ body.results-active .bottom-nav-tray {
   }
   .hud-card, .timer-card {
     min-width: 0;
-    padding: 5px 5px;
+    padding: 5px 4px;
   }
   .hud-label {
-    font-size: 0.34rem;
-    letter-spacing: 0.02em;
-    margin-bottom: 2px;
+    font-size: clamp(10px, 2.6vw, 12px);
+    letter-spacing: 0;
+    margin-bottom: 3px;
   }
   .hud-value {
     font-size: 0.58rem;
   }
   .hud-sub {
-    font-size: 0.72rem;
+    font-size: 0.78rem;
   }
   .arena-feedback {
-    font-size: 0.44rem;
+    font-size: clamp(10px, 2.6vw, 12px);
     padding: 6px 10px;
     max-width: calc(100% - 16px);
   }
@@ -3071,6 +3082,7 @@ body.reduced-motion .tutorial-demo-node {
   text-decoration: none;
 }
 
+.share-result-btn[hidden],
 .sponsor-cta-btn[hidden] {
   display: none !important;
 }
@@ -3147,5 +3159,56 @@ body.reduced-motion .tutorial-demo-node {
 /* Also hide consent banner in embed mode */
 :root[data-embed="true"] #cookieConsentBanner,
 body.embed-mode #cookieConsentBanner {
+  display: none !important;
+}
+
+/* Phase 2: Clear (High-Contrast) Theme +1px Readable HUD & Button Boost */
+:root[data-theme="clear"] .hud-label {
+  font-size: clamp(11px, 2.8vw, 13px);
+  font-weight: 700;
+}
+
+:root[data-theme="clear"] .target-card .hud-label {
+  font-size: clamp(12px, 3vw, 14px);
+  font-weight: 700;
+}
+
+:root[data-theme="clear"] .icon-btn,
+:root[data-theme="clear"] .icon-btn.has-label,
+:root[data-theme="clear"] .secondary-btn {
+  font-size: clamp(12px, 3vw, 13px);
+  font-weight: 700;
+}
+
+:root[data-theme="clear"] .primary-btn {
+  font-size: clamp(12px, 3.2vw, 14px);
+  font-weight: 700;
+}
+
+:root[data-theme="clear"] .arena-feedback {
+  font-size: clamp(11px, 2.8vw, 13px);
+  font-weight: 700;
+}
+
+/* Phase 1.6: Unobtrusive Embed Creator Credit */
+.embed-creator-credit {
+  display: none;
+  text-align: center;
+  font-family: var(--font-terminal);
+  font-size: 0.9rem;
+  line-height: 1.1;
+  letter-spacing: 0.04em;
+  color: var(--text-muted);
+  opacity: 0.8;
+  padding: 2px 4px 0;
+  flex-shrink: 0;
+}
+
+:root[data-embed="true"] .embed-creator-credit:not([hidden]),
+body.embed-mode .embed-creator-credit:not([hidden]) {
+  display: block;
+}
+
+.embed-creator-credit[hidden] {
   display: none !important;
 }

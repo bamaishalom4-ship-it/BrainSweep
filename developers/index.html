@@ -373,7 +373,7 @@
         <a href="../?screen=help" class="close-doc-btn" title="Close and return to Game Help" aria-label="Close and return to Game Help">✕</a>
       </div>
       <h1>BRAINSWEEP DEVELOPER KIT</h1>
-      <p class="subtitle">Configure, preview, and copy your zero-dependency embeddable engagement game widget in under 60 seconds.</p>
+      <p class="subtitle">BrainSweep is a game operated by <strong data-cfg="legalEntity">MadeByKubo</strong>, based in <span data-cfg="country">Nigeria</span>. Configure, preview, and copy your zero-dependency embeddable engagement game widget in under 60 seconds.</p>
     </header>
 
     <div class="generator-grid">
@@ -467,6 +467,7 @@
 
         <div class="code-box-wrap">
           <label>GENERATED HTML EMBED SNIPPET (RECOMMENDED HEIGHT: 640px)</label>
+          <span class="field-hint"><strong>Note:</strong> Only include <code>consent=1</code> if your site already collects visitor consent for analytics.</span>
           <pre class="code-output" id="codeOutput"></pre>
           <div class="btn-row">
             <button type="button" class="primary-btn" id="btnCopyCode">COPY CODE</button>
@@ -542,6 +543,7 @@
               <li><strong>Open Your CMS / HTML Editor:</strong> Add a <strong>Custom HTML / Embed Block</strong> in WordPress, Webflow, Ghost, Substack, or your custom frontend.</li>
               <li><strong>Paste Into the HTML Body:</strong> Paste the <code>&lt;iframe&gt;...&lt;/iframe&gt;</code> snippet where you want the game to appear. Recommended height is <code>640px</code> so the header, target dock, arena, and drop zone fit at both <code>400px</code> and <code>640px</code> widths without clipping.</li>
               <li><strong>Tap-to-Start &amp; Auto-Pause:</strong> The embedded game displays a <strong>"TAP TO PLAY"</strong> start card on load and automatically pauses the timer if the reader scrolls the iframe out of view.</li>
+              <li><strong>Analytics Consent Checklist:</strong> <strong>Only include <code>consent=1</code> if your site already collects visitor consent for analytics.</strong> Without <code>consent=1</code>, embeds send zero analytics requests.</li>
             </ol>
           </div>
 
@@ -629,6 +631,9 @@
         <a href="../terms-of-service/">[ TERMS OF SERVICE ]</a>
         <a href="../dpa/">[ DATA PROCESSING AGREEMENT (DPA) ]</a>
       </nav>
+      <footer style="margin-top: 8px; padding-top: 14px; border-top: 1px dashed var(--border-subtle); font-family: var(--font-pixel); font-size: 0.5rem; color: var(--muted-text); text-align: center;">
+        BrainSweep © <span data-year>2026</span> MadeByKubo
+      </footer>
     </section>
   </div>
 
@@ -665,6 +670,7 @@
           .replace(/\/.*$/, '');
         const params = new URLSearchParams();
         params.set('embed', 'true');
+        params.set('consent', '1');
         params.set('difficulty', selDifficulty.value || 'easy');
         params.set('theme', selTheme.value || 'amber');
         params.set('pattern', selPattern.value || 'spiral');
@@ -719,7 +725,10 @@
         codeOutput.textContent = snippet;
 
         if (reloadIframe && livePreviewIframe) {
-          livePreviewIframe.src = `../?${query}`;
+          // Never send analytics from the local preview iframe without explicit visitor consent
+          const previewParams = new URLSearchParams(query);
+          previewParams.delete('consent');
+          livePreviewIframe.src = `../?${previewParams.toString()}`;
         }
       }
 
@@ -760,6 +769,16 @@
         setTimeout(() => {
           btnCopyCode.textContent = 'COPY CODE';
         }, 2000);
+      });
+
+      const cfgInit = window.BRAINSWEEP_CONFIG || {};
+      document.querySelectorAll('[data-cfg]').forEach((el) => {
+        const key = el.getAttribute('data-cfg');
+        if (cfgInit[key]) el.textContent = cfgInit[key];
+      });
+      const currentYearStr = String(new Date().getFullYear());
+      document.querySelectorAll('[data-year]').forEach((el) => {
+        el.textContent = currentYearStr;
       });
 
       updateSnippetAndPreview(true);

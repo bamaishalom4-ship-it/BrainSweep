@@ -3,7 +3,7 @@
  * Includes clean un-redirected response handling for Android WebAPK / Chrome PWA
  */
 
-const CACHE_NAME = 'brainsweep-pwa-v29';
+const CACHE_NAME = 'brainsweep-pwa-v30';
 const CORE_ASSETS = [
   './',
   './index.html',

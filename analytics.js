@@ -61,7 +61,23 @@
     }
   }
 
-  function getEmbedHostDomain() {
+  function getTrustedEmbedHost() {
+    // Licensing ONLY trusts browser-provided ancestorOrigins or document.referrer (never ?domain=).
+    try {
+      if (
+        window.location &&
+        window.location.ancestorOrigins &&
+        window.location.ancestorOrigins.length > 0
+      ) {
+        const originUrl = new URL(window.location.ancestorOrigins[0]);
+        if (originUrl.hostname) {
+          return originUrl.hostname.toLowerCase().replace(/^www\./, '');
+        }
+      }
+    } catch {
+      // ignore invalid ancestorOrigins
+    }
+
     try {
       if (document.referrer) {
         const refUrl = new URL(document.referrer);
@@ -73,6 +89,14 @@
       // ignore invalid referrer URL
     }
 
+    return '';
+  }
+
+  function getEmbedHostDomain() {
+    // Analytics label only: prefer trusted host, then optional ?domain= label
+    const trusted = getTrustedEmbedHost();
+    if (trusted) return trusted;
+
     try {
       const params = new URLSearchParams(window.location.search || '');
       const dom = (params.get('domain') || '').trim().toLowerCase();
@@ -83,7 +107,7 @@
       // ignore
     }
 
-    return '';
+    return 'unknown';
   }
 
   function checkEmbedDomainLicense() {
@@ -93,20 +117,36 @@
           .map((d) => String(d || '').trim().toLowerCase().replace(/^www\./, ''))
           .filter(Boolean)
       : [];
-    const hostDomain = getEmbedHostDomain();
+    const trustedHost = getTrustedEmbedHost();
+    const hostLabel = trustedHost || 'unknown';
 
     if (allowList.length === 0) {
       if (isEmbedContext()) {
-        track('embed_unlicensed_domain', { embed_domain: hostDomain || 'unknown' });
+        track('embed_unlicensed_domain', { embed_domain: getEmbedHostDomain() });
       }
-      return { allowed: true, hostDomain };
+      return { allowed: true, hostDomain: hostLabel, isExplicitlyAllowed: false };
     }
 
     const isAllowed =
-      Boolean(hostDomain) &&
-      allowList.some((allowed) => hostDomain === allowed || hostDomain.endsWith(`.${allowed}`));
+      Boolean(trustedHost) &&
+      allowList.some(
+        (allowed) => trustedHost === allowed || trustedHost.endsWith(`.${allowed}`)
+      );
 
-    return { allowed: isAllowed, hostDomain };
+    return { allowed: isAllowed, hostDomain: hostLabel, isExplicitlyAllowed: isAllowed };
+  }
+
+  function isWhitelabelAuthorized() {
+    if (!isEmbedContext()) return false;
+    try {
+      const params = new URLSearchParams(window.location.search || '');
+      const wl = params.get('whitelabel');
+      if (wl !== '1' && wl !== 'true') return false;
+    } catch {
+      return false;
+    }
+    const license = checkEmbedDomainLicense();
+    return Boolean(license.isExplicitlyAllowed);
   }
 
   function dispatchToProvider(eventName, safeProps) {
@@ -260,8 +300,10 @@
     enableAfterConsent,
     recordVisitTelemetry,
     postEmbedMessage,
+    getTrustedEmbedHost,
     getEmbedHostDomain,
     checkEmbedDomainLicense,
+    isWhitelabelAuthorized,
     hasAnalyticsConsent,
   };
 })();

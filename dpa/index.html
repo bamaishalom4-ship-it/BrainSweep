@@ -178,7 +178,7 @@
     </header>
 
     <p>
-      This Data Processing Agreement ("<strong>DPA</strong>") applies between the website operator or brand embedding the BrainSweep widget ("<strong>Publisher</strong>" or "<strong>Controller</strong>") and <strong data-cfg="legalEntity">BrainSweep</strong>, operating in <strong data-cfg="country">Nigeria</strong> ("<strong>Widget Provider</strong>" or "<strong>Processor</strong>").
+      BrainSweep is a game operated by <strong data-cfg="legalEntity">MadeByKubo</strong>, based in <strong data-cfg="country">Nigeria</strong> ("<strong>Widget Provider</strong>" or "<strong>Processor</strong>"). This Data Processing Agreement ("<strong>DPA</strong>") applies between the website operator or brand embedding the BrainSweep widget ("<strong>Publisher</strong>" or "<strong>Controller</strong>") and <strong data-cfg="legalEntity">MadeByKubo</strong>.
     </p>
 
     <div class="clause-box">
@@ -207,8 +207,7 @@
     <div class="sig-grid">
       <div class="sig-col">
         <h3>FOR WIDGET PROVIDER (PROCESSOR)</h3>
-        <p><strong>Entity:</strong> <span data-cfg="legalEntity">BrainSweep</span></p>
-        <p><strong>Jurisdiction:</strong> <span data-cfg="country">Nigeria</span></p>
+        <p><strong>Operator:</strong> <span data-cfg="legalEntity">MadeByKubo</span> (<span data-cfg="country">Nigeria</span>)</p>
         <p><strong>Contact:</strong> <span data-cfg="contactEmail">madebykubo@gmail.com</span></p>
       </div>
       <div class="sig-col">
@@ -224,6 +223,9 @@
       <a href="../terms-of-service/">[ TERMS OF SERVICE ]</a>
       <a href="../developers/">[ DEVELOPER EMBED KIT ]</a>
     </nav>
+    <footer style="margin-top: 20px; padding-top: 14px; border-top: 1px dashed var(--border-subtle); font-family: var(--font-pixel); font-size: 0.5rem; color: var(--muted-text); text-align: center;">
+      BrainSweep © <span data-year>2026</span> MadeByKubo
+    </footer>
   </main>
   <script>
     (function () {
@@ -231,6 +233,10 @@
       document.querySelectorAll('[data-cfg]').forEach(function (el) {
         var key = el.getAttribute('data-cfg');
         if (cfg[key]) el.textContent = cfg[key];
+      });
+      var y = String(new Date().getFullYear());
+      document.querySelectorAll('[data-year]').forEach(function (el) {
+        el.textContent = y;
       });
     })();
   </script>
