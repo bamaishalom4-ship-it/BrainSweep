@@ -6,6 +6,7 @@
   const CONSENT_KEY = 'brainsweep_cookie_consent_v1';
   const LAST_VISIT_KEY = 'brainsweep_last_visit_ts_v1';
   let providerScriptLoaded = false;
+  const pendingQueue = [];
 
   function getConfig() {
     return window.BRAINSWEEP_CONFIG || {};
@@ -36,7 +37,12 @@
     if (!cfg.analytics || !cfg.analytics.enabled) {
       return false;
     }
-    if (
+    const provider = String(cfg.analytics.provider || 'umami').toLowerCase();
+    if (provider === 'umami') {
+      if (!cfg.analytics.websiteId || String(cfg.analytics.websiteId).includes('PLACEHOLDER')) {
+        return false;
+      }
+    } else if (
       !cfg.analytics.domain ||
       String(cfg.analytics.domain).includes('PLACEHOLDER')
     ) {
@@ -103,19 +109,64 @@
     return { allowed: isAllowed, hostDomain };
   }
 
+  function dispatchToProvider(eventName, safeProps) {
+    try {
+      if (window.umami && typeof window.umami.track === 'function') {
+        window.umami.track(eventName, safeProps);
+        return true;
+      }
+      if (typeof window.plausible === 'function') {
+        window.plausible(eventName, { props: safeProps });
+        return true;
+      }
+      if (window.posthog && typeof window.posthog.capture === 'function') {
+        window.posthog.capture(eventName, safeProps);
+        return true;
+      }
+      if (typeof window.gtag === 'function') {
+        window.gtag('event', eventName, safeProps);
+        return true;
+      }
+    } catch {
+      // ignore provider errors
+    }
+    return false;
+  }
+
+  function flushPendingQueue() {
+    while (pendingQueue.length > 0) {
+      const next = pendingQueue[0];
+      if (!dispatchToProvider(next.eventName, next.safeProps)) {
+        break;
+      }
+      pendingQueue.shift();
+    }
+  }
+
   function loadProviderScriptIfConsented() {
     if (providerScriptLoaded || !hasAnalyticsConsent()) return;
     const cfg = getConfig();
-    const provider = String((cfg.analytics && cfg.analytics.provider) || 'plausible').toLowerCase();
-    const domain = String((cfg.analytics && cfg.analytics.domain) || '').trim();
-    if (!domain || domain.includes('PLACEHOLDER')) return;
+    const provider = String((cfg.analytics && cfg.analytics.provider) || 'umami').toLowerCase();
 
-    providerScriptLoaded = true;
-    if (provider === 'plausible') {
+    if (provider === 'umami') {
+      const websiteId = String((cfg.analytics && cfg.analytics.websiteId) || '').trim();
+      if (!websiteId || websiteId.includes('PLACEHOLDER')) return;
+      providerScriptLoaded = true;
+      const s = document.createElement('script');
+      s.defer = true;
+      s.src = (cfg.analytics && cfg.analytics.scriptUrl) || 'https://cloud.umami.is/script.js';
+      s.setAttribute('data-website-id', websiteId);
+      s.addEventListener('load', flushPendingQueue);
+      document.head.appendChild(s);
+    } else if (provider === 'plausible') {
+      const domain = String((cfg.analytics && cfg.analytics.domain) || '').trim();
+      if (!domain || domain.includes('PLACEHOLDER')) return;
+      providerScriptLoaded = true;
       const s = document.createElement('script');
       s.defer = true;
       s.dataset.domain = domain;
       s.src = (cfg.analytics && cfg.analytics.scriptUrl) || 'https://plausible.io/js/script.js';
+      s.addEventListener('load', flushPendingQueue);
       document.head.appendChild(s);
     }
   }
@@ -155,18 +206,10 @@
     loadProviderScriptIfConsented();
 
     const safeProps = sanitizeProps(props);
-    try {
-      if (typeof window.plausible === 'function') {
-        window.plausible(eventName, { props: safeProps });
-      } else if (window.umami && typeof window.umami.track === 'function') {
-        window.umami.track(eventName, safeProps);
-      } else if (window.posthog && typeof window.posthog.capture === 'function') {
-        window.posthog.capture(eventName, safeProps);
-      } else if (typeof window.gtag === 'function') {
-        window.gtag('event', eventName, safeProps);
+    if (!dispatchToProvider(eventName, safeProps)) {
+      if (pendingQueue.length < 30) {
+        pendingQueue.push({ eventName, safeProps });
       }
-    } catch {
-      // ignore provider errors
     }
   }
 

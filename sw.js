@@ -3,7 +3,7 @@
  * Includes clean un-redirected response handling for Android WebAPK / Chrome PWA
  */
 
-const CACHE_NAME = 'brainsweep-pwa-v26';
+const CACHE_NAME = 'brainsweep-pwa-v27';
 const CORE_ASSETS = [
   './',
   './index.html',
@@ -58,8 +58,13 @@ self.addEventListener('fetch', (event) => {
   const { request } = event;
   if (request.method !== 'GET') return;
 
-  // Never cache live Google Apps Script Leaderboard API requests
-  if (request.url && request.url.includes('script.google')) {
+  // Never cache live Google Apps Script Leaderboard API or Umami Analytics requests
+  if (
+    request.url &&
+    (request.url.includes('script.google') ||
+      request.url.includes('umami.is') ||
+      request.url.includes('umami.dev'))
+  ) {
     return;
   }
 

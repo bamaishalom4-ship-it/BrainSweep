@@ -1,21 +1,21 @@
 /**
  * BrainSweep — Central Configuration (Phase 0)
- * Update the PLACEHOLDER_* values below before commercial launch.
  */
 window.BRAINSWEEP_CONFIG = {
   brandName: 'BrainSweep',
-  legalEntity: 'PLACEHOLDER_REGISTERED_BUSINESS_NAME', // CAC-registered business/company name
+  legalEntity: 'BrainSweep',
   country: 'Nigeria',
-  contactEmail: 'PLACEHOLDER_WORKING_EMAIL', // Working support/privacy inbox
+  contactEmail: 'madebykubo@gmail.com',
   siteUrl: 'https://brainsweep-tau.vercel.app',
   leaderboardApiUrl:
     'https://script.google.com/macros/s/AKfycbziXn-4cNUEga8XpnoPAF22gOtCH9cIFaj2HojI1A4Aap_yNzCWkss37ne3U3kEic-A/exec',
-  dailyLaunchDate: '2026-11-01', // PLACEHOLDER_DAILY_LAUNCH_DATE (YYYY-MM-DD in Africa/Lagos)
+  dailyLaunchDate: '2026-11-01', // YYYY-MM-DD in Africa/Lagos
   analytics: {
-    provider: 'plausible', // 'plausible' | 'umami' | 'posthog' | 'ga4'
-    domain: 'PLACEHOLDER_DOMAIN',
-    scriptUrl: '', // Optional custom script endpoint
-    enabled: false,
+    provider: 'umami', // 'umami' | 'plausible' | 'posthog' | 'ga4'
+    domain: 'brainsweep-tau.vercel.app',
+    websiteId: 'fdc1c524-5bc0-4e66-8b38-abc960d146d0',
+    scriptUrl: 'https://cloud.umami.is/script.js',
+    enabled: true,
   },
   allowedEmbedDomains: [], // Empty = allow all but log 'embed_unlicensed_domain'; non-empty = enforce allow-list
 };
