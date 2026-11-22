@@ -2988,13 +2988,18 @@ body.reduced-motion .tutorial-demo-node {
 .streak-fire-pill {
   display: inline-flex;
   align-items: center;
-  gap: 4px;
-  padding: 4px 8px;
+  justify-content: center;
+  gap: 5px;
+  padding: 6px 10px;
+  min-height: 30px;
   background: var(--bg-color);
   border: 1.5px solid var(--border-color);
   color: var(--accent-color);
   font-family: var(--font-pixel);
-  font-size: 0.48rem;
+  font-size: 0.56rem;
+  line-height: 1;
+  white-space: nowrap;
+  flex-shrink: 0;
 }
 
 .home-start-wrap {
@@ -3026,6 +3031,13 @@ body.reduced-motion .tutorial-demo-node {
   align-items: center;
   justify-content: space-between;
   gap: 10px;
+  width: 100%;
+}
+
+.results-badge-row .badge-pill {
+  flex: 1 1 auto;
+  min-width: 0;
+  margin-bottom: 0;
 }
 
 .zero-score-tip-box {

@@ -516,7 +516,7 @@
 
   function syncDailyAndStreakUI() {
     const activeStreak = getActiveStreakCount();
-    const streakText = `🔥 ${activeStreak}`;
+    const streakText = `🔥\u00A0${activeStreak}`;
     if (homeStreakBadge) {
       homeStreakBadge.textContent = streakText;
       homeStreakBadge.title = `Daily Sweep Streak: ${activeStreak} day${activeStreak === 1 ? '' : 's'}`;
