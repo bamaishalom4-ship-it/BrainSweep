@@ -243,10 +243,18 @@
       background: #000000;
       display: block;
     }
+    .docs-scroll-wrap {
+      width: 100%;
+      overflow-x: auto;
+      -webkit-overflow-scrolling: touch;
+      scrollbar-width: thin;
+      padding-bottom: 6px;
+    }
     .docs-grid {
       display: grid;
       grid-template-columns: 1fr 1fr;
       gap: 20px;
+      min-width: 680px;
     }
     .doc-card {
       background: #050200;
@@ -255,6 +263,21 @@
       display: flex;
       flex-direction: column;
       gap: 10px;
+      min-width: 0;
+      overflow-wrap: anywhere;
+    }
+    .doc-card code {
+      font-family: monospace;
+      font-size: 0.95rem;
+      color: var(--accent-text);
+      overflow-wrap: anywhere;
+      word-break: break-word;
+    }
+    .doc-card pre.code-output {
+      white-space: pre;
+      word-break: normal;
+      overflow-x: auto;
+      -webkit-overflow-scrolling: touch;
     }
     .doc-card h3 {
       font-family: var(--font-pixel);
@@ -316,7 +339,6 @@
     .doc-nav a:hover { text-decoration: underline; }
     @media (max-width: 980px) {
       .generator-grid { grid-template-columns: 1fr; }
-      .docs-grid { grid-template-columns: 1fr; }
       .field-row { grid-template-columns: 1fr; }
     }
   </style>
@@ -450,27 +472,30 @@
     <!-- Documentation Section -->
     <section class="panel" aria-label="Publisher Integration Guide">
       <h2>3. QUICK-START INTEGRATION &amp; HOST POSTMESSAGE API</h2>
+      <p class="field-hint">Swipe or scroll horizontally on mobile to read both integration cards and code examples.</p>
 
-      <div class="docs-grid">
-        <div class="doc-card">
-          <h3>HOW TO PASTE THE CODE INTO YOUR WEBSITE</h3>
-          <ol>
-            <li><strong>Configure &amp; Copy:</strong> Set your domain, difficulty, theme, and optional sponsor CTA above, then click <strong>COPY CODE</strong>.</li>
-            <li><strong>Open Your CMS / HTML Editor:</strong> Add a <strong>Custom HTML / Embed Block</strong> in WordPress, Webflow, Ghost, Substack, or your custom frontend.</li>
-            <li><strong>Paste Into the HTML Body:</strong> Paste the <code>&lt;iframe&gt;...&lt;/iframe&gt;</code> snippet where you want the game to appear. Recommended height is <code>640px</code> so the header, target dock, arena, and drop zone fit at both <code>400px</code> and <code>640px</code> widths without clipping.</li>
-            <li><strong>Tap-to-Start &amp; Auto-Pause:</strong> The embedded game displays a <strong>"TAP TO PLAY"</strong> start card on load and automatically pauses the timer if the reader scrolls the iframe out of view.</li>
-          </ol>
-        </div>
+      <div class="docs-scroll-wrap">
+        <div class="docs-grid">
+          <div class="doc-card">
+            <h3>HOW TO PASTE THE CODE INTO YOUR WEBSITE</h3>
+            <ol>
+              <li><strong>Configure &amp; Copy:</strong> Set your domain, difficulty, theme, and optional sponsor CTA above, then click <strong>COPY CODE</strong>.</li>
+              <li><strong>Open Your CMS / HTML Editor:</strong> Add a <strong>Custom HTML / Embed Block</strong> in WordPress, Webflow, Ghost, Substack, or your custom frontend.</li>
+              <li><strong>Paste Into the HTML Body:</strong> Paste the <code>&lt;iframe&gt;...&lt;/iframe&gt;</code> snippet where you want the game to appear. Recommended height is <code>640px</code> so the header, target dock, arena, and drop zone fit at both <code>400px</code> and <code>640px</code> widths without clipping.</li>
+              <li><strong>Tap-to-Start &amp; Auto-Pause:</strong> The embedded game displays a <strong>"TAP TO PLAY"</strong> start card on load and automatically pauses the timer if the reader scrolls the iframe out of view.</li>
+            </ol>
+          </div>
 
-        <div class="doc-card">
-          <h3>HOST PAGE POSTMESSAGE EVENTS API</h3>
-          <p>In embed mode (<code>?embed=true</code>), BrainSweep emits real-time events to your parent page via <code>window.parent.postMessage</code>:</p>
-          <pre class="code-output" style="font-size: 0.78rem;">window.addEventListener('message', (event) => {
+          <div class="doc-card">
+            <h3>HOST PAGE POSTMESSAGE EVENTS API</h3>
+            <p>In embed mode (<code>?embed=true</code>), BrainSweep emits real-time events to your parent page via <code>window.parent.postMessage</code>:</p>
+            <pre class="code-output" style="font-size: 0.78rem;">window.addEventListener('message', (event) => {
   if (event.data &amp;&amp; event.data.source === 'brainsweep') {
     // event.data.type: 'ready' | 'start' | 'end' | 'cta_click'
     console.log(event.data.type, event.data.payload);
   }
 });</pre>
+          </div>
         </div>
       </div>
 
