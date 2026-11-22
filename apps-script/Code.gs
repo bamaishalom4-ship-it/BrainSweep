@@ -25,6 +25,8 @@
 const SPREADSHEET_ID = '1r7rsCfeqHpvz9-Sv6PtTGDNBiTHy0evbkU3HeimjBCA';
 const LEADERBOARD_SHEET_NAME = 'Leaderboard';
 const ROUNDS_SHEET_NAME = 'RoundsLog';
+const LEADS_SHEET_NAME = 'PublisherLeads';
+const LEAD_ALERT_EMAIL = 'madebykubo@gmail.com';
 
 const LEADERBOARD_HEADERS = [
   'Username',
@@ -52,6 +54,25 @@ const ROUNDS_HEADERS = [
   'IsDaily',
   'Score',
   'TimeMs',
+];
+
+const LEADS_HEADERS = [
+  'TimestampIso',
+  'DateLagos',
+  'CompanyName',
+  'WorkEmail',
+  'Domain',
+  'Difficulty',
+  'Theme',
+  'Pattern',
+  'DailyMode',
+  'SponsorText',
+  'BrandColor',
+  'BrandLogo',
+  'CtaText',
+  'CtaUrl',
+  'Notes',
+  'Status',
 ];
 
 const ALLOWED_DIFFICULTIES = {
@@ -154,6 +175,147 @@ function getOrInitRoundsSheet() {
     sheet.appendRow(ROUNDS_HEADERS);
   }
   return sheet;
+}
+
+function getOrInitLeadsSheet() {
+  const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+  let sheet = ss.getSheetByName(LEADS_SHEET_NAME);
+  if (!sheet) {
+    sheet = ss.insertSheet(LEADS_SHEET_NAME);
+    sheet.appendRow(LEADS_HEADERS);
+  } else if (sheet.getLastRow() === 0) {
+    sheet.appendRow(LEADS_HEADERS);
+  }
+  return sheet;
+}
+
+function sanitizeLeadField(val, maxLen) {
+  return String(val || '')
+    .replace(/[\u0000-\u001F\u007F]/g, ' ')
+    .trim()
+    .slice(0, maxLen || 200);
+}
+
+function handlePublisherLeadSubmission(body) {
+  const companyName = sanitizeLeadField(body.companyName, 80);
+  const workEmail = sanitizeLeadField(body.workEmail, 100).toLowerCase();
+  const domain = sanitizeLeadField(body.domain, 120)
+    .replace(/^https?:\/\//i, '')
+    .replace(/\/.*$/, '');
+  const difficulty = sanitizeLeadField(body.difficulty, 20);
+  const theme = sanitizeLeadField(body.theme, 20);
+  const pattern = sanitizeLeadField(body.pattern, 20);
+  const dailyMode = Boolean(body.daily);
+  const sponsorText = sanitizeLeadField(body.sponsorText, 40);
+  const brandColor = sanitizeLeadField(body.brandColor, 10);
+  const brandLogo = sanitizeLeadField(body.brandLogo, 240);
+  const ctaText = sanitizeLeadField(body.ctaText, 24);
+  const ctaUrl = sanitizeLeadField(body.ctaUrl, 240);
+  const notes = sanitizeLeadField(body.notes, 400);
+
+  if (companyName.length < 2) {
+    return jsonResponse({
+      status: 'error',
+      code: 'INVALID_COMPANY',
+      message: 'Please enter your company or brand name.',
+    });
+  }
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(workEmail)) {
+    return jsonResponse({
+      status: 'error',
+      code: 'INVALID_EMAIL',
+      message: 'Please enter a valid work email address.',
+    });
+  }
+  if (domain.length < 3) {
+    return jsonResponse({
+      status: 'error',
+      code: 'INVALID_DOMAIN',
+      message: 'Please enter your website domain (e.g. yoursite.com).',
+    });
+  }
+
+  const cache = CacheService.getScriptCache();
+  const rateKey = `lead_${workEmail}`;
+  if (cache.get(rateKey)) {
+    return jsonResponse({
+      status: 'error',
+      code: 'RATE_LIMITED',
+      message: 'Your inquiry was already received. Please wait a minute before submitting again.',
+    });
+  }
+
+  const nowIso = new Date().toISOString();
+  const todayLagos = getLagosDateString(new Date());
+  const leadsSheet = getOrInitLeadsSheet();
+  leadsSheet.appendRow([
+    nowIso,
+    "'" + todayLagos,
+    companyName,
+    workEmail,
+    domain,
+    difficulty,
+    theme,
+    pattern,
+    dailyMode,
+    sponsorText,
+    brandColor,
+    brandLogo,
+    ctaText,
+    ctaUrl,
+    notes,
+    'NEW',
+  ]);
+
+  cache.put(rateKey, '1', 60);
+
+  // Send instant email alert (wrapped in try/catch so sheet write always succeeds)
+  let emailSent = false;
+  try {
+    const subject = `[BrainSweep B2B Lead] ${companyName} (${domain})`;
+    const bodyText = [
+      'New BrainSweep B2B Publisher Embed / License Request:',
+      '',
+      `Company / Brand: ${companyName}`,
+      `Work Email: ${workEmail}`,
+      `Website Domain: ${domain}`,
+      `Date (Lagos): ${todayLagos}`,
+      '',
+      '--- Configured Embed Settings ---',
+      `Difficulty: ${difficulty || 'easy'}`,
+      `Theme: ${theme || 'amber'}`,
+      `Pattern: ${pattern || 'spiral'}`,
+      `Daily Sweep Mode: ${dailyMode ? 'Yes' : 'No'}`,
+      `Sponsor Text: ${sponsorText || '—'}`,
+      `Brand Color: ${brandColor || '—'}`,
+      `Brand Logo: ${brandLogo || '—'}`,
+      `CTA Text: ${ctaText || '—'}`,
+      `CTA URL: ${ctaUrl || '—'}`,
+      '',
+      '--- Campaign / Traffic Notes ---',
+      notes || '—',
+      '',
+      'Logged in Google Sheet tab: PublisherLeads',
+    ].join('\n');
+
+    MailApp.sendEmail({
+      to: LEAD_ALERT_EMAIL,
+      replyTo: workEmail,
+      subject,
+      body: bodyText,
+    });
+    emailSent = true;
+  } catch (mailErr) {
+    // MailApp permission may need one-time authorization in Apps Script editor
+    emailSent = false;
+  }
+
+  return jsonResponse({
+    status: 'ok',
+    saved: true,
+    emailSent,
+    message: 'Request received! We will follow up shortly.',
+  });
 }
 
 function containsProfanity(username) {
@@ -317,11 +479,16 @@ function doPost(e) {
 
     const rawBody = e && e.postData && e.postData.contents ? e.postData.contents : '{}';
     const body = JSON.parse(rawBody);
+    const action = String(body.action || 'submit').trim().toLowerCase();
+
+    // Handle B2B Publisher Lead / Commercial License Requests from /developers
+    if (action === 'publisher_lead') {
+      return handlePublisherLeadSubmission(body);
+    }
 
     const username = String(body.username || '').trim();
     const email = String(body.email || '').trim().toLowerCase();
     const rawDiff = String(body.difficulty || 'easy').trim().toLowerCase();
-    const action = String(body.action || 'submit').trim().toLowerCase();
     const roundId = String(body.roundId || '').trim();
     const marketingOptIn = Boolean(body.marketingOptIn);
 

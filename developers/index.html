@@ -147,7 +147,7 @@
       font-size: 1.05rem;
       color: var(--muted-text);
     }
-    input[type="text"], input[type="url"], select {
+    input[type="text"], input[type="url"], input[type="email"], select, textarea {
       background: #050200;
       border: 2px solid var(--border-color);
       color: var(--accent-text);
@@ -157,9 +157,31 @@
       outline: none;
       width: 100%;
     }
-    input:focus, select:focus {
+    textarea {
+      font-family: var(--font-terminal);
+      font-size: 1.15rem;
+      line-height: 1.35;
+      resize: vertical;
+      min-height: 76px;
+    }
+    input:focus, select:focus, textarea:focus {
       border-color: #ffffff;
       box-shadow: 0 0 12px rgba(252, 98, 0, 0.4);
+    }
+    .lead-status {
+      padding: 12px 14px;
+      border: 2px solid var(--border-color);
+      background: #050200;
+      font-family: var(--font-terminal);
+      font-size: 1.15rem;
+      color: var(--accent-text);
+    }
+    .lead-status.is-error {
+      border-color: #ff4d6d;
+      color: #ff859a;
+    }
+    .lead-status[hidden] {
+      display: none !important;
     }
     .chk-row {
       display: flex;
@@ -469,6 +491,43 @@
       </section>
     </div>
 
+    <!-- B2B Publisher Lead / Commercial License Registration -->
+    <section class="panel" aria-label="Register Your Embed and Request Commercial License">
+      <h2>REQUEST COMMERCIAL LICENSE / REGISTER YOUR EMBED</h2>
+      <p class="field-hint">
+        Want whitelisted domain licensing, custom branded campaigns, or monthly engagement reports for your site or app? Submit your details below — your current widget settings above will be included automatically.
+      </p>
+
+      <form id="publisherLeadForm" style="display: flex; flex-direction: column; gap: 14px;" novalidate>
+        <div class="field-row">
+          <div class="field-group">
+            <label for="leadCompany">COMPANY / BRAND NAME *</label>
+            <input type="text" id="leadCompany" maxlength="80" placeholder="e.g. Lagos Daily Media" required />
+          </div>
+          <div class="field-group">
+            <label for="leadEmail">WORK EMAIL *</label>
+            <input type="email" id="leadEmail" maxlength="100" placeholder="e.g. partnerships@company.com" required />
+          </div>
+        </div>
+
+        <div class="field-group">
+          <label for="leadDomain">WEBSITE / APP DOMAIN TO WHITELIST *</label>
+          <input type="text" id="leadDomain" maxlength="120" placeholder="e.g. puzzles.dailynews.com" required />
+        </div>
+
+        <div class="field-group">
+          <label for="leadNotes">MONTHLY TRAFFIC / CAMPAIGN GOALS (OPTIONAL)</label>
+          <textarea id="leadNotes" maxlength="400" placeholder="Tell us about your audience size, launch timeline, or sponsorship goals..."></textarea>
+        </div>
+
+        <div class="lead-status" id="leadFormStatus" role="status" aria-live="polite" hidden></div>
+
+        <div class="btn-row">
+          <button type="submit" class="primary-btn" id="btnSubmitLead">REGISTER EMBED &amp; REQUEST LICENSE</button>
+        </div>
+      </form>
+    </section>
+
     <!-- Documentation Section -->
     <section class="panel" aria-label="Publisher Integration Guide">
       <h2>3. QUICK-START INTEGRATION &amp; HOST POSTMESSAGE API</h2>
@@ -704,6 +763,130 @@
       });
 
       updateSnippetAndPreview(true);
+
+      // --- B2B Publisher Lead / License Registration Form ---
+      const leadForm = document.getElementById('publisherLeadForm');
+      const leadCompany = document.getElementById('leadCompany');
+      const leadEmail = document.getElementById('leadEmail');
+      const leadDomain = document.getElementById('leadDomain');
+      const leadNotes = document.getElementById('leadNotes');
+      const leadFormStatus = document.getElementById('leadFormStatus');
+      const btnSubmitLead = document.getElementById('btnSubmitLead');
+
+      let leadDomainEditedManually = false;
+      if (leadDomain) {
+        leadDomain.value = (inpDomain.value || '').trim();
+        leadDomain.addEventListener('input', () => {
+          leadDomainEditedManually = true;
+        });
+      }
+      if (inpDomain && leadDomain) {
+        inpDomain.addEventListener('input', () => {
+          if (!leadDomainEditedManually) {
+            leadDomain.value = (inpDomain.value || '').trim();
+          }
+        });
+      }
+
+      function showLeadStatus(msg, isError) {
+        if (!leadFormStatus) return;
+        leadFormStatus.textContent = msg;
+        leadFormStatus.classList.toggle('is-error', Boolean(isError));
+        leadFormStatus.hidden = false;
+      }
+
+      if (leadForm) {
+        leadForm.addEventListener('submit', async (e) => {
+          e.preventDefault();
+          const companyName = (leadCompany.value || '').trim();
+          const workEmail = (leadEmail.value || '').trim().toLowerCase();
+          const domain = (leadDomain.value || '')
+            .trim()
+            .replace(/^https?:\/\//i, '')
+            .replace(/\/.*$/, '');
+          const notes = (leadNotes.value || '').trim();
+
+          if (companyName.length < 2) {
+            showLeadStatus('Please enter your company or brand name.', true);
+            leadCompany.focus();
+            return;
+          }
+          if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(workEmail)) {
+            showLeadStatus('Please enter a valid work email address.', true);
+            leadEmail.focus();
+            return;
+          }
+          if (domain.length < 3 || domain === 'publisher.example.com') {
+            showLeadStatus('Please enter your real website domain (not publisher.example.com).', true);
+            leadDomain.focus();
+            return;
+          }
+
+          const cfg = window.BRAINSWEEP_CONFIG || {};
+          const apiUrl = cfg.leaderboardApiUrl;
+          if (!apiUrl) {
+            showLeadStatus('Backend endpoint is not configured. Please email madebykubo@gmail.com directly.', true);
+            return;
+          }
+
+          const originalText = btnSubmitLead.textContent;
+          btnSubmitLead.disabled = true;
+          btnSubmitLead.textContent = 'SENDING REQUEST...';
+          if (leadFormStatus) leadFormStatus.hidden = true;
+
+          const controller = new AbortController();
+          const timer = setTimeout(() => controller.abort(), 10000);
+
+          try {
+            const resp = await fetch(apiUrl, {
+              method: 'POST',
+              headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+              signal: controller.signal,
+              body: JSON.stringify({
+                action: 'publisher_lead',
+                companyName,
+                workEmail,
+                domain,
+                notes,
+                difficulty: selDifficulty.value || 'easy',
+                theme: selTheme.value || 'amber',
+                pattern: selPattern.value || 'spiral',
+                daily: Boolean(chkDaily && chkDaily.checked),
+                sponsorText: (inpSponsorText.value || '').trim().slice(0, 40),
+                brandColor: (inpBrandColor.value || '').trim().slice(0, 10),
+                brandLogo: (inpBrandLogo.value || '').trim().slice(0, 240),
+                ctaText: (inpCtaText.value || '').trim().slice(0, 24),
+                ctaUrl: (inpCtaUrl.value || '').trim().slice(0, 240),
+              }),
+            });
+
+            const data = await resp.json();
+            if (data && data.status === 'ok') {
+              showLeadStatus(
+                `Request received for ${domain}! We will follow up at ${workEmail} shortly.`,
+                false
+              );
+              leadForm.reset();
+              leadDomainEditedManually = false;
+              leadDomain.value = (inpDomain.value || '').trim();
+            } else {
+              showLeadStatus(
+                (data && data.message) || 'Could not submit request. Please try again or email madebykubo@gmail.com.',
+                true
+              );
+            }
+          } catch {
+            showLeadStatus(
+              'Network timeout while sending request. Please try again or email madebykubo@gmail.com.',
+              true
+            );
+          } finally {
+            clearTimeout(timer);
+            btnSubmitLead.disabled = false;
+            btnSubmitLead.textContent = originalText;
+          }
+        });
+      }
     })();
   </script>
 </body>
